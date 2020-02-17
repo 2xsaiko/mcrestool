@@ -1,0 +1,6 @@
+#ifndef MCRESTOOL_EXCEPT_H
+#define MCRESTOOL_EXCEPT_H
+
+struct
+
+#endif //MCRESTOOL_EXCEPT_H
