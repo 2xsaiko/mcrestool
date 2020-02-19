@@ -1,7 +1,7 @@
 #ifndef MCRESTOOL_LANGFILE_H
 #define MCRESTOOL_LANGFILE_H
 
-#include <QtCore/QMap>
+#include <QMap>
 
 QMap<QString, QString> load_from_json(const QString& path);
 

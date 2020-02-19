@@ -1,7 +1,7 @@
 #ifndef MCRESTOOL_RECPSHCR_H
 #define MCRESTOOL_RECPSHCR_H
 
-#include <QtWidgets/QWidget>
+#include <QWidget>
 #include "rcpedext.h"
 
 namespace Ui {

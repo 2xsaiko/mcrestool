@@ -1,30 +1,9 @@
 #ifndef MCRESTOOL_RESTREE_H
 #define MCRESTOOL_RESTREE_H
 
-#include <QtCore/QString>
-#include <QtCore/QAbstractItemModel>
-
-class ResDomain {
-    friend class ResourceTree;
-
-public:
-    void create_lang();
-
-private:
-    bool lang;
-};
-
-class ResRoot {
-    friend class ResourceTree;
-
-public:
-    static ResRoot demo();
-
-    ResDomain& add_domain(const QString& domain);
-
-private:
-    QMap<QString, ResDomain> domains;
-};
+#include <QString>
+#include <QAbstractItemModel>
+#include "restritm.h"
 
 class ResourceTree : public QAbstractItemModel {
 Q_OBJECT
@@ -32,21 +11,24 @@ Q_OBJECT
 public:
     explicit ResourceTree(QObject* parent = nullptr);
 
-    void add_item(const ResRoot& root);
-
-private:
-    QList<ResRoot> items;
+    ~ResourceTree() override;
 
     QModelIndex index(int row, int column, const QModelIndex& parent) const override;
 
     QModelIndex parent(const QModelIndex& child) const override;
 
+    QVariant data(const QModelIndex& index, int role) const override;
+
+    Qt::ItemFlags flags(const QModelIndex& index) const override;
+
+    QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
+
     int rowCount(const QModelIndex& parent) const override;
 
     int columnCount(const QModelIndex& parent) const override;
 
-    QVariant data(const QModelIndex& index, int role) const override;
-
+private:
+    TreeItem* root_item;
 
 };
 

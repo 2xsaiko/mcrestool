@@ -1,9 +1,9 @@
 #ifndef MCRESTOOL_TABLE_H
 #define MCRESTOOL_TABLE_H
 
-#include <QtCore/QMap>
-#include <QtCore/QSet>
-#include <QtCore/QList>
+#include <QMap>
+#include <QSet>
+#include <QList>
 #include <optional>
 
 using std::optional;

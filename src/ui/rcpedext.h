@@ -1,7 +1,7 @@
 #ifndef MCRESTOOL_RCPEDEXT_H
 #define MCRESTOOL_RCPEDEXT_H
 
-#include <QtWidgets/QWidget>
+#include <QWidget>
 
 class RecipeEditExtensionWidget : public QWidget {
 Q_OBJECT

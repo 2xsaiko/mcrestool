@@ -2,7 +2,7 @@
 #define MCRESTOOL_LANGTBLW_H
 
 #include <QScopedPointer>
-#include <QtWidgets/QWidget>
+#include <QWidget>
 #include "src/model/langtbl.h"
 
 namespace Ui {

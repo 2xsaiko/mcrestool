@@ -1,6 +1,6 @@
-#include <QtCore/QJsonDocument>
-#include <QtCore/QFile>
-#include <QtCore/QJsonObject>
+#include <QJsonDocument>
+#include <QFile>
+#include <QJsonObject>
 #include "src/util.h"
 #include "langfile.h"
 

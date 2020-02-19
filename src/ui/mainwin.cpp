@@ -4,10 +4,10 @@
 #include "recpedtw.h"
 #include <QApplication>
 #include <QDesktopWidget>
-#include <QtGui/QScreen>
-#include <QtWidgets/QFileDialog>
+#include <QScreen>
+#include <QFileDialog>
+#include <QInputDialog>
 #include <iostream>
-#include <QtWidgets/QInputDialog>
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
@@ -20,6 +20,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(ui->res_tree, SIGNAL(visibilityChanged(bool)), this, SLOT(show_resource_tree(bool)));
     connect(ui->action_game_objects, SIGNAL(triggered(bool)), this, SLOT(show_game_objects(bool)));
     connect(ui->game_objects, SIGNAL(visibilityChanged(bool)), this, SLOT(show_game_objects(bool)));
+    connect(ui->action_about_qt, &QAction::triggered, &QApplication::aboutQt);
 
     auto* ltw = new LanguageTableWindow(this);
     ui->mdi_area->addSubWindow(ltw);
@@ -30,9 +31,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(ui->action_insert_language, &QAction::triggered, ltw, &LanguageTableWindow::add_language);
     connect(ui->action_insert_translation_key, &QAction::triggered, ltw, &LanguageTableWindow::add_locale_key);
 
-//    rt.add_item(ResRoot::demo());
-
-//    ui->res_tree_view->setModel(&rt);
+    ui->res_tree_view->setModel(new ResourceTree(this));
 }
 
 void MainWindow::center() {

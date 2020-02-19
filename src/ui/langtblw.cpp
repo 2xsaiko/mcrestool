@@ -1,4 +1,4 @@
-#include <QtWidgets/QInputDialog>
+#include <QInputDialog>
 #include "langtblw.h"
 #include "ui_langtblw.h"
 

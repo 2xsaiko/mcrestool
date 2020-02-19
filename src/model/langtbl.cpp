@@ -1,7 +1,7 @@
-#include <QtCore/QDir>
-#include <QtCore/QUrl>
-#include <QtCore/QSet>
-#include <QtCore/QSharedPointer>
+#include <QDir>
+#include <QUrl>
+#include <QSet>
+#include <QSharedPointer>
 #include "langtbl.h"
 
 using std::optional;

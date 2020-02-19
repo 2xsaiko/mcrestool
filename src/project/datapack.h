@@ -1,0 +1,8 @@
+#ifndef MCRESTOOL_DATAPACK_H
+#define MCRESTOOL_DATAPACK_H
+
+class DataPack {
+
+};
+
+#endif //MCRESTOOL_DATAPACK_H

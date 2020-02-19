@@ -2,3 +2,6 @@ build/
 
 .idea/
 cmake-build-debug/
+
+# testing! ;)
+*.jar

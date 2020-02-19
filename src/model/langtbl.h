@@ -1,9 +1,9 @@
 #ifndef MCRESTOOL_LANGTBL_H
 #define MCRESTOOL_LANGTBL_H
 
-#include <QtCore/QObject>
-#include <QtCore/QMap>
-#include <QtCore/QAbstractTableModel>
+#include <QObject>
+#include <QMap>
+#include <QAbstractTableModel>
 #include "src/table.h"
 
 class LanguageTable : public QAbstractTableModel {

@@ -113,7 +113,11 @@
    <widget class="QWidget" name="dock_widget_contents">
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
-      <widget class="QTreeView" name="res_tree_view"/>
+      <widget class="QTreeView" name="res_tree_view">
+       <attribute name="headerVisible">
+        <bool>false</bool>
+       </attribute>
+      </widget>
      </item>
     </layout>
    </widget>

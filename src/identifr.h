@@ -1,7 +1,7 @@
 #ifndef MCRESTOOL_IDENTIFR_H
 #define MCRESTOOL_IDENTIFR_H
 
-#include <QtCore/QString>
+#include <QString>
 
 class Identifier {
 public:

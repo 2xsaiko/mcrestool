@@ -1,8 +1,8 @@
 #ifndef MCRESTOOL_ITEMBTN_H
 #define MCRESTOOL_ITEMBTN_H
 
-#include <QtWidgets/QPushButton>
-#include <src/identifr.h>
+#include <QPushButton>
+#include "src/identifr.h"
 
 class ItemButton : public QPushButton {
 Q_OBJECT
