@@ -1,5 +1,5 @@
-#ifndef MCRESTOOL_LANGTBL_H
-#define MCRESTOOL_LANGTBL_H
+#ifndef MCRESTOOL_LANGTABL_H
+#define MCRESTOOL_LANGTABL_H
 
 #include <QObject>
 #include <QMap>
@@ -47,4 +47,4 @@ private:
 
 };
 
-#endif //MCRESTOOL_LANGTBL_H
+#endif //MCRESTOOL_LANGTABL_H

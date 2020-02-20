@@ -21,7 +21,7 @@ find_package(KF5 REQUIRED
 
 set(mcrestool_SRC
         src/main.cpp
-        src/model/langtbl.cpp src/model/langtbl.h
+        src/model/langtabl.cpp src/model/langtabl.h
         src/table.h
         src/identifr.cpp src/identifr.h
         src/model/restree.cpp src/model/restree.h
@@ -35,13 +35,14 @@ set(mcrestool_SRC
         src/fs/langfile.cpp src/fs/langfile.h
         src/result.h
         src/except.h
-        src/ui/recpsmel.cpp
-        src/ui/recpsmel.h
+        src/ui/recpsmel.cpp src/ui/recpsmel.h
         src/model/restritm.cpp src/model/restritm.h
         src/project/projsrc.cpp src/project/projsrc.h
         src/fs/datasrc.cpp src/fs/datasrc.h
         src/fs/dirdtsrc.cpp src/fs/dirdtsrc.h
-        src/fs/arcdtsrc.cpp src/fs/arcdtsrc.h src/project/datapack.cpp src/project/datapack.h src/project/respack.cpp src/project/respack.h src/project/resdom.cpp src/project/resdom.h)
+        src/fs/arcdtsrc.cpp src/fs/arcdtsrc.h
+        src/project/langtblc.cpp src/project/langtblc.h
+        src/project/project.h)
 
 add_executable(mcrestool ${mcrestool_SRC})
 

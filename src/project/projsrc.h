@@ -1,28 +1,29 @@
 #ifndef MCRESTOOL_PROJSRC_H
 #define MCRESTOOL_PROJSRC_H
 
+#include "project.h"
+
 #include "src/fs/datasrc.h"
-#include "datapack.h"
-#include "respack.h"
+#include "langtblc.h"
 #include <QObject>
 #include <QMap>
+
+// use QFileSystemWatcher?
 
 class ProjectSource : public QObject {
 Q_OBJECT
 
 public:
-    explicit ProjectSource(DataSource* src, const QString& name, QObject* parent = nullptr);
-
+    explicit ProjectSource(DataSource& src, const QString& name, QObject* parent = nullptr);
 
     bool read_only();
 
 private:
     QString name;
 
-    QMap<QString, DataPack> data_packs;
-    QMap<QString, ResourcePack> resource_packs;
+    DataSource& src;
 
-    DataSource* src;
+    QMap<QString, LanguageTableContainer*> languages;
 
 };
 

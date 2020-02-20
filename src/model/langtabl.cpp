@@ -2,7 +2,7 @@
 #include <QUrl>
 #include <QSet>
 #include <QSharedPointer>
-#include "langtbl.h"
+#include "langtabl.h"
 
 using std::optional;
 

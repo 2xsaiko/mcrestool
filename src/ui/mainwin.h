@@ -4,7 +4,7 @@
 #include <QMainWindow>
 #include <QScopedPointer>
 #include "src/model/restree.h"
-#include "src/model/langtbl.h"
+#include "src/model/langtabl.h"
 
 namespace Ui {
     class MainWindow;
