@@ -8,6 +8,7 @@
 #include "projsrc.h"
 
 class LanguageTableContainer : public QObject {
+Q_OBJECT
 
 public:
     explicit LanguageTableContainer(ProjectSource* src, QObject* parent = nullptr);
@@ -17,6 +18,8 @@ public:
     LanguageTable* language_table();
 
     bool persistent() const;
+
+    bool changed() const;
 
     bool read_only() const;
 
@@ -28,11 +31,14 @@ signals:
 
     void on_deleted();
 
+    void on_changed();
+
 private:
     ProjectSource* src;
     LanguageTable* lt;
 
     bool _persistent;
+    bool _changed;
     bool _deleted;
 
 };

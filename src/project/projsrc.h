@@ -18,6 +18,8 @@ public:
 
     bool read_only();
 
+    bool changed();
+
 private:
     QString name;
 

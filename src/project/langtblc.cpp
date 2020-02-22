@@ -3,6 +3,7 @@
 LanguageTableContainer::LanguageTableContainer(ProjectSource* src, QObject* parent) : QObject(parent),
                                                                                       src(src), lt(new LanguageTable(this)) {
     _persistent = false;
+    _changed = false;
     _deleted = false;
 }
 
@@ -14,6 +15,10 @@ LanguageTable* LanguageTableContainer::language_table() {
 
 bool LanguageTableContainer::persistent() const {
     return _persistent;
+}
+
+bool LanguageTableContainer::changed() const {
+    return _changed;
 }
 
 bool LanguageTableContainer::read_only() const {

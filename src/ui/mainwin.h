@@ -30,6 +30,10 @@ private slots:
 
     void save_as();
 
+    void add_res_file();
+
+    void add_res_folder();
+
     void show_resource_tree(bool shown);
 
     void show_game_objects(bool shown);

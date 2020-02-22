@@ -16,11 +16,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(ui->action_open, SIGNAL(triggered()), this, SLOT(open()));
     connect(ui->action_save, SIGNAL(triggered()), this, SLOT(save()));
     connect(ui->action_save_as, SIGNAL(triggered()), this, SLOT(save_as()));
+    connect(ui->action_add_res_file, SIGNAL(triggered()), this, SLOT(add_res_file()));
+    connect(ui->action_add_res_folder, SIGNAL(triggered()), this, SLOT(add_res_folder()));
+    connect(ui->action_about_qt, &QAction::triggered, &QApplication::aboutQt);
+
     connect(ui->action_resource_tree, SIGNAL(triggered(bool)), this, SLOT(show_resource_tree(bool)));
     connect(ui->res_tree, SIGNAL(visibilityChanged(bool)), this, SLOT(show_resource_tree(bool)));
     connect(ui->action_game_objects, SIGNAL(triggered(bool)), this, SLOT(show_game_objects(bool)));
     connect(ui->game_objects, SIGNAL(visibilityChanged(bool)), this, SLOT(show_game_objects(bool)));
-    connect(ui->action_about_qt, &QAction::triggered, &QApplication::aboutQt);
 
     auto* ltw = new LanguageTableWindow(this);
     ui->mdi_area->addSubWindow(ltw);
@@ -47,10 +50,6 @@ void MainWindow::quit() {
 }
 
 void MainWindow::open() {
-    const QString& string = QFileDialog::getExistingDirectory(this, tr("Open Language File"), QString());
-    if (!string.isNull()) {
-        std::cout << "Selected " << string.toStdString() << '\n';
-    }
 }
 
 void MainWindow::save() {
@@ -58,7 +57,7 @@ void MainWindow::save() {
 }
 
 void MainWindow::save_as() {
-
+    QString filename = QFileDialog::getSaveFileName(this, tr("Save Project"), QString(), "mcrestool Project(*.rtp)");
 }
 
 void MainWindow::show_resource_tree(bool shown) {
@@ -77,6 +76,14 @@ void MainWindow::show_game_objects(bool shown) {
     } else {
         ui->game_objects->hide();
     }
+}
+
+void MainWindow::add_res_file() {
+    QStringList sources = QFileDialog::getOpenFileNames(this, tr("Add Resource Pack/Mod"));
+}
+
+void MainWindow::add_res_folder() {
+    QString source = QFileDialog::getExistingDirectory(this, tr("Add Resource Folder"));
 }
 
 MainWindow::~MainWindow() = default;

@@ -66,6 +66,9 @@
     <addaction name="action_save"/>
     <addaction name="action_save_as"/>
     <addaction name="separator"/>
+    <addaction name="action_add_res_file"/>
+    <addaction name="action_add_res_folder"/>
+    <addaction name="separator"/>
     <addaction name="action_quit"/>
    </widget>
    <widget class="QMenu" name="menu_edit">
@@ -248,6 +251,22 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+M</string>
+   </property>
+  </action>
+  <action name="action_add_res_file">
+   <property name="icon">
+    <iconset theme="document-import"/>
+   </property>
+   <property name="text">
+    <string>&amp;Add Resource Pack/Mod…</string>
+   </property>
+  </action>
+  <action name="action_add_res_folder">
+   <property name="icon">
+    <iconset theme="document-import"/>
+   </property>
+   <property name="text">
+    <string>Add Resource &amp;Folder…</string>
    </property>
   </action>
  </widget>
