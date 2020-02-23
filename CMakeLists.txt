@@ -21,27 +21,27 @@ find_package(KF5 REQUIRED
 
 set(mcrestool_SRC
         src/main.cpp
-        src/model/langtabl.cpp src/model/langtabl.h
+        src/model/languagetable.cpp src/model/languagetable.h
         src/table.h
-        src/identifr.cpp src/identifr.h
-        src/model/restree.cpp src/model/restree.h
-        src/ui/mainwin.cpp src/ui/mainwin.h
-        src/ui/langtblw.cpp src/ui/langtblw.h
-        src/ui/itembtn.cpp src/ui/itembtn.h
-        src/ui/recpedtw.cpp src/ui/recpedtw.h
-        src/ui/recpshcr.cpp src/ui/recpshcr.h
-        src/ui/rcpedext.cpp src/ui/rcpedext.h
+        src/identifier.cpp src/identifier.h
+        src/model/resourcetree.cpp src/model/resourcetree.h
+        src/ui/mainwindow.cpp src/ui/mainwindow.h
+        src/ui/languagetablewindow.cpp src/ui/languagetablewindow.h
+        src/ui/itembutton.cpp src/ui/itembutton.h
+        src/ui/recipeeditwindow.cpp src/ui/recipeeditwindow.h
+        src/ui/shapedcraftingwidget.cpp src/ui/shapedcraftingwidget.h
+        src/ui/recipeeditextensionwidget.cpp src/ui/recipeeditextensionwidget.h
         src/util.h
         src/fs/langfile.cpp src/fs/langfile.h
         src/result.h
         src/except.h
-        src/ui/recpsmel.cpp src/ui/recpsmel.h
-        src/model/restritm.cpp src/model/restritm.h
-        src/project/projsrc.cpp src/project/projsrc.h
-        src/fs/datasrc.cpp src/fs/datasrc.h
-        src/fs/dirdtsrc.cpp src/fs/dirdtsrc.h
-        src/fs/arcdtsrc.cpp src/fs/arcdtsrc.h
-        src/project/langtblc.cpp src/project/langtblc.h
+        src/ui/smeltingwidget.cpp src/ui/smeltingwidget.h
+        src/model/treeitem.cpp src/model/treeitem.h
+        src/project/projectsource.cpp src/project/projectsource.h
+        src/fs/datasource.cpp src/fs/datasource.h
+        src/fs/dirdatasource.cpp src/fs/dirdatasource.h
+        src/fs/archivedatasource.cpp src/fs/archivedatasource.h
+        src/project/languagetablecontainer.cpp src/project/languagetablecontainer.h
         src/project/project.h)
 
 add_executable(mcrestool ${mcrestool_SRC})

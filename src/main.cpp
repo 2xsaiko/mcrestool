@@ -1,6 +1,6 @@
-#include "src/ui/mainwin.h"
-#include "src/fs/datasrc.h"
-#include "src/fs/arcdtsrc.h"
+#include "src/ui/mainwindow.h"
+#include "src/fs/datasource.h"
+#include "src/fs/archivedatasource.h"
 #include <QApplication>
 #include <QDebug>
 
