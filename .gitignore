@@ -1,7 +1,7 @@
-build/
-
 .idea/
+build/
 cmake-build-debug/
+target/
 
 # testing! ;)
 *.jar

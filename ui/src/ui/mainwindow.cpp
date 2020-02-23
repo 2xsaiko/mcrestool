@@ -25,14 +25,14 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(ui->action_game_objects, SIGNAL(triggered(bool)), this, SLOT(show_game_objects(bool)));
     connect(ui->game_objects, SIGNAL(visibilityChanged(bool)), this, SLOT(show_game_objects(bool)));
 
-    auto* ltw = new LanguageTableWindow(this);
-    ui->mdi_area->addSubWindow(ltw);
+//    auto* ltw = new LanguageTableWindow(new LanguageTableContainer(new ProjectSource()), this);
+//    ui->mdi_area->addSubWindow(ltw);
 
     auto* crw = new RecipeEditWindow(this);
     ui->mdi_area->addSubWindow(crw);
 
-    connect(ui->action_insert_language, &QAction::triggered, ltw, &LanguageTableWindow::add_language);
-    connect(ui->action_insert_translation_key, &QAction::triggered, ltw, &LanguageTableWindow::add_locale_key);
+//    connect(ui->action_insert_language, &QAction::triggered, ltw, &LanguageTableWindow::add_language);
+//    connect(ui->action_insert_translation_key, &QAction::triggered, ltw, &LanguageTableWindow::add_locale_key);
 
     ui->res_tree_view->setModel(new ResourceTree(this));
 }

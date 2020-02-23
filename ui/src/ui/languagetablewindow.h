@@ -13,7 +13,7 @@ class LanguageTableWindow : public QWidget {
 Q_OBJECT
 
 public:
-    explicit LanguageTableWindow(QWidget* parent = nullptr);
+    explicit LanguageTableWindow(LanguageTableContainer* ltc, QWidget* parent = nullptr);
 
     ~LanguageTableWindow() override;
 
@@ -23,7 +23,7 @@ public:
 
 private:
     QScopedPointer<Ui::LanguageTableWindow> ui;
-    LanguageTableContainer t;
+    LanguageTableContainer* ltc;
 
 };
 
