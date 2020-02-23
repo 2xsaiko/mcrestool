@@ -22,6 +22,8 @@ public:
 
     void close() override;
 
+    bool delete_file(const QString& path) override;
+
 private:
     KArchive* archive;
 

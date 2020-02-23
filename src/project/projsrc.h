@@ -16,9 +16,13 @@ Q_OBJECT
 public:
     explicit ProjectSource(DataSource& src, const QString& name, QObject* parent = nullptr);
 
+    LanguageTableContainer* get_language_table(const QString& domain);
+
     bool read_only();
 
     bool changed();
+
+    DataSource& data_source();
 
 private:
     QString name;

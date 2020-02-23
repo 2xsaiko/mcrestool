@@ -14,6 +14,8 @@ public:
 
     virtual QStringList list_dir(const QString& path) = 0;
 
+    virtual bool delete_file(const QString& path) = 0;
+
     virtual bool open(QIODevice::OpenMode mode) = 0;
 
     virtual void close() = 0;

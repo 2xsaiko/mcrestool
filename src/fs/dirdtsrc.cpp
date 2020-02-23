@@ -5,7 +5,7 @@
 DirDataSource::DirDataSource(const QString& path, QObject* parent) : DataSource(parent), path(QDir::cleanPath(path)) {}
 
 QIODevice* DirDataSource::file(const QString& path) {
-    return new QFile(this->path + QDir::cleanPath("/" + path), this);
+    return new QFile(get_file_path(path), this);
 }
 
 QStringList DirDataSource::list_dir(const QString& path) {
@@ -21,3 +21,11 @@ bool DirDataSource::open(QIODevice::OpenMode) {
 }
 
 void DirDataSource::close() {}
+
+bool DirDataSource::delete_file(const QString& path) {
+    return QFile::remove(get_file_path(path));
+}
+
+QString DirDataSource::get_file_path(const QString& path) {
+    return this->path + QDir::cleanPath("/" + path);
+}

@@ -88,3 +88,7 @@ void LanguageTable::add_language(QString language) {
         emit layoutChanged();
     }
 }
+
+const Table<QString, QString, QString>& LanguageTable::data() const {
+    return table;
+}

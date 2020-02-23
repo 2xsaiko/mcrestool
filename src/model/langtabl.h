@@ -32,9 +32,11 @@ public:
 
     void add_language(QString language);
 
+    [[nodiscard]] const Table<QString, QString, QString>& data() const;
+
 signals:
 
-    void changed(QString language, QString key, QString value);
+    void changed(const QString& language, const QString& key, const QString& value);
 
 private:
     Table<QString, QString, QString> table;

@@ -17,10 +17,14 @@ public:
 
     QStringList list_dir(const QString& path) override;
 
+    bool delete_file(const QString& path) override;
+
 private:
     QString path;
 
     bool read_only() override;
+
+    QString get_file_path(const QString& path);
 
 };
 

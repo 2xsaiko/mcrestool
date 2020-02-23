@@ -32,6 +32,10 @@ const KArchiveEntry* ArchiveDataSource::find_entry(const QString& path) {
     return entry;
 }
 
+bool ArchiveDataSource::delete_file(const QString& path) {
+    return false;
+}
+
 QIODevice* ArchiveDataSource::file(const QString& path) {
     if (const auto* file = dynamic_cast<const KArchiveFile*>(find_entry(path))) {
         QIODevice* dev = file->createDevice();

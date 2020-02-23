@@ -11,7 +11,7 @@ class LanguageTableContainer : public QObject {
 Q_OBJECT
 
 public:
-    explicit LanguageTableContainer(ProjectSource* src, QObject* parent = nullptr);
+    explicit LanguageTableContainer(ProjectSource* src, const QString& domain, QObject* parent = nullptr);
 
     ~LanguageTableContainer() override;
 
@@ -27,15 +27,20 @@ public:
 
     void save();
 
-signals:
-
-    void on_deleted();
+public slots:
 
     void on_changed();
+
+signals:
+
+    void deleted();
+
+    void changed();
 
 private:
     ProjectSource* src;
     LanguageTable* lt;
+    QString domain;
 
     bool _persistent;
     bool _changed;

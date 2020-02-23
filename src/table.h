@@ -19,14 +19,14 @@ public:
     }
 
     V& get(const C& column, const R& row) {
-        const QPair<C, R> pair = QPair(column, row);
+        QPair<C, R> pair = QPair(column, row);
         _columns += column;
         _rows += row;
         return map[pair];
     }
 
     optional<V> get(const C& column, const R& row) const {
-        const QPair<C, R> pair = QPair(column, row);
+        QPair<C, R> pair = QPair(column, row);
         if (map.contains(pair)) {
             return map[pair];
         } else {
@@ -35,9 +35,9 @@ public:
     }
 
     optional<V> remove(const C& column, const R& row) {
-        const QPair<C, R> pair = QPair(column, row);
+        QPair<C, R> pair = QPair(column, row);
         if (map.contains(pair)) {
-            const optional<V> value = map.take(pair);
+            optional<V> value = map.take(pair);
             update_entries();
             return value;
         } else {
@@ -61,8 +61,28 @@ public:
         return _columns.values();
     }
 
-    QList<V> rows() const {
+    QList<R> rows() const {
         return _rows.values();
+    }
+
+    QMap<R, V> column(const C& column) const {
+        QMap<R, V> col_map;
+        for (auto row: _rows) {
+            if (map.contains(QPair(column, row))) {
+                col_map.insert(row, map.value(QPair(column, row)));
+            }
+        }
+        return col_map;
+    }
+
+    QMap<C, V> row(const R& row) const {
+        QMap<C, V> row_map;
+        for (auto column: _columns) {
+            if (map.contains(QPair(column, row))) {
+                row_map.insert(column, map.value(QPair(column, row)));
+            }
+        }
+        return row_map;
     }
 
     void clear() {
@@ -79,10 +99,10 @@ private:
     void update_entries() {
         QSet<C> cols;
         QSet<R> rows;
-            foreach (auto key, map.keys()) {
-                cols.insert(key.first);
-                rows.insert(key.second);
-            }
+        for (auto key: map.keys()) {
+            cols.insert(key.first);
+            rows.insert(key.second);
+        }
         _columns = cols;
         _rows = rows;
     }
