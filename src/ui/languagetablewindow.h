@@ -3,7 +3,7 @@
 
 #include <QScopedPointer>
 #include <QWidget>
-#include "src/model/languagetable.h"
+#include "src/project/languagetablecontainer.h"
 
 namespace Ui {
     class LanguageTableWindow;
@@ -23,7 +23,7 @@ public:
 
 private:
     QScopedPointer<Ui::LanguageTableWindow> ui;
-    LanguageTable t;
+    LanguageTableContainer t;
 
 };
 

@@ -13,8 +13,7 @@ LanguageTableContainer::LanguageTableContainer(
     _changed = false;
     _deleted = false;
 
-    connect(lt, SIGNAL(changed(
-                           const QString&, const QString&, const QString&)), this, SLOT(on_changed()));
+    connect(lt, SIGNAL(changed(const QString&, const QString&, const QString&)), this, SLOT(on_changed()));
 }
 
 LanguageTableContainer::~LanguageTableContainer() = default;
@@ -53,7 +52,7 @@ void LanguageTableContainer::save() {
 
     for (auto lang: lt->data().columns()) {
         QMap<QString, QString> lang_map = lt->data().column(lang);
-        langfile::save_to_json(lang + ".json", lang_map);
+        langfile::save_to_json(src->data_source(), lang + ".json", lang_map);
     }
 
     _persistent = true;
