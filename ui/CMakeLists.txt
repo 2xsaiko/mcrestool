@@ -12,7 +12,6 @@ include(KDEInstallDirs NO_POLICY_SCOPE)
 include(KDECompilerSettings NO_POLICY_SCOPE)
 include(KDECMakeSettings NO_POLICY_SCOPE)
 
-
 find_package(Qt5 CONFIG REQUIRED
         Core
         Widgets)
@@ -40,8 +39,6 @@ set(mcrestool_ui_SRC
         src/model/treeitem.cpp src/model/treeitem.h
         src/project/projectsource.cpp src/project/projectsource.h
         src/fs/datasource.cpp src/fs/datasource.h
-        src/fs/dirdatasource.cpp src/fs/dirdatasource.h
-        src/fs/archivedatasource.cpp src/fs/archivedatasource.h
         src/project/languagetablecontainer.cpp src/project/languagetablecontainer.h
         src/project/project.h)
 
@@ -50,14 +47,9 @@ add_executable(mcrestool_ui ${mcrestool_ui_SRC})
 set_property(TARGET mcrestool_ui PROPERTY CXX_STANDARD 20)
 
 target_link_libraries(mcrestool_ui
+        mcrestool_logic
         Qt5::Core
         Qt5::Widgets
         KF5::Archive)
-
-if(WIN32)
-    target_link_libraries(mcrestool_ui mcrestool_lib ws2_32 userenv)
-else()
-    target_link_libraries(mcrestool_ui mcrestool_lib dl pthread)
-endif()
 
 install(TARGETS mcrestool_ui DESTINATION bin)
