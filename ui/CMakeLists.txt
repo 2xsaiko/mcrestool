@@ -21,7 +21,7 @@ find_package(KF5 REQUIRED
 
 set(mcrestool_ui_SRC
         src/main.cpp
-        src/model/languagetable.cpp src/model/languagetable.h
+        src/model/languagetablemodel.cpp src/model/languagetablemodel.h
         src/table.h
         src/identifier.cpp src/identifier.h
         src/model/resourcetree.cpp src/model/resourcetree.h
@@ -40,7 +40,7 @@ set(mcrestool_ui_SRC
         src/project/projectsource.cpp src/project/projectsource.h
         src/fs/datasource.cpp src/fs/datasource.h
         src/project/languagetablecontainer.cpp src/project/languagetablecontainer.h
-        src/project/project.h)
+        src/project/project.h src/fs/resfile.cpp src/fs/resfile.h)
 
 add_executable(mcrestool_ui ${mcrestool_ui_SRC})
 

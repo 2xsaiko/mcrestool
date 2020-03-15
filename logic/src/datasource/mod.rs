@@ -5,9 +5,10 @@ use std::path::{Component, Path, PathBuf};
 use ::zip::result::ZipError;
 
 use crate::datasource::dir::DirDataSource;
-use crate::datasource::Error::InvalidPath;
 use crate::datasource::resfile::ResFile;
 use crate::datasource::zip::ZipDataSource;
+use crate::ffi::McrtError;
+use crate::ffihelper::FfiError;
 
 pub mod dir;
 pub mod zip;
@@ -42,7 +43,45 @@ impl DataSource {
     }
 
     pub fn create_dir(&self, path: impl AsRef<Path>) -> Result<(), Error> {
-        Err(Error::IoError)
+        match self {
+            DataSource::Dir(ds) => Ok(ds.create_dir(path)?),
+            DataSource::Zip(_) => Err(Error::ReadOnly),
+        }
+    }
+
+    pub fn create_dir_all(&self, path: impl AsRef<Path>) -> Result<(), Error> {
+        match self {
+            DataSource::Dir(ds) => Ok(ds.create_dir_all(path)?),
+            DataSource::Zip(_) => Err(Error::ReadOnly),
+        }
+    }
+
+    pub fn delete_file(&self, path: impl AsRef<Path>) -> Result<(), Error> {
+        match self {
+            DataSource::Dir(ds) => Ok(ds.delete_file(path)?),
+            DataSource::Zip(_) => Err(Error::ReadOnly),
+        }
+    }
+
+    pub fn delete_dir(&self, path: impl AsRef<Path>) -> Result<(), Error> {
+        match self {
+            DataSource::Dir(ds) => Ok(ds.delete_dir(path)?),
+            DataSource::Zip(_) => Err(Error::ReadOnly),
+        }
+    }
+
+    pub fn delete_dir_all(&self, path: impl AsRef<Path>) -> Result<(), Error> {
+        match self {
+            DataSource::Dir(ds) => Ok(ds.delete_dir_all(path)?),
+            DataSource::Zip(_) => Err(Error::ReadOnly),
+        }
+    }
+
+    pub fn list_dir(&self, path: impl AsRef<Path>) -> Result<Vec<PathBuf>, Error> {
+        match self {
+            DataSource::Dir(ds) => Ok(ds.list_dir(path)?),
+            DataSource::Zip(ds) => Ok(ds.list_dir(path)?),
+        }
     }
 }
 
@@ -58,7 +97,7 @@ impl From<dir::Error> for Error {
     fn from(err: dir::Error) -> Self {
         match err {
             dir::Error::RootDirNotFound(_) => unreachable!(),
-            dir::Error::InvalidPath(p) => InvalidPath(p),
+            dir::Error::InvalidPath(p) => Error::InvalidPath(p),
             dir::Error::IoError(e) => {
                 match e.kind() {
                     ErrorKind::NotFound => Error::NotFound,
@@ -84,7 +123,19 @@ impl From<zip::Error> for Error {
                 }
             }
             zip::Error::IoError(_) => unreachable!(),
-            zip::Error::InvalidPath(p) => InvalidPath(p)
+            zip::Error::InvalidPath(p) => Error::InvalidPath(p)
+        }
+    }
+}
+
+impl FfiError for Error {
+    fn kind(&self) -> McrtError {
+        match self {
+            Error::InvalidPath(_) => McrtError::NotFound,
+            Error::NotFound => McrtError::NotFound,
+            Error::PermissionDenied => McrtError::PermissionDenied,
+            Error::ReadOnly => McrtError::ReadOnly,
+            Error::IoError => McrtError::IoError,
         }
     }
 }
@@ -115,22 +166,30 @@ pub struct OpenOptions {
 
 impl Default for OpenOptions {
     fn default() -> Self {
-        OpenOptions { read: true, write: false, create: false }
+        OpenOptions::reading()
     }
 }
 
 impl OpenOptions {
-    fn read(&mut self, read: bool) -> &mut OpenOptions {
+    pub fn reading() -> OpenOptions {
+        OpenOptions { read: true, write: false, create: false }
+    }
+
+    pub fn writing(create: bool) -> OpenOptions {
+        OpenOptions { read: false, write: true, create }
+    }
+
+    pub fn read(&mut self, read: bool) -> &mut OpenOptions {
         self.read = read;
         self
     }
 
-    fn write(&mut self, write: bool) -> &mut OpenOptions {
+    pub fn write(&mut self, write: bool) -> &mut OpenOptions {
         self.write = write;
         self
     }
 
-    fn create(&mut self, create: bool) -> &mut OpenOptions {
+    pub fn create(&mut self, create: bool) -> &mut OpenOptions {
         self.create = create;
         self
     }
@@ -144,4 +203,11 @@ impl Into<fs::OpenOptions> for OpenOptions {
         options.create(self.create);
         options
     }
+}
+
+pub struct DirEntry {
+    pub is_file: bool,
+    pub is_dir: bool,
+    pub is_symlink: bool,
+    pub name: String,
 }

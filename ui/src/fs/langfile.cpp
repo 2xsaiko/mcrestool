@@ -5,7 +5,7 @@
 #include "langfile.h"
 
 namespace langfile {
-    QMap<QString, QString> load_from_json(DataSource& source, const QString& path) {
+    QMap<QString, QString> load_from_json(DataSourceW& source, const QString& path) {
         QMap<QString, QString> map;
         QFile file(path);
         if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -26,7 +26,7 @@ namespace langfile {
         return map;
     }
 
-    void save_to_json(DataSource& source, const QString& path, const QMap<QString, QString>& localization) {
+    void save_to_json(DataSourceW& source, const QString& path, const QMap<QString, QString>& localization) {
         QIODevice* file = source.file(path);
         if (!file->open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
             unimplemented(); // TODO: implement error handling

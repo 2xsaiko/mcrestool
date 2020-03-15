@@ -7,18 +7,21 @@ LanguageTableContainer::LanguageTableContainer(
     QObject* parent
 ) : QObject(parent),
     src(src),
-    lt(new LanguageTable(this)),
+    lt(new LanguageTableModel(languagetable_create(), this)),
     domain(domain) {
     _persistent = false;
     _changed = false;
     _deleted = false;
 
-    connect(lt, SIGNAL(changed(const QString&, const QString&, const QString&)), this, SLOT(on_changed()));
+    connect(lt, SIGNAL(changed(
+                           const QString&, const QString&, const QString&)), this, SLOT(on_changed()));
 }
 
-LanguageTableContainer::~LanguageTableContainer() = default;
+LanguageTableContainer::~LanguageTableContainer() {
+    languagetable_delete(lt->data());
+}
 
-LanguageTable* LanguageTableContainer::language_table() {
+LanguageTableModel* LanguageTableContainer::language_table() {
     return lt;
 }
 
@@ -50,7 +53,7 @@ void LanguageTableContainer::delete_file() {
 void LanguageTableContainer::save() {
     if (read_only()) return;
 
-    for (auto lang: lt->data().columns()) {
+    for (auto lang: languagetable_col_count(lt->data())) {
         QMap<QString, QString> lang_map = lt->data().column(lang);
         langfile::save_to_json(src->data_source(), lang + ".json", lang_map);
     }

@@ -14,7 +14,7 @@ class ProjectSource : public QObject {
 Q_OBJECT
 
 public:
-    explicit ProjectSource(DataSource& src, const QString& name, QObject* parent = nullptr);
+    explicit ProjectSource(DataSourceW& src, const QString& name, QObject* parent = nullptr);
 
     LanguageTableContainer* get_language_table(const QString& domain);
 
@@ -22,12 +22,12 @@ public:
 
     bool changed();
 
-    DataSource& data_source();
+    DataSourceW& data_source();
 
 private:
     QString name;
 
-    DataSource& src;
+    DataSourceW& src;
 
     QMap<QString, LanguageTableContainer*> languages;
 

@@ -1,6 +1,6 @@
 #include "projectsource.h"
 
-ProjectSource::ProjectSource(DataSource& src, const QString& name, QObject* parent) : QObject(parent), name(name), src(src) {
+ProjectSource::ProjectSource(DataSourceW& src, const QString& name, QObject* parent) : QObject(parent), name(name), src(src) {
 
 }
 
@@ -15,6 +15,6 @@ LanguageTableContainer* ProjectSource::get_language_table(const QString& domain)
     return languages.value(domain, nullptr);
 }
 
-DataSource& ProjectSource::data_source() {
+DataSourceW& ProjectSource::data_source() {
     return src;
 }

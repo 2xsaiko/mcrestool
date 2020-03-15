@@ -4,7 +4,7 @@
 #include "project.h"
 
 #include <QObject>
-#include "src/model/languagetable.h"
+#include "src/model/languagetablemodel.h"
 #include "projectsource.h"
 
 class LanguageTableContainer : public QObject {
@@ -15,7 +15,7 @@ public:
 
     ~LanguageTableContainer() override;
 
-    LanguageTable* language_table();
+    LanguageTableModel* language_table();
 
     bool persistent() const;
 
@@ -39,7 +39,7 @@ signals:
 
 private:
     ProjectSource* src;
-    LanguageTable* lt;
+    LanguageTableModel* lt;
     QString domain;
 
     bool _persistent;

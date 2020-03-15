@@ -8,7 +8,8 @@ use zip::read::ZipFile;
 use zip::ZipArchive;
 
 use crate::datasource::normalize_path;
-use crate::ffihelper::{FfiError, FfiErrorKind};
+use crate::ffi::McrtError;
+use crate::ffihelper::FfiError;
 
 pub struct ZipDataSource {
     archive: RefCell<ZipArchive<File>>,
@@ -30,6 +31,10 @@ impl ZipDataSource {
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
         Ok(buf)
+    }
+
+    pub fn list_dir(&self, path: impl AsRef<Path>) -> Result<Vec<PathBuf>, Error> {
+        unimplemented!()
     }
 
     fn resolve_path_for_archive(path: impl AsRef<Path>) -> Option<String> {
@@ -57,19 +62,19 @@ impl From<zip::result::ZipError> for Error {
 }
 
 impl FfiError for Error {
-    fn kind(&self) -> FfiErrorKind {
+    fn kind(&self) -> McrtError {
         use zip::result::ZipError;
 
         match self {
             Error::IoError(e) | Error::ZipError(ZipError::Io(e)) => match e.kind() {
-                ErrorKind::NotFound => FfiErrorKind::NotFound,
-                ErrorKind::PermissionDenied => FfiErrorKind::PermissionDenied,
-                _ => FfiErrorKind::IoError
+                ErrorKind::NotFound => McrtError::NotFound,
+                ErrorKind::PermissionDenied => McrtError::PermissionDenied,
+                _ => McrtError::IoError
             }
-            Error::ZipError(ZipError::UnsupportedArchive(text)) => FfiErrorKind::UnsupportedZip,
-            Error::ZipError(ZipError::InvalidArchive(text)) => FfiErrorKind::InvalidZip,
-            Error::ZipError(ZipError::FileNotFound) => FfiErrorKind::NotFound,
-            _ => FfiErrorKind::IoError,
+            Error::ZipError(ZipError::UnsupportedArchive(text)) => McrtError::UnsupportedZip,
+            Error::ZipError(ZipError::InvalidArchive(text)) => McrtError::InvalidZip,
+            Error::ZipError(ZipError::FileNotFound) => McrtError::NotFound,
+            _ => McrtError::IoError,
         }
     }
 
@@ -77,15 +82,9 @@ impl FfiError for Error {
         use zip::result::ZipError;
 
         match self {
-            Error::IoError(e) | Error::ZipError(ZipError::Io(e)) => match e.kind() {
-                ErrorKind::NotFound => "File not found",
-                ErrorKind::PermissionDenied => "Permission denied",
-                _ => "I/O Error"
-            }
             Error::ZipError(ZipError::UnsupportedArchive(text)) => text,
             Error::ZipError(ZipError::InvalidArchive(text)) => text,
-            Error::ZipError(ZipError::FileNotFound) => "File not found",
-            _ => "I/O Error",
+            _ => self.kind().description(),
         }
     }
 }

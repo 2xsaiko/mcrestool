@@ -1,20 +1,20 @@
-#ifndef MCRESTOOL_LANGUAGETABLE_H
-#define MCRESTOOL_LANGUAGETABLE_H
+#ifndef MCRESTOOL_LANGUAGETABLEMODEL_H
+#define MCRESTOOL_LANGUAGETABLEMODEL_H
 
 #include <QObject>
 #include <QMap>
 #include <QAbstractTableModel>
-#include "src/table.h"
+#include "mcrestool_logic.h"
 
-class LanguageTable : public QAbstractTableModel {
+class LanguageTableModel : public QAbstractTableModel {
 Q_OBJECT
 
 public:
-    explicit LanguageTable(QObject* parent = nullptr);
+    explicit LanguageTableModel(LanguageTable* lt, QObject* parent = nullptr);
 
     void set_entry(QString language, QString key, QString value);
 
-    static LanguageTable* from_dir(QObject* parent, QString path);
+    static LanguageTableModel* from_dir(QObject* parent, QString path);
 
     [[nodiscard]] int rowCount(const QModelIndex& parent) const override;
 
@@ -32,16 +32,14 @@ public:
 
     void add_language(QString language);
 
-    [[nodiscard]] const Table<QString, QString, QString>& data() const;
+    [[nodiscard]] LanguageTable* data() ;
 
 signals:
 
     void changed(const QString& language, const QString& key, const QString& value);
 
 private:
-    Table<QString, QString, QString> table;
-    QList<QString> languages;
-    QList<QString> locale_keys;
+    LanguageTable* lt;
 
     [[nodiscard]] QString get_column_name(int idx) const;
 
@@ -49,4 +47,4 @@ private:
 
 };
 
-#endif //MCRESTOOL_LANGUAGETABLE_H
+#endif //MCRESTOOL_LANGUAGETABLEMODEL_H
