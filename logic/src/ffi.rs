@@ -1,5 +1,6 @@
 use std::os::raw::c_char;
 use std::ptr::null;
+use std::ffi::CString;
 
 #[no_mangle]
 pub static mut MCRT_ERROR: McrtError = McrtError::None;
@@ -12,10 +13,16 @@ pub enum McrtError {
     None,
     NotFound,
     PermissionDenied,
-    IoError,
+    Io,
     UnsupportedZip,
     InvalidZip,
     ReadOnly,
     CorruptedFile,
-    NulError,
+    Nul,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn mcrt_str_delete(text: *const c_char) {
+    if text.is_null() { return; }
+    drop(CString::from_raw(text as *mut c_char));
 }

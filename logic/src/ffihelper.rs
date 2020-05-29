@@ -37,12 +37,12 @@ impl McrtError {
             McrtError::None => "",
             McrtError::NotFound => "File not found",
             McrtError::PermissionDenied => "Permission denied",
-            McrtError::IoError => "I/O Error",
+            McrtError::Io => "I/O Error",
             McrtError::UnsupportedZip => "Unsupported ZIP archive",
             McrtError::InvalidZip => "Invalid ZIP archive",
             McrtError::ReadOnly => "Filesystem is read-only",
             McrtError::CorruptedFile => "Corrupted file",
-            McrtError::NulError => "0-byte found in string",
+            McrtError::Nul => "0-byte found in string",
         }
     }
 }
@@ -58,7 +58,7 @@ macro_rules! try_ffi {
     ($e:expr, $rv:expr) => {
         match $e {
             ::std::result::Result::Ok(v) => v,
-            ::std::result::Result::Err(e) => {
+            ::std::result::Result::Err(e) =>  {
                 $crate::ffihelper::set_error_from(e);
                 return $rv;
             }
@@ -71,13 +71,13 @@ impl FfiError for std::io::Error {
         match self.kind() {
             ErrorKind::NotFound => McrtError::NotFound,
             ErrorKind::PermissionDenied => McrtError::PermissionDenied,
-            _ => McrtError::IoError
+            _ => McrtError::Io
         }
     }
 }
 
 impl FfiError for std::ffi::NulError {
     fn kind(&self) -> McrtError {
-        McrtError::NulError
+        McrtError::Nul
     }
 }

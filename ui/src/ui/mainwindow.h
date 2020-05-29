@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QScopedPointer>
+#include <QMdiSubWindow>
 #include "src/model/resourcetree.h"
 #include "src/model/languagetablemodel.h"
 
@@ -19,6 +20,12 @@ public:
     ~MainWindow() override;
 
     void center();
+
+signals:
+
+    void save_clicked();
+
+    void save_all_clicked();
 
 private slots:
 
@@ -37,6 +44,8 @@ private slots:
     void show_resource_tree(bool shown);
 
     void show_game_objects(bool shown);
+
+    void sub_window_focus_change(QMdiSubWindow* window);
 
 private:
     QScopedPointer<Ui::MainWindow> ui;

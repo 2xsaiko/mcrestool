@@ -4,12 +4,13 @@
 #include <QScopedPointer>
 #include <QWidget>
 #include "src/project/languagetablecontainer.h"
+#include "geneditorwindow.h"
 
 namespace Ui {
     class LanguageTableWindow;
 }
 
-class LanguageTableWindow : public QWidget {
+class LanguageTableWindow : public QWidget, public GenEditorWindow {
 Q_OBJECT
 
 public:
@@ -20,6 +21,10 @@ public:
     void add_language();
 
     void add_locale_key();
+
+    void save() override;
+
+    void reload() override;
 
 private:
     QScopedPointer<Ui::LanguageTableWindow> ui;

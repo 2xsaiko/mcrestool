@@ -34,6 +34,6 @@ private:
 
 };
 
-static OpenOptions as_open_options(QIODevice::OpenMode om);
+OpenOptions as_open_options(QIODevice::OpenMode om);
 
 #endif //MCRESTOOL_RESFILE_H

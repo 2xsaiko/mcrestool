@@ -1,6 +1,7 @@
 #include <QInputDialog>
 #include "languagetablewindow.h"
 #include "ui_languagetablewindow.h"
+#include "src/util.h"
 
 LanguageTableWindow::LanguageTableWindow(LanguageTableContainer* ltc, QWidget* parent) : QWidget(parent),
                                                                                          ui(new Ui::LanguageTableWindow),
@@ -27,6 +28,16 @@ void LanguageTableWindow::add_locale_key() {
     if (ok) {
         ltc->language_table()->add_locale_key(text);
     }
+}
+
+void LanguageTableWindow::save() {
+    ltc->save();
+    check_for_error(this);
+}
+
+void LanguageTableWindow::reload() {
+    ltc->load();
+    check_for_error(this);
 }
 
 LanguageTableWindow::~LanguageTableWindow() = default;

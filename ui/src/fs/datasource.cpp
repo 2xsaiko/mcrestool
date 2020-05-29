@@ -9,6 +9,7 @@ DataSourceW::~DataSourceW() {
 DataSourceW* DataSourceW::from_dir(const QString& dir, QObject* parent) {
     DataSource* p_source = datasource_dir_create(dir.toLocal8Bit());
     if (!p_source) {
+        printf("error %d while trying to open datasource: %s\n", MCRT_ERROR, MCRT_ERROR_TEXT);
         return nullptr;
     }
     return new DataSourceW(p_source, parent);
@@ -43,4 +44,8 @@ QStringList DataSourceW::list_dir(const QString& path) {
 
 bool DataSourceW::delete_file(const QString& path) {
     return datasource_delete_file(ds, path.toLocal8Bit());
+}
+
+DataSource* DataSourceW::inner() {
+    return ds;
 }

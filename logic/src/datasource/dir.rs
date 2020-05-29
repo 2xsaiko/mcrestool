@@ -26,7 +26,7 @@ impl DirDataSource {
         let result = fs::read_dir(self.get_full_path(path)?)?;
         Ok(result
             .filter_map(|e| e.ok())
-            .map(|e| e.path())
+            .map(|e| e.path().strip_prefix(&self.dir).unwrap().to_path_buf())
             .collect())
     }
 
@@ -51,18 +51,20 @@ impl DirDataSource {
     }
 
     fn get_full_path(&self, path: impl AsRef<Path>) -> Result<PathBuf, Error> {
-        Ok(self.dir.join(normalize_path(&path).ok_or_else(|| Error::InvalidPath(path.as_ref().to_path_buf()))?))
+        let buf = self.dir.join(normalize_path(&path).ok_or_else(|| Error::InvalidPath(path.as_ref().to_path_buf()))?.strip_prefix("/").unwrap());
+        println!("{}", buf.to_str().unwrap());
+        Ok(buf)
     }
 }
 
 pub enum Error {
     RootDirNotFound(io::Error),
     InvalidPath(PathBuf),
-    IoError(io::Error),
+    Io(io::Error),
 }
 
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Self {
-        Error::IoError(err)
+        Error::Io(err)
     }
 }

@@ -1,5 +1,4 @@
 #include "languagetablecontainer.h"
-#include "src/fs/langfile.h"
 
 LanguageTableContainer::LanguageTableContainer(
     ProjectSource* src,
@@ -41,9 +40,9 @@ void LanguageTableContainer::delete_file() {
     if (read_only()) return;
 
     if (persistent()) {
-        QStringList files = src->data_source().list_dir("/assets/" + domain + "/lang/");
+        QStringList files = src->data_source()->list_dir("/assets/" + domain + "/lang/");
         for (const auto& str: files) {
-            src->data_source().delete_file(str);
+            src->data_source()->delete_file(str);
         }
     }
     _deleted = true;
@@ -53,13 +52,18 @@ void LanguageTableContainer::delete_file() {
 void LanguageTableContainer::save() {
     if (read_only()) return;
 
-    for (auto lang: languagetable_col_count(lt->data())) {
-        QMap<QString, QString> lang_map = lt->data().column(lang);
-        langfile::save_to_json(src->data_source(), lang + ".json", lang_map);
-    }
+    languagetable_write_to(lt->data(), src->data_source()->inner(), ("/assets/" + domain + "/lang/").toLocal8Bit());
 
     _persistent = true;
     _changed = false;
+}
+
+void LanguageTableContainer::load() {
+    languagetable_load_into(lt->data(), src->data_source()->inner(),  ("/assets/" + domain + "/lang/").toLocal8Bit());
+
+    _persistent = true;
+    _changed = false;
+    emit lt->layoutChanged();
 }
 
 void LanguageTableContainer::on_changed() {

@@ -32,7 +32,7 @@ public:
 
     void add_language(QString language);
 
-    [[nodiscard]] LanguageTable* data() ;
+    [[nodiscard]] LanguageTable* data();
 
 signals:
 

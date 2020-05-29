@@ -28,6 +28,8 @@ public:
 
     bool read_only();
 
+    DataSource* inner();
+
 private:
     DataSource* ds;
 

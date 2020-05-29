@@ -39,7 +39,7 @@ void ResFileW::close() {
     }
 }
 
-static OpenOptions as_open_options(QIODevice::OpenMode om) {
+OpenOptions as_open_options(QIODevice::OpenMode om) {
     OpenOptions opts = OpenOptions();
     opts.read = om & QIODevice::ReadOnly;
     opts.write = om & QIODevice::WriteOnly;

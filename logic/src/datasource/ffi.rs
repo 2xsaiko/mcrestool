@@ -1,10 +1,12 @@
+#![allow(clippy::missing_safety_doc)]
+
 use std::{mem, slice};
 use std::ffi::{CStr, CString};
 use std::io::{Read, Write};
 use std::os::raw::{c_char, c_void};
 use std::ptr::{drop_in_place, null, null_mut};
 
-use crate::datasource::{DataSource, Error, OpenOptions};
+use crate::datasource::{DataSource, OpenOptions};
 use crate::datasource::dir::DirDataSource;
 use crate::datasource::resfile::ResFile;
 use crate::datasource::zip::ZipDataSource;
@@ -23,7 +25,7 @@ pub unsafe extern "C" fn datasource_dir_create(path: *const c_char) -> *mut Data
     if path.is_null() { return null_mut(); }
     let raw = CStr::from_ptr(path);
 
-    let ds = DataSource::Dir(try_ffi!(DirDataSource::new(&*raw.to_string_lossy())));
+    let ds = DataSource::Dir(try_ffi!(DirDataSource::new(raw.to_str().unwrap())));
 
     Box::into_raw(Box::new(ds))
 }
@@ -34,7 +36,7 @@ pub unsafe extern "C" fn datasource_zip_create(path: *const c_char) -> *mut Data
     if path.is_null() { return null_mut(); }
     let raw = CStr::from_ptr(path);
 
-    let ds = DataSource::Zip(try_ffi!(ZipDataSource::new(&*raw.to_string_lossy())));
+    let ds = DataSource::Zip(try_ffi!(ZipDataSource::new(raw.to_str().unwrap())));
 
     Box::into_raw(Box::new(ds))
 }
@@ -53,7 +55,7 @@ pub unsafe extern "C" fn datasource_open_file(ds: &mut DataSource, path: *const 
     if path.is_null() { return null_mut(); }
     let raw = CStr::from_ptr(path);
 
-    let file = try_ffi!(ds.open(&*raw.to_string_lossy(), opts));
+    let file = try_ffi!(ds.open(raw.to_str().unwrap(), opts));
 
     Box::into_raw(Box::new(file))
 }
@@ -64,8 +66,8 @@ pub unsafe extern "C" fn datasource_list_dir(ds: &mut DataSource, path: *const c
     if path.is_null() { return null_mut(); }
     let raw = CStr::from_ptr(path);
 
-    let mut dir_list = try_ffi!(ds.list_dir(&*raw.to_string_lossy())).into_iter()
-        .map(|s| CString::new(&*s.file_name().unwrap().to_string_lossy()).expect("Invalid 0-char in file name"))
+    let mut dir_list = try_ffi!(ds.list_dir(raw.to_str().unwrap())).into_iter()
+        .map(|s| CString::new(&*s.file_name().unwrap().to_str().unwrap()).expect("Invalid 0-char in file name"))
         .collect::<Vec<_>>();
 
     dir_list.shrink_to_fit();
@@ -105,7 +107,7 @@ pub unsafe extern "C" fn datasource_delete_file(ds: &mut DataSource, path: *cons
     if path.is_null() { return false; }
     let raw = CStr::from_ptr(path);
 
-    try_ffi!(ds.delete_file(&*raw.to_string_lossy()), false);
+    try_ffi!(ds.delete_file(raw.to_str().unwrap()), false);
 
     true
 }

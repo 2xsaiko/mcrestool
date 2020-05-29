@@ -54,6 +54,7 @@ impl LanguageTable {
     }
 
     fn replace_language(&mut self, lang: &str, map: HashMap<String, String>) -> Option<HashMap<String, String>> {
+        self.add_language(lang);
         map.keys().for_each(|el| self.add_localization_key(el));
         self.table.insert(lang.to_owned(), map)
     }
@@ -82,7 +83,7 @@ impl LanguageTable {
         let mut lt = LanguageTable::new();
         for x in ds.list_dir(&dir)? {
             if x.extension().unwrap().to_str() == Some("json") {
-                let file_name = x.file_name().unwrap().to_string_lossy();
+                let file_name = x.file_name().unwrap().to_str().unwrap();
                 let lang = &file_name[..file_name.len() - 5];
                 let mut file = ds.open(&x, OpenOptions::reading())?;
                 let map: HashMap<String, String> = serde_json::from_reader(&mut file)?;
@@ -94,27 +95,27 @@ impl LanguageTable {
 }
 
 pub enum Error {
-    IoError(datasource::Error),
-    SerdeError(serde_json::Error),
+    Io(datasource::Error),
+    Serde(serde_json::Error),
 }
 
 impl From<datasource::Error> for Error {
     fn from(err: datasource::Error) -> Self {
-        Error::IoError(err)
+        Error::Io(err)
     }
 }
 
 impl From<serde_json::Error> for Error {
     fn from(err: serde_json::Error) -> Self {
-        Error::SerdeError(err)
+        Error::Serde(err)
     }
 }
 
 impl FfiError for Error {
     fn kind(&self) -> McrtError {
         match self {
-            Error::IoError(e) => e.kind(),
-            Error::SerdeError(_) => McrtError::CorruptedFile,
+            Error::Io(e) => e.kind(),
+            Error::Serde(_) => McrtError::CorruptedFile,
         }
     }
 }

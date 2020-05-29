@@ -27,6 +27,8 @@ public:
 
     void save();
 
+    void load();
+
 public slots:
 
     void on_changed();

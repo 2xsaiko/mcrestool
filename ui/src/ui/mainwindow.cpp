@@ -2,12 +2,14 @@
 #include "ui_mainwindow.h"
 #include "languagetablewindow.h"
 #include "recipeeditwindow.h"
+#include "src/util.h"
 #include <QApplication>
 #include <QDesktopWidget>
 #include <QScreen>
 #include <QFileDialog>
 #include <QInputDialog>
 #include <iostream>
+#include <QDebug>
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
@@ -15,7 +17,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(ui->action_quit, SIGNAL(triggered()), this, SLOT(quit()));
     connect(ui->action_open, SIGNAL(triggered()), this, SLOT(open()));
     connect(ui->action_save, SIGNAL(triggered()), this, SLOT(save()));
-    connect(ui->action_save_as, SIGNAL(triggered()), this, SLOT(save_as()));
+    connect(ui->action_save_workspace_as, SIGNAL(triggered()), this, SLOT(save_as()));
     connect(ui->action_add_res_file, SIGNAL(triggered()), this, SLOT(add_res_file()));
     connect(ui->action_add_res_folder, SIGNAL(triggered()), this, SLOT(add_res_folder()));
     connect(ui->action_about_qt, &QAction::triggered, &QApplication::aboutQt);
@@ -25,14 +27,18 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(ui->action_game_objects, SIGNAL(triggered(bool)), this, SLOT(show_game_objects(bool)));
     connect(ui->game_objects, SIGNAL(visibilityChanged(bool)), this, SLOT(show_game_objects(bool)));
 
-//    auto* ltw = new LanguageTableWindow(new LanguageTableContainer(new ProjectSource()), this);
-//    ui->mdi_area->addSubWindow(ltw);
+    connect(ui->mdi_area, SIGNAL(subWindowActivated(QMdiSubWindow * )), this, SLOT(sub_window_focus_change(QMdiSubWindow * )));
+
+    auto* ds = DataSourceW::from_dir("../../testres", this);
+    auto* ltw = new LanguageTableWindow(new LanguageTableContainer(new ProjectSource(ds, "testres", this), "testmod", this), this);
+    ltw->reload();
+    ui->mdi_area->addSubWindow(ltw);
 
     auto* crw = new RecipeEditWindow(this);
     ui->mdi_area->addSubWindow(crw);
 
-//    connect(ui->action_insert_language, &QAction::triggered, ltw, &LanguageTableWindow::add_language);
-//    connect(ui->action_insert_translation_key, &QAction::triggered, ltw, &LanguageTableWindow::add_locale_key);
+    connect(ui->action_insert_language, &QAction::triggered, ltw, &LanguageTableWindow::add_language);
+    connect(ui->action_insert_translation_key, &QAction::triggered, ltw, &LanguageTableWindow::add_locale_key);
 
     ui->res_tree_view->setModel(new ResourceTree(this));
 }
@@ -50,14 +56,22 @@ void MainWindow::quit() {
 }
 
 void MainWindow::open() {
+
 }
 
 void MainWindow::save() {
-
+    QWidget* window = ui->mdi_area->activeSubWindow()->widget();
+    GenEditorWindow* editorWindow = dynamic_cast<GenEditorWindow*>(window);
+    if (editorWindow) {
+        editorWindow->save();
+        check_for_error(this);
+    } else {
+        qDebug() << "Failed to save because" << editorWindow << "is not a GenEditorWindow!";
+    }
 }
 
 void MainWindow::save_as() {
-    QString filename = QFileDialog::getSaveFileName(this, tr("Save Project"), QString(), "mcrestool Project(*.rtp)");
+    QString filename = QFileDialog::getSaveFileName(this, tr("Save Workspace"), QString(), "mcrestool Workspace(*.rtw)");
 }
 
 void MainWindow::show_resource_tree(bool shown) {
@@ -84,6 +98,11 @@ void MainWindow::add_res_file() {
 
 void MainWindow::add_res_folder() {
     QString source = QFileDialog::getExistingDirectory(this, tr("Add Resource Folder"));
+}
+
+void MainWindow::sub_window_focus_change(QMdiSubWindow* window) {
+    if (window)
+        puts(window->widget()->objectName().toLocal8Bit());
 }
 
 MainWindow::~MainWindow() = default;

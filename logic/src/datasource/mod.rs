@@ -90,7 +90,7 @@ pub enum Error {
     NotFound,
     PermissionDenied,
     ReadOnly,
-    IoError,
+    Io,
 }
 
 impl From<dir::Error> for Error {
@@ -98,11 +98,11 @@ impl From<dir::Error> for Error {
         match err {
             dir::Error::RootDirNotFound(_) => unreachable!(),
             dir::Error::InvalidPath(p) => Error::InvalidPath(p),
-            dir::Error::IoError(e) => {
+            dir::Error::Io(e) => {
                 match e.kind() {
                     ErrorKind::NotFound => Error::NotFound,
                     ErrorKind::PermissionDenied => Error::PermissionDenied,
-                    _ => Error::IoError
+                    _ => Error::Io
                 }
             }
         }
@@ -112,17 +112,17 @@ impl From<dir::Error> for Error {
 impl From<zip::Error> for Error {
     fn from(err: zip::Error) -> Self {
         match err {
-            zip::Error::ZipError(ZipError::FileNotFound) => Error::NotFound,
-            zip::Error::ZipError(ZipError::InvalidArchive(_)) |
-            zip::Error::ZipError(ZipError::UnsupportedArchive(_)) => Error::IoError,
-            zip::Error::ZipError(ZipError::Io(e)) => {
+            zip::Error::Zip(ZipError::FileNotFound) => Error::NotFound,
+            zip::Error::Zip(ZipError::InvalidArchive(_)) |
+            zip::Error::Zip(ZipError::UnsupportedArchive(_)) => Error::Io,
+            zip::Error::Zip(ZipError::Io(e)) => {
                 match e.kind() {
                     ErrorKind::NotFound => Error::NotFound,
                     ErrorKind::PermissionDenied => Error::PermissionDenied,
-                    _ => Error::IoError
+                    _ => Error::Io
                 }
             }
-            zip::Error::IoError(_) => unreachable!(),
+            zip::Error::Io(_) => unreachable!(),
             zip::Error::InvalidPath(p) => Error::InvalidPath(p)
         }
     }
@@ -135,7 +135,7 @@ impl FfiError for Error {
             Error::NotFound => McrtError::NotFound,
             Error::PermissionDenied => McrtError::PermissionDenied,
             Error::ReadOnly => McrtError::ReadOnly,
-            Error::IoError => McrtError::IoError,
+            Error::Io => McrtError::Io,
         }
     }
 }

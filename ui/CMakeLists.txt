@@ -32,7 +32,6 @@ set(mcrestool_ui_SRC
         src/ui/shapedcraftingwidget.cpp src/ui/shapedcraftingwidget.h
         src/ui/recipeeditextensionwidget.cpp src/ui/recipeeditextensionwidget.h
         src/util.h
-        src/fs/langfile.cpp src/fs/langfile.h
         src/result.h
         src/except.h
         src/ui/smeltingwidget.cpp src/ui/smeltingwidget.h
@@ -40,7 +39,7 @@ set(mcrestool_ui_SRC
         src/project/projectsource.cpp src/project/projectsource.h
         src/fs/datasource.cpp src/fs/datasource.h
         src/project/languagetablecontainer.cpp src/project/languagetablecontainer.h
-        src/project/project.h src/fs/resfile.cpp src/fs/resfile.h)
+        src/project/project.h src/fs/resfile.cpp src/fs/resfile.h src/ui/geneditorwindow.cpp src/ui/geneditorwindow.h src/util.cpp)
 
 add_executable(mcrestool_ui ${mcrestool_ui_SRC})
 

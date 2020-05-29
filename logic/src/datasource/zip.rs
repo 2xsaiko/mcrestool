@@ -39,25 +39,25 @@ impl ZipDataSource {
 
     fn resolve_path_for_archive(path: impl AsRef<Path>) -> Option<String> {
         let pb = normalize_path(path)?;
-        Some(pb.strip_prefix("/").unwrap().to_string_lossy().into_owned())
+        Some(pb.strip_prefix("/").unwrap().to_str().unwrap().to_string())
     }
 }
 
 pub enum Error {
     InvalidPath(PathBuf),
-    IoError(io::Error),
-    ZipError(zip::result::ZipError),
+    Io(io::Error),
+    Zip(zip::result::ZipError),
 }
 
 impl From<io::Error> for Error {
     fn from(err: io::Error) -> Self {
-        Error::IoError(err)
+        Error::Io(err)
     }
 }
 
 impl From<zip::result::ZipError> for Error {
     fn from(err: zip::result::ZipError) -> Self {
-        Error::ZipError(err)
+        Error::Zip(err)
     }
 }
 
@@ -66,15 +66,15 @@ impl FfiError for Error {
         use zip::result::ZipError;
 
         match self {
-            Error::IoError(e) | Error::ZipError(ZipError::Io(e)) => match e.kind() {
+            Error::Io(e) | Error::Zip(ZipError::Io(e)) => match e.kind() {
                 ErrorKind::NotFound => McrtError::NotFound,
                 ErrorKind::PermissionDenied => McrtError::PermissionDenied,
-                _ => McrtError::IoError
+                _ => McrtError::Io
             }
-            Error::ZipError(ZipError::UnsupportedArchive(text)) => McrtError::UnsupportedZip,
-            Error::ZipError(ZipError::InvalidArchive(text)) => McrtError::InvalidZip,
-            Error::ZipError(ZipError::FileNotFound) => McrtError::NotFound,
-            _ => McrtError::IoError,
+            Error::Zip(ZipError::UnsupportedArchive(text)) => McrtError::UnsupportedZip,
+            Error::Zip(ZipError::InvalidArchive(text)) => McrtError::InvalidZip,
+            Error::Zip(ZipError::FileNotFound) => McrtError::NotFound,
+            _ => McrtError::Io,
         }
     }
 
@@ -82,8 +82,8 @@ impl FfiError for Error {
         use zip::result::ZipError;
 
         match self {
-            Error::ZipError(ZipError::UnsupportedArchive(text)) => text,
-            Error::ZipError(ZipError::InvalidArchive(text)) => text,
+            Error::Zip(ZipError::UnsupportedArchive(text)) => text,
+            Error::Zip(ZipError::InvalidArchive(text)) => text,
             _ => self.kind().description(),
         }
     }

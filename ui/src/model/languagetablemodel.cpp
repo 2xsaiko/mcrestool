@@ -32,7 +32,7 @@ QVariant LanguageTableModel::data(const QModelIndex& index, int role) const {
         QString row = get_row_name(index.row());
         const char* str = languagetable_get(lt, column.toLocal8Bit(), row.toLocal8Bit());
         QString content = QString(str);
-        languagetable_content_delete(str);
+        mcrt_str_delete(str);
         if (!content.isNull()) {
             return content;
         }
