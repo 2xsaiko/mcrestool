@@ -5,46 +5,21 @@
 
 #include <QString>
 
-class WorkspaceRootBase : public QObject {
-Q_OBJECT
+class FsTreeEntry;
+
+class WorkspaceRoot : public QObject {
+    Q_OBJECT
 
 public:
-    WorkspaceRootBase(const QString& name, QObject* parent = nullptr);
+    WorkspaceRoot(QString name, FsRef root, QObject* parent = nullptr);
 
-    virtual ~WorkspaceRootBase() = default;
-
-    virtual QList<WSDirEntry> list_dir_tree(const QString& path) = 0;
+    FsTreeEntry* get_tree();
 
     const QString& get_name() const;
 
-    void set_name(QString name);
-
 private:
     QString name;
-
-};
-
-class DirWorkspaceRoot : public WorkspaceRootBase {
-
-public:
-    DirWorkspaceRoot(const QString& path, QObject* parent = nullptr);
-
-    QList<WSDirEntry> list_dir_tree(const QString& path) override;
-
-private:
-    QString path;
-
-};
-
-class ZipWorkspaceRoot : public WorkspaceRootBase {
-
-public:
-    ZipWorkspaceRoot(const QString& path, QObject* parent = nullptr);
-
-    QList<WSDirEntry> list_dir_tree(const QString& path) override;
-
-private:
-    QString path;
+    FsTreeEntry* tree;
 
 };
 
@@ -58,8 +33,20 @@ public:
 
     void add_file(QString path);
 
+    int index_of(WorkspaceRoot* root) const;
+
+    WorkspaceRoot* by_index(int index);
+
+    int root_count() const;
+
+signals:
+
+    void entry_added(WorkspaceRoot* root);
+
+    void entry_removed(WorkspaceRoot* root);
+
 private:
-    QList<WorkspaceRootBase*> roots;
+    QVector<WorkspaceRoot*> roots;
 
 };
 

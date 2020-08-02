@@ -2,13 +2,12 @@
 #include "ui_mainwindow.h"
 #include "languagetablewindow.h"
 #include "recipeeditwindow.h"
-#include "src/util.h"
-#include <QApplication>
+#include "src/workspace/fstreemodel.h"
+
 #include <QDesktopWidget>
 #include <QScreen>
 #include <QFileDialog>
 #include <QInputDialog>
-#include <iostream>
 #include <QDebug>
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow), ws(new Workspace(this)) {
@@ -29,9 +28,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     connect(ui->mdi_area, SIGNAL(subWindowActivated(QMdiSubWindow * )), this, SLOT(sub_window_focus_change(QMdiSubWindow * )));
 
-    auto* ltw = new LanguageTableWindow(new LanguageTableContainer(FsRef("testres/assets/testmod/lang"), this), this);
+    auto* ltw = new LanguageTableWindow(new LanguageTableContainer(FsRef("../testres/assets/testmod/lang"), this), this);
     ltw->reload();
     ui->mdi_area->addSubWindow(ltw);
+
+    // auto* ltw1 = new LanguageTableWindow(new LanguageTableContainer(FsRef("../testres/assets/minecraft/lang"), this), this);
+    // ltw1->reload();
+    // ui->mdi_area->addSubWindow(ltw1);
 
     auto* crw = new RecipeEditWindow(this);
     ui->mdi_area->addSubWindow(crw);
@@ -42,6 +45,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(ui->res_tree_view, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(show_restree_context_menu(QPoint)));
 
     // ui->res_tree_view->setModel(new ResourceTree(this));
+    ui->res_tree_view->setModel(new FsTreeModel(this->ws, this));
 }
 
 void MainWindow::center() {
@@ -94,10 +98,14 @@ void MainWindow::show_game_objects(bool shown) {
 
 void MainWindow::add_res_file() {
     QStringList sources = QFileDialog::getOpenFileNames(this, tr("Add Resource Pack/Mod"), QString(), "Minecraft Content(*.zip *.jar);;All Files(*.*)");
+    for (auto source: sources) {
+        this->ws->add_file(source);
+    }
 }
 
 void MainWindow::add_res_dir() {
     QString source = QFileDialog::getExistingDirectory(this, tr("Add Resource Folder"));
+    this->ws->add_dir(source);
 }
 
 void MainWindow::sub_window_focus_change(QMdiSubWindow* window) {

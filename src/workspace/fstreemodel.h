@@ -1,17 +1,16 @@
-#ifndef MCRESTOOL_RESOURCETREE_H
-#define MCRESTOOL_RESOURCETREE_H
+#ifndef MCRESTOOL_FSTREEMODEL_H
+#define MCRESTOOL_FSTREEMODEL_H
 
-#include <QString>
+#include "fstree.h"
+#include "workspace.h"
+
 #include <QAbstractItemModel>
-#include "treeitem.h"
 
-class ResourceTree : public QAbstractItemModel {
-Q_OBJECT
+class FsTreeModel : public QAbstractItemModel {
+    Q_OBJECT
 
 public:
-    explicit ResourceTree(QObject* parent = nullptr);
-
-    ~ResourceTree() override;
+    explicit FsTreeModel(Workspace* ws, QObject* parent = nullptr);
 
     QModelIndex index(int row, int column, const QModelIndex& parent) const override;
 
@@ -27,9 +26,11 @@ public:
 
     int columnCount(const QModelIndex& parent) const override;
 
+public slots:
+
 private:
-    TreeItem* root_item;
+    Workspace* ws;
 
 };
 
-#endif //MCRESTOOL_RESOURCETREE_H
+#endif //MCRESTOOL_FSTREEMODEL_H

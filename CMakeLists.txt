@@ -22,45 +22,45 @@ find_package(KF5 REQUIRED
 find_package(QuaZip5 REQUIRED)
 
 set(mcrestool_HEADERS
-        src/model/languagetablemodel.h
-        src/table.h
         src/identifier.h
-        src/model/resourcetree.h
-        src/ui/mainwindow.h
-        src/ui/languagetablewindow.h
+        src/languagetable/languagetable.h
+        src/model/languagetablemodel.h
+        src/project/languagetablecontainer.h
+        src/result.h
+        src/table.h
+        src/ui/geneditorwindow.h
         src/ui/itembutton.h
+        src/ui/languagetablewindow.h
+        src/ui/mainwindow.h
+        src/ui/recipeeditextensionwidget.h
         src/ui/recipeeditwindow.h
         src/ui/shapedcraftingwidget.h
-        src/ui/recipeeditextensionwidget.h
-        src/util.h
-        src/result.h
         src/ui/smeltingwidget.h
-        src/model/treeitem.h
-        src/project/languagetablecontainer.h
-        src/ui/geneditorwindow.h
-        src/workspace/workspace.h
+        src/util.h
+        src/workspace/direntry.h
         src/workspace/fsref.h
-        src/languagetable/languagetable.h
-        src/workspace/direntry.h)
+        src/workspace/fstree.h
+        src/workspace/fstreemodel.h
+        src/workspace/workspace.h)
 
 set(mcrestool_SRC
+        src/identifier.cpp
+        src/languagetable/languagetable.cpp
         src/main.cpp
         src/model/languagetablemodel.cpp
-        src/identifier.cpp
-        src/model/resourcetree.cpp
-        src/ui/mainwindow.cpp
-        src/ui/languagetablewindow.cpp
-        src/ui/itembutton.cpp
-        src/ui/recipeeditwindow.cpp
-        src/ui/shapedcraftingwidget.cpp
-        src/ui/recipeeditextensionwidget.cpp
-        src/ui/smeltingwidget.cpp
-        src/model/treeitem.cpp
         src/project/languagetablecontainer.cpp
         src/ui/geneditorwindow.cpp
-        src/workspace/workspace.cpp
+        src/ui/itembutton.cpp
+        src/ui/languagetablewindow.cpp
+        src/ui/mainwindow.cpp
+        src/ui/recipeeditextensionwidget.cpp
+        src/ui/recipeeditwindow.cpp
+        src/ui/shapedcraftingwidget.cpp
+        src/ui/smeltingwidget.cpp
         src/workspace/fsref.cpp
-        src/languagetable/languagetable.cpp)
+        src/workspace/fstree.cpp
+        src/workspace/fstreemodel.cpp
+        src/workspace/workspace.cpp)
 
 add_executable(mcrestool ${mcrestool_SRC})
 

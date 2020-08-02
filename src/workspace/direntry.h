@@ -5,7 +5,7 @@
 
 #include <QString>
 
-struct WSDirEntry {
+struct DirEntry {
     bool is_file;
     bool is_dir;
     bool is_symlink;

@@ -22,8 +22,6 @@ public:
 
     bool read_only() const;
 
-    void delete_file();
-
     void save();
 
     void load();

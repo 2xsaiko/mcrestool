@@ -3,8 +3,10 @@
 
 #include <QFile>
 #include <QList>
+#include <QSharedPointer>
+#include <quazip5/quazip.h>
 
-struct WSDirEntry;
+struct DirEntry;
 
 struct NormalFsRef {
     QString file_path;
@@ -12,6 +14,8 @@ struct NormalFsRef {
 
 struct ZipFsRef {
     QString zip_path;
+    QSharedPointer<QuaZip> qz;
+
     QString file_path;
 };
 
@@ -34,19 +38,27 @@ public:
     bool read_only() const;
 
     bool is_file() const;
+
     bool is_dir() const;
+
     bool is_link() const;
 
-    QIODevice* open() const;
+    QString file_name() const;
 
-    QList<WSDirEntry> read_dir() const;
+    QSharedPointer<QIODevice> open() const;
+
+    QList<DirEntry> read_dir() const;
+
+    bool remove(bool recursive) const;
+
+    FsRef join(const QString& rel_path);
 
 private:
-    FsRefType type;
+    enum { NORMAL, ZIP } type;
     union {
-        NormalFsRef normal;
-        ZipFsRef zip;
-    } data;
+        NormalFsRef* normal;
+        ZipFsRef* zip;
+    };
 
 };
 

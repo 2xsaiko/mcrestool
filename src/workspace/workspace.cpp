@@ -1,46 +1,46 @@
 #include "workspace.h"
-#include <QFileInfo>
+#include "fstree.h"
 
-WorkspaceRootBase::WorkspaceRootBase(const QString& name, QObject* parent) : QObject(parent) {
-    this->name = name;
+WorkspaceRoot::WorkspaceRoot(QString name, FsRef root, QObject* parent) :
+    QObject(parent),
+    name(name),
+    tree(new FsTreeEntry(root, this)) {
+    this->tree->refresh();
 }
 
-const QString& WorkspaceRootBase::get_name() const {
+FsTreeEntry* WorkspaceRoot::get_tree() {
+    return this->tree;
+}
+
+const QString& WorkspaceRoot::get_name() const {
     return this->name;
 }
 
-void WorkspaceRootBase::set_name(QString str) {
-    this->name = str;
-}
 
-
-Workspace::Workspace(QObject* parent) : QObject(parent), roots(QList<WorkspaceRootBase*>()) {
-}
+Workspace::Workspace(QObject* parent) :
+    QObject(parent),
+    roots(QVector<WorkspaceRoot*>()) {}
 
 void Workspace::add_dir(QString path) {
-    this->roots += new DirWorkspaceRoot(path, this);
+    this->roots += new WorkspaceRoot(path, FsRef(path), this);
+    emit entry_added(this->roots.last());
 }
 
 void Workspace::add_file(QString path) {
-    this->roots += new ZipWorkspaceRoot(path);
+    this->roots += new WorkspaceRoot(path, FsRef(path, "/"), this);
+    emit entry_added(this->roots.last());
 }
 
-
-DirWorkspaceRoot::DirWorkspaceRoot(const QString& path, QObject* parent) : WorkspaceRootBase(QFileInfo(path).fileName(), parent) {
-    this->path = path;
+int Workspace::index_of(WorkspaceRoot* root) const {
+    return this->roots.indexOf(root);
 }
 
-QList<WSDirEntry> DirWorkspaceRoot::list_dir_tree(const QString& path) {
-    QList<WSDirEntry> v;
-    return v;
+WorkspaceRoot* Workspace::by_index(int index) {
+    if (index < 0 || index >= this->roots.length()) return nullptr;
+
+    return this->roots[index];
 }
 
-
-ZipWorkspaceRoot::ZipWorkspaceRoot(const QString& path, QObject* parent) : WorkspaceRootBase(QFileInfo(path).fileName(), parent) {
-    this->path = path;
-}
-
-QList<WSDirEntry> ZipWorkspaceRoot::list_dir_tree(const QString& path) {
-    QList<WSDirEntry> v;
-    return v;
+int Workspace::root_count() const {
+    return this->roots.length();
 }

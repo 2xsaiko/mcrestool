@@ -2,6 +2,7 @@
 #define MCRESTOOL_LANGUAGETABLE_H
 
 #include <QString>
+#include <QMap>
 
 class LanguageTable {
 
@@ -21,6 +22,19 @@ public:
     QString get_language_at(int index) const;
 
     QString get_key_at(int index) const;
+
+    QStringList get_keys_for(const QString& language) const;
+
+    QMap<QString, QString> get_entries_for(const QString& language) const;
+
+    bool contains_language(const QString& language) const;
+
+    void clear();
+
+private:
+    QStringList languages;
+    QStringList keys;
+    QMap<QString, QMap<QString, QString>> table;
 
 };
 
