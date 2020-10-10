@@ -1,6 +1,8 @@
 #ifndef MCRESTOOL_FSREF_H
 #define MCRESTOOL_FSREF_H
 
+#include "filetype.h"
+
 #include <QFile>
 #include <QList>
 #include <QSharedPointer>
@@ -17,11 +19,6 @@ struct ZipFsRef {
     QSharedPointer<QuaZip> qz;
 
     QString file_path;
-};
-
-enum FsRefType {
-    NORMAL,
-    ZIP,
 };
 
 class FsRef {
@@ -51,10 +48,14 @@ public:
 
     bool remove(bool recursive) const;
 
+    FileType get_type() const;
+
+    FsRef parent() const;
+
     FsRef join(const QString& rel_path);
 
 private:
-    enum { NORMAL, ZIP } type;
+    enum { FSREF_NORMAL, FSREF_ZIP } type;
     union {
         NormalFsRef* normal;
         ZipFsRef* zip;

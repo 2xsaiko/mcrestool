@@ -1,11 +1,15 @@
 #include "fstree.h"
 #include "workspace.h"
 
+#include <QDebug>
+
 FsTreeEntry::FsTreeEntry(FsRef ref, WorkspaceRoot* root, FsTreeEntry* parent) : QObject(parent), ref(ref), parent(parent), root(root) {
 
 }
 
 void FsTreeEntry::refresh() {
+    this->type = this->ref.get_type();
+
     QList<DirEntry> list = this->ref.read_dir();
 
     bool changed = false;

@@ -7,11 +7,11 @@
 #include <QDebug>
 #include <quazip5/quazipfile.h>
 
-FsRef::FsRef(const QString& file_path) : type(NORMAL), normal(new NormalFsRef) {
+FsRef::FsRef(const QString& file_path) : type(FSREF_NORMAL), normal(new NormalFsRef) {
     this->normal->file_path = file_path;
 }
 
-FsRef::FsRef(const QString& zip_path, const QString& file_path) : type(ZIP), zip(new ZipFsRef) {
+FsRef::FsRef(const QString& zip_path, const QString& file_path) : type(FSREF_ZIP), zip(new ZipFsRef) {
     this->zip->zip_path = zip_path;
     this->zip->file_path = file_path;
     this->zip->qz = QSharedPointer<QuaZip>(new QuaZip(zip_path));
@@ -20,11 +20,11 @@ FsRef::FsRef(const QString& zip_path, const QString& file_path) : type(ZIP), zip
 
 FsRef::FsRef(const FsRef& that) : type(that.type) {
     switch (that.type) {
-        case NORMAL:
+        case FSREF_NORMAL:
             this->normal = new NormalFsRef;
             this->normal->file_path = that.normal->file_path;
             break;
-        case ZIP:
+        case FSREF_ZIP:
             this->zip = new ZipFsRef;
             this->zip->zip_path = that.zip->zip_path;
             this->zip->qz = that.zip->qz;
@@ -35,10 +35,10 @@ FsRef::FsRef(const FsRef& that) : type(that.type) {
 
 FsRef::~FsRef() {
     switch (this->type) {
-        case NORMAL:
+        case FSREF_NORMAL:
             delete this->normal;
             break;
-        case ZIP:
+        case FSREF_ZIP:
             delete this->zip;
             break;
         default:
@@ -48,9 +48,9 @@ FsRef::~FsRef() {
 
 bool FsRef::read_only() const {
     switch (this->type) {
-        case NORMAL:
+        case FSREF_NORMAL:
             return !QFileInfo(this->normal->file_path).isWritable();
-        case ZIP:
+        case FSREF_ZIP:
             return !QFileInfo(this->zip->zip_path).isWritable();
         default:
             unreachable();
@@ -59,9 +59,9 @@ bool FsRef::read_only() const {
 
 bool FsRef::is_file() const {
     switch (this->type) {
-        case NORMAL:
+        case FSREF_NORMAL:
             return QFileInfo(this->normal->file_path).isFile();
-        case ZIP:
+        case FSREF_ZIP:
             return QuaZip(this->zip->zip_path).getFileNameList().contains(this->zip->file_path);
         default:
             unreachable();
@@ -70,9 +70,9 @@ bool FsRef::is_file() const {
 
 bool FsRef::is_dir() const {
     switch (this->type) {
-        case NORMAL:
+        case FSREF_NORMAL:
             return QFileInfo(this->normal->file_path).isDir();
-        case ZIP:
+        case FSREF_ZIP:
             return !this->is_file();
         default:
             unreachable();
@@ -81,9 +81,9 @@ bool FsRef::is_dir() const {
 
 bool FsRef::is_link() const {
     switch (this->type) {
-        case NORMAL:
+        case FSREF_NORMAL:
             return !QFileInfo(this->normal->file_path).isSymbolicLink();
-        case ZIP:
+        case FSREF_ZIP:
             return false; // ain't no links in zip files
         default:
             unreachable();
@@ -99,10 +99,10 @@ QString FsRef::file_name() const {
     QString file_path;
 
     switch (this->type) {
-        case NORMAL:
+        case FSREF_NORMAL:
             file_path = this->normal->file_path;
             break;
-        case ZIP:
+        case FSREF_ZIP:
             file_path = this->zip->file_path;
             break;
         default:
@@ -127,9 +127,9 @@ QString FsRef::file_name() const {
 
 QSharedPointer<QIODevice> FsRef::open() const {
     switch (this->type) {
-        case NORMAL:
+        case FSREF_NORMAL:
             return QSharedPointer<QIODevice>(new QFile(this->normal->file_path));
-        case ZIP:
+        case FSREF_ZIP:
             return QSharedPointer<QIODevice>(new QuaZipFile(this->zip->zip_path, this->zip->zip_path));
         default:
             unreachable();
@@ -138,7 +138,7 @@ QSharedPointer<QIODevice> FsRef::open() const {
 
 QList<DirEntry> FsRef::read_dir() const {
     switch (this->type) {
-        case NORMAL: {
+        case FSREF_NORMAL: {
             QList<DirEntry> list;
             QDir dir(this->normal->file_path);
             qDebug() << this->normal->file_path;
@@ -155,7 +155,7 @@ QList<DirEntry> FsRef::read_dir() const {
             }
             return list;
         }
-        case ZIP: {
+        case FSREF_ZIP: {
             QList<DirEntry> list;
             QSet<QString> scanned;
             QuaZip qz(this->zip->zip_path);
@@ -194,7 +194,7 @@ QList<DirEntry> FsRef::read_dir() const {
 
 bool FsRef::remove(bool recursive) const {
     switch (this->type) {
-        case NORMAL: {
+        case FSREF_NORMAL: {
             QFileInfo fi(this->normal->file_path);
             if (fi.isFile()) {
                 return QFile::remove(this->normal->file_path);
@@ -208,7 +208,7 @@ bool FsRef::remove(bool recursive) const {
             }
             return false;
         }
-        case ZIP:
+        case FSREF_ZIP:
             unimplemented();
         default:
             unreachable();
@@ -217,12 +217,35 @@ bool FsRef::remove(bool recursive) const {
 
 FsRef FsRef::join(const QString& rel_path) {
     switch (this->type) {
-        case NORMAL:
+        case FSREF_NORMAL:
             return FsRef(this->normal->file_path + "/" + rel_path);
-        case ZIP:
+        case FSREF_ZIP:
             return FsRef(this->zip->zip_path, this->zip->file_path + "/" + rel_path);
         default:
             unreachable();
     }
 }
 
+FsRef FsRef::parent() const {
+    switch (this->type) {
+        case FSREF_NORMAL: {
+            auto dir = QDir(this->normal->file_path);
+            dir.cdUp();
+            return FsRef(dir.path());
+        }
+        case FSREF_ZIP:
+            unimplemented();
+        default:
+            unreachable();
+    }
+}
+
+FileType FsRef::get_type() const {
+    // shitty detection for now
+    if (this->file_name().endsWith(".json") && this->parent().file_name() == "lang") {
+        return FILETYPE_LANGUAGE_PART;
+    } else if (this->file_name() == "lang") {
+        return FILETYPE_LANGUAGE;
+    }
+    return FILETYPE_NONE;
+}

@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "languagetablewindow.h"
-#include "recipeeditwindow.h"
 #include "src/workspace/fstreemodel.h"
 
 #include <QDesktopWidget>
@@ -28,21 +27,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     connect(ui->mdi_area, SIGNAL(subWindowActivated(QMdiSubWindow * )), this, SLOT(sub_window_focus_change(QMdiSubWindow * )));
 
-    auto* ltw = new LanguageTableWindow(new LanguageTableContainer(FsRef("../testres/assets/testmod/lang"), this), this);
-    ltw->reload();
-    ui->mdi_area->addSubWindow(ltw);
-
-    // auto* ltw1 = new LanguageTableWindow(new LanguageTableContainer(FsRef("../testres/assets/minecraft/lang"), this), this);
-    // ltw1->reload();
-    // ui->mdi_area->addSubWindow(ltw1);
-
-    auto* crw = new RecipeEditWindow(this);
-    ui->mdi_area->addSubWindow(crw);
-
-    connect(ui->action_insert_language, &QAction::triggered, ltw, &LanguageTableWindow::add_language);
-    connect(ui->action_insert_translation_key, &QAction::triggered, ltw, &LanguageTableWindow::add_locale_key);
-
     connect(ui->res_tree_view, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(show_restree_context_menu(QPoint)));
+    connect(ui->res_tree_view, SIGNAL(activated(const QModelIndex &)), this, SLOT(restree_open(const QModelIndex &)));
 
     // ui->res_tree_view->setModel(new ResourceTree(this));
     ui->res_tree_view->setModel(new FsTreeModel(this->ws, this));
@@ -110,6 +96,14 @@ void MainWindow::add_res_dir() {
 
 void MainWindow::sub_window_focus_change(QMdiSubWindow* window) {
     if (window) puts(window->widget()->objectName().toLocal8Bit());
+
+    disconnect(ui->action_insert_language, &QAction::triggered, nullptr, nullptr);
+    disconnect(ui->action_insert_translation_key, &QAction::triggered, nullptr, nullptr);
+
+    if (auto win = qobject_cast<LanguageTableWindow*>(window)) {
+        connect(ui->action_insert_language, &QAction::triggered, win, &LanguageTableWindow::add_language);
+        connect(ui->action_insert_translation_key, &QAction::triggered, win, &LanguageTableWindow::add_locale_key);
+    }
 }
 
 void MainWindow::show_restree_context_menu(const QPoint& pt) {
@@ -120,6 +114,21 @@ void MainWindow::show_restree_context_menu(const QPoint& pt) {
     menu.addAction(tr("Add ZIP File"), this, SLOT(add_res_file()));
 
     menu.exec(gPt);
+}
+
+void MainWindow::restree_open(const QModelIndex& index) {
+    if (auto item = qobject_cast<FsTreeEntry*>(static_cast<QObject*>(index.internalPointer()))) {
+        switch (item->file_type()) {
+            case FILETYPE_LANGUAGE_PART:
+            case FILETYPE_LANGUAGE:
+                qDebug() << "opening lang page window!" << item->file_name();
+                auto* ltw = new LanguageTableWindow(new LanguageTableContainer(item->fsref(), this), this);
+                ltw->reload();
+                ui->mdi_area->addSubWindow(ltw);
+                ltw->show();
+                break;
+        }
+    }
 }
 
 MainWindow::~MainWindow() = default;

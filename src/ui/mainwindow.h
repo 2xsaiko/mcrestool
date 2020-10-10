@@ -49,10 +49,11 @@ private slots:
 
     void show_restree_context_menu(const QPoint& pt);
 
+    void restree_open(const QModelIndex& index);
+
 private:
     QScopedPointer<Ui::MainWindow> ui;
     Workspace* ws;
-
 
 };
 

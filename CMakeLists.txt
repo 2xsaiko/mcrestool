@@ -41,7 +41,8 @@ set(mcrestool_HEADERS
         src/workspace/fsref.h
         src/workspace/fstree.h
         src/workspace/fstreemodel.h
-        src/workspace/workspace.h)
+        src/workspace/workspace.h
+        src/workspace/filetype.h)
 
 set(mcrestool_SRC
         src/identifier.cpp

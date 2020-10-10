@@ -2,17 +2,11 @@
 #define MCRESTOOL_FSTREE_H
 
 #include "direntry.h"
+#include "filetype.h"
 
 #include <QList>
 
 class WorkspaceRoot;
-
-enum FileType {
-    NONE,
-    LANGUAGE,
-    LANGUAGE_PART,
-    RECIPE,
-};
 
 class FsTreeEntry : public QObject {
 Q_OBJECT

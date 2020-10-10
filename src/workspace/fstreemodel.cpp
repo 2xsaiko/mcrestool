@@ -89,3 +89,4 @@ int FsTreeModel::rowCount(const QModelIndex& parent) const {
 int FsTreeModel::columnCount(const QModelIndex& parent) const {
     return 1;
 }
+
