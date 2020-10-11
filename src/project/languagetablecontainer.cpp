@@ -3,6 +3,7 @@
 
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QDebug>
 
 LanguageTableContainer::LanguageTableContainer(
     FsRef fs_ref,
