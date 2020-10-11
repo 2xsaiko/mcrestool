@@ -30,14 +30,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(ui->res_tree_view, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(show_restree_context_menu(QPoint)));
     connect(ui->res_tree_view, SIGNAL(activated(const QModelIndex &)), this, SLOT(restree_open(const QModelIndex &)));
 
-    // ui->res_tree_view->setModel(new ResourceTree(this));
     ui->res_tree_view->setModel(new FsTreeModel(this->ws, this));
 }
 
 void MainWindow::center() {
     QRect qRect = frameGeometry();
     const QScreen* screen = QGuiApplication::screenAt(QApplication::desktop()->cursor().pos());
-    const QPoint& center = screen->geometry().center();
+    QPoint center = screen->geometry().center();
     qRect.moveCenter(center);
     this->move(qRect.topLeft());
 }
@@ -84,14 +83,28 @@ void MainWindow::show_game_objects(bool shown) {
 
 void MainWindow::add_res_file() {
     QStringList sources = QFileDialog::getOpenFileNames(this, tr("Add Resource Pack/Mod"), QString(), "Minecraft Content(*.zip *.jar);;All Files(*.*)");
-    for (auto source: sources) {
+
+    auto* model = qobject_cast<FsTreeModel*>(ui->res_tree_view->model());
+    int count = model->rowCount(QModelIndex());
+    model->beginInsertRows1(QModelIndex(), count, count + sources.size() - 1);
+
+    for (const auto& source: sources) {
         this->ws->add_file(source);
     }
+
+    model->endInsertRows1();
 }
 
 void MainWindow::add_res_dir() {
     QString source = QFileDialog::getExistingDirectory(this, tr("Add Resource Folder"));
+
+    auto* model = qobject_cast<FsTreeModel*>(ui->res_tree_view->model());
+    int count = model->rowCount(QModelIndex());
+    model->beginInsertRows1(QModelIndex(), count, count);
+
     this->ws->add_dir(source);
+
+    model->endInsertRows1();
 }
 
 void MainWindow::sub_window_focus_change(QMdiSubWindow* window) {

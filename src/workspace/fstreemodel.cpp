@@ -90,3 +90,11 @@ int FsTreeModel::columnCount(const QModelIndex& parent) const {
     return 1;
 }
 
+void FsTreeModel::beginInsertRows1(const QModelIndex& parent, int first, int last) {
+    QAbstractItemModel::beginInsertRows(parent, first, last);
+}
+
+void FsTreeModel::endInsertRows1() {
+    QAbstractItemModel::endInsertRows();
+}
+
