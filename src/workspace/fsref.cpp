@@ -5,7 +5,7 @@
 #include <QFileInfo>
 #include <QDir>
 #include <QDebug>
-#include <quazip5/quazipfile.h>
+#include <quazipfile.h>
 
 FsRef::FsRef(const QString& file_path) : type(FSREF_NORMAL), normal(new NormalFsRef) {
     this->normal->file_path = file_path;

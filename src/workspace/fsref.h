@@ -6,7 +6,7 @@
 #include <QFile>
 #include <QList>
 #include <QSharedPointer>
-#include <quazip5/quazip.h>
+#include <quazip.h>
 
 struct DirEntry;
 

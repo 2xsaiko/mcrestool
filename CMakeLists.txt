@@ -19,7 +19,7 @@ find_package(Qt5 CONFIG REQUIRED
 find_package(KF5 REQUIRED
         Archive)
 
-find_package(QuaZip5 REQUIRED)
+find_package(QuaZip-Qt5 REQUIRED)
 
 set(mcrestool_HEADERS
         src/identifier.h
@@ -71,6 +71,6 @@ target_link_libraries(mcrestool
         Qt5::Core
         Qt5::Widgets
         KF5::Archive
-        ${QUAZIP_LIBRARIES})
+        QuaZip::QuaZip)
 
 install(TARGETS mcrestool DESTINATION bin)
