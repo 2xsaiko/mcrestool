@@ -3,7 +3,7 @@
 
 #include <QScopedPointer>
 #include <QWidget>
-#include "src/project/languagetablecontainer.h"
+#include <languagetablecontainer.h>
 #include "geneditorwindow.h"
 
 namespace Ui {

@@ -2,7 +2,7 @@
 #define MCRESTOOL_ITEMBUTTON_H
 
 #include <QPushButton>
-#include "src/identifier.h"
+#include <identifier.h>
 
 class ItemButton : public QPushButton {
 Q_OBJECT

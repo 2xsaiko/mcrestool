@@ -1,4 +1,4 @@
-#include "src/util.h"
+#include <mcrtutil.h>
 #include "recipeeditwindow.h"
 #include "ui_recipeeditwindow.h"
 #include "shapedcraftingwidget.h"

@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "languagetablewindow.h"
-#include "src/workspace/fstreemodel.h"
+#include <fstreemodel.h>
 
 #include <QDesktopWidget>
 #include <QScreen>

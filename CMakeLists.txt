@@ -21,13 +21,18 @@ find_package(KF5 REQUIRED
 
 find_package(QuaZip-Qt5 REQUIRED)
 
+set(mcrestool_INCLUDES
+        src/
+        src/languagetable
+        src/model
+        src/project
+        src/ui
+        src/workspace)
+
 set(mcrestool_HEADERS
-        src/identifier.h
         src/languagetable/languagetable.h
         src/model/languagetablemodel.h
         src/project/languagetablecontainer.h
-        src/result.h
-        src/table.h
         src/ui/geneditorwindow.h
         src/ui/itembutton.h
         src/ui/languagetablewindow.h
@@ -36,18 +41,19 @@ set(mcrestool_HEADERS
         src/ui/recipeeditwindow.h
         src/ui/shapedcraftingwidget.h
         src/ui/smeltingwidget.h
-        src/util.h
         src/workspace/direntry.h
         src/workspace/fsref.h
         src/workspace/fstree.h
         src/workspace/fstreemodel.h
         src/workspace/workspace.h
-        src/workspace/filetype.h)
+        src/workspace/filetype.h
+        src/identifier.h
+        src/mcrtutil.h
+        src/result.h
+        src/table.h)
 
 set(mcrestool_SRC
-        src/identifier.cpp
         src/languagetable/languagetable.cpp
-        src/main.cpp
         src/model/languagetablemodel.cpp
         src/project/languagetablecontainer.cpp
         src/ui/geneditorwindow.cpp
@@ -61,9 +67,13 @@ set(mcrestool_SRC
         src/workspace/fsref.cpp
         src/workspace/fstree.cpp
         src/workspace/fstreemodel.cpp
-        src/workspace/workspace.cpp)
+        src/workspace/workspace.cpp
+        src/identifier.cpp
+        src/main.cpp)
 
 add_executable(mcrestool ${mcrestool_SRC})
+
+target_include_directories(mcrestool PRIVATE ${mcrestool_INCLUDES})
 
 set_property(TARGET mcrestool PROPERTY CXX_STANDARD 20)
 

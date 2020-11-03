@@ -1,7 +1,7 @@
 #include <QInputDialog>
 #include "languagetablewindow.h"
 #include "ui_languagetablewindow.h"
-#include "src/util.h"
+#include <mcrtutil.h>
 
 LanguageTableWindow::LanguageTableWindow(LanguageTableContainer* ltc, QWidget* parent) : QWidget(parent),
                                                                                          ui(new Ui::LanguageTableWindow),

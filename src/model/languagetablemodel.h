@@ -1,8 +1,8 @@
 #ifndef MCRESTOOL_LANGUAGETABLEMODEL_H
 #define MCRESTOOL_LANGUAGETABLEMODEL_H
 
-#include "src/languagetable/languagetable.h"
-#include "src/workspace/fsref.h"
+#include <languagetable.h>
+#include <fsref.h>
 
 #include <QObject>
 #include <QMap>

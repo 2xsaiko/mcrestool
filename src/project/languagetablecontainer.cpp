@@ -1,4 +1,4 @@
-#include "src/workspace/direntry.h"
+#include <direntry.h>
 #include "languagetablecontainer.h"
 
 #include <QJsonDocument>

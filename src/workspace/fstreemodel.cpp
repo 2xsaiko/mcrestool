@@ -1,5 +1,5 @@
 #include "fstreemodel.h"
-#include "src/util.h"
+#include <mcrtutil.h>
 
 FsTreeModel::FsTreeModel(Workspace* ws, QObject* parent) :
     QAbstractItemModel(parent),

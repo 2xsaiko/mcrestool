@@ -1,5 +1,5 @@
-#ifndef MCRESTOOL_UTIL_H
-#define MCRESTOOL_UTIL_H
+#ifndef MCRESTOOL_MCRTUTIL_H
+#define MCRESTOOL_MCRTUTIL_H
 
 #include <QtGlobal>
 
@@ -7,4 +7,4 @@
 
 #define unreachable() Q_UNREACHABLE()
 
-#endif //MCRESTOOL_UTIL_H
+#endif //MCRESTOOL_MCRTUTIL_H

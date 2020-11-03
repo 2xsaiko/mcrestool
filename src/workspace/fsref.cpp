@@ -1,6 +1,6 @@
 #include "fsref.h"
 #include "direntry.h"
-#include "src/util.h"
+#include <mcrtutil.h>
 
 #include <QFileInfo>
 #include <QDir>

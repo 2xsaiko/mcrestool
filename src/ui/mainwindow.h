@@ -4,8 +4,8 @@
 #include <QMainWindow>
 #include <QScopedPointer>
 #include <QMdiSubWindow>
-#include "src/model/languagetablemodel.h"
-#include "src/workspace/workspace.h"
+#include <languagetablemodel.h>
+#include <workspace.h>
 
 namespace Ui {
     class MainWindow;

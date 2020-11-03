@@ -1,8 +1,8 @@
 #ifndef MCRESTOOL_LANGUAGETABLECONTAINER_H
 #define MCRESTOOL_LANGUAGETABLECONTAINER_H
 
-#include "src/workspace/fsref.h"
-#include "src/model/languagetablemodel.h"
+#include <fsref.h>
+#include <languagetablemodel.h>
 
 #include <QObject>
 
