@@ -18,24 +18,21 @@ public:
 
     Path(const char* spec);
 
-    Path parent() const;
+    [[nodiscard]] Path parent() const;
 
-    Path join(const Path& right) const;
+    [[nodiscard]] Path join(const Path& right) const;
 
     void push(const Path& right);
 
-    PathComponents components() const;
+    [[nodiscard]] PathComponents components() const;
 
-    QString file_name() const;
+    [[nodiscard]] QString file_name() const;
 
-    const QString& to_string() const;
+    [[nodiscard]] const QString& to_string() const;
 
-    bool is_absolute() const;
+    [[nodiscard]] bool is_absolute() const;
 
-    bool is_null() const;
-
-private:
-    void push_raw(const QString& spec);
+    [[nodiscard]] bool is_null() const;
 
 private:
     QString m_inner;

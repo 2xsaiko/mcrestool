@@ -24,7 +24,7 @@ Path Path::parent() const {
 }
 
 Path Path::join(const Path& right) const {
-    Path copy(*this);
+    Path copy = *this;
     copy.push(right);
     return copy;
 }
@@ -48,21 +48,6 @@ void Path::push(const Path& right) {
         }
     }
 #endif
-}
-
-void Path::push_raw(const QString& spec) {
-    assert(!spec.isEmpty());
-    assert(!spec.contains('/'));
-
-    if (this->m_inner.isEmpty()) {
-        this->m_inner = spec;
-    } else {
-        if (!this->m_inner.endsWith('/')) {
-            this->m_inner += '/';
-        }
-
-        this->m_inner += spec;
-    }
 }
 
 PathComponents Path::components() const {
@@ -234,11 +219,6 @@ void PathComponents::skip_back(int n) {
 
 int PathComponents::next_field_back(int start) const {
     int next_field = start;
-
-//    // skip all trailing '/'s
-//    while (next_field > 0 && this->m_inner[next_field - 1] == '/') {
-//        next_field -= 1;
-//    }
 
     // special case for /
     if (this->m_left_end < 1 && start == 1 && this->m_inner[0] == '/') {
