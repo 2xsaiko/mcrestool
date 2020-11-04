@@ -42,11 +42,12 @@ set(mcrestool_HEADERS
         src/ui/shapedcraftingwidget.h
         src/ui/smeltingwidget.h
         src/workspace/direntry.h
+        src/workspace/filetype.h
         src/workspace/fsref.h
         src/workspace/fstree.h
         src/workspace/fstreemodel.h
+        src/workspace/path.h
         src/workspace/workspace.h
-        src/workspace/filetype.h
         src/identifier.h
         src/mcrtutil.h
         src/result.h
@@ -67,6 +68,7 @@ set(mcrestool_SRC
         src/workspace/fsref.cpp
         src/workspace/fstree.cpp
         src/workspace/fstreemodel.cpp
+        src/workspace/path.cpp
         src/workspace/workspace.cpp
         src/identifier.cpp
         src/main.cpp)
