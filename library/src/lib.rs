@@ -5,3 +5,8 @@ mod tests {
         assert_eq!(2 + 2, 4);
     }
 }
+
+#[cxx::bridge(namespace = "mcrestool::lib")]
+mod ffi {
+
+}
