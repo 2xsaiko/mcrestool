@@ -234,7 +234,7 @@
   <customwidget>
    <class>ItemButton</class>
    <extends>QPushButton</extends>
-   <header>src/ui/itembutton.h</header>
+   <header location="global">itembutton.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>
