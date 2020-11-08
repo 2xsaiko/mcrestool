@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.0)
 project(mcrestool)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+cmake_policy(SET CMP0071 NEW)
 
 set(CMAKE_AUTOUIC ON)
 
@@ -18,6 +19,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 find_package(Corrosion REQUIRED)
+find_program(CXXBRIDGE cxxbridge REQUIRED)
+message(STATUS "Using cxxbridge: ${CXXBRIDGE}")
 
 find_package(Qt5 CONFIG REQUIRED
         Core
