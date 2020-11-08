@@ -9,8 +9,8 @@ struct DirEntry {
     bool is_file;
     bool is_dir;
     bool is_symlink;
-    QString file_name;
-    FsRef real_path;
+    Path path;
+    FsRef ref;
 };
 
 #endif //MCRESTOOL_DIRENTRY_H

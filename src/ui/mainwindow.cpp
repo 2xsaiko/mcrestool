@@ -50,12 +50,15 @@ void MainWindow::open() {
 }
 
 void MainWindow::save() {
-    QWidget* window = ui->mdi_area->activeSubWindow()->widget();
-    GenEditorWindow* editorWindow = dynamic_cast<GenEditorWindow*>(window);
-    if (editorWindow) {
-        editorWindow->save();
-    } else {
-        qDebug() << "Failed to save because" << editorWindow << "is not a GenEditorWindow!";
+    QMdiSubWindow* window = ui->mdi_area->activeSubWindow();
+    if (window) {
+        QWidget* widget = window->widget();
+        GenEditorWindow* editorWindow = dynamic_cast<GenEditorWindow*>(widget);
+        if (editorWindow) {
+            editorWindow->save();
+        } else {
+            qDebug() << "Failed to save because" << editorWindow << "is not a GenEditorWindow!";
+        }
     }
 }
 
@@ -135,7 +138,7 @@ void MainWindow::restree_open(const QModelIndex& index) {
             case FILETYPE_LANGUAGE_PART:
             case FILETYPE_LANGUAGE:
                 qDebug() << "opening lang page window!" << item->file_name();
-                auto* ltw = new LanguageTableWindow(new LanguageTableContainer(item->fsref(), this), this);
+                auto* ltw = new LanguageTableWindow(new LanguageTableContainer(item->ref(), this), this);
                 ltw->reload();
                 ui->mdi_area->addSubWindow(ltw);
                 ltw->show();

@@ -12,19 +12,19 @@ class FsTreeEntry : public QObject {
 Q_OBJECT
 
 public:
-    explicit FsTreeEntry(FsRef ref, WorkspaceRoot* root, FsTreeEntry* parent = nullptr);
+    explicit FsTreeEntry(const FsRef& ref, WorkspaceRoot* root, FsTreeEntry* parent = nullptr);
 
     void refresh();
 
-    const FsRef& fsref() const;
+    const FsRef& ref() const;
 
     QString file_name() const;
 
     FileType file_type() const;
 
-    FsTreeEntry* get_parent();
+    FsTreeEntry* parent();
 
-    WorkspaceRoot* get_root();
+    WorkspaceRoot* root();
 
     int children_count() const;
 
@@ -32,18 +32,25 @@ public:
 
     FsTreeEntry* by_index(int child);
 
+    FsTreeEntry* by_name(const QString& name);
+
+private:
+    void refresh_as_zip();
+
+    void refresh_as_normal();
+
 signals:
 
     void children_changed();
 
 private:
-    FsRef ref;
-    FileType type;
+    FsRef m_ref;
+    FileType m_type;
 
-    FsTreeEntry* parent;
-    QVector<FsTreeEntry*> children;
+    FsTreeEntry* m_parent;
+    QVector<FsTreeEntry*> m_children;
 
-    WorkspaceRoot* root;
+    WorkspaceRoot* m_root;
 
 };
 

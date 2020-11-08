@@ -15,7 +15,7 @@ QModelIndex FsTreeModel::index(int row, int column, const QModelIndex& parent) c
     } else {
         QObject* ptr = static_cast<QObject*>(parent.internalPointer());
         if (auto item = qobject_cast<WorkspaceRoot*>(ptr)) {
-            data = item->get_tree()->by_index(row);
+            data = item->tree()->by_index(row);
         } else if (auto item = qobject_cast<FsTreeEntry*>(ptr)) {
             data = item->by_index(row);
         }
@@ -33,12 +33,12 @@ QModelIndex FsTreeModel::parent(const QModelIndex& child) const {
 
     QObject* ptr = static_cast<QObject*>(child.internalPointer());
     if (auto item = qobject_cast<FsTreeEntry*>(ptr)) {
-        FsTreeEntry* root = item->get_parent();
+        FsTreeEntry* root = item->parent();
         assert(root != nullptr);
 
-        if (root->get_parent() == nullptr) {
+        if (root->parent() == nullptr) {
             // parent is top-level (WorkspaceRoot)
-            return createIndex(root->index_of(item), 0, root->get_root());
+            return createIndex(root->index_of(item), 0, root->root());
         }
 
         return createIndex(root->index_of(item), 0, root);
@@ -55,7 +55,7 @@ QVariant FsTreeModel::data(const QModelIndex& index, int role) const {
 
     QObject* ptr = static_cast<QObject*>(index.internalPointer());
     if (auto item = qobject_cast<WorkspaceRoot*>(ptr)) {
-        return item->get_name();
+        return item->name();
     } else if (auto item = qobject_cast<FsTreeEntry*>(ptr)) {
         return item->file_name();
     } else {
@@ -80,7 +80,7 @@ int FsTreeModel::rowCount(const QModelIndex& parent) const {
     if (auto item = qobject_cast<FsTreeEntry*>(ptr)) {
         return item->children_count();
     } else if (auto item = qobject_cast<WorkspaceRoot*>(ptr)) {
-        return item->get_tree()->children_count();
+        return item->tree()->children_count();
     } else {
         return this->ws->root_count();
     }

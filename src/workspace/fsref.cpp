@@ -7,39 +7,39 @@
 #include <QDebug>
 #include <quazipfile.h>
 
-FsRef::FsRef(const QString& file_path) : type(FSREF_NORMAL), normal(new NormalFsRef) {
-    this->normal->file_path = file_path;
+FsRef::FsRef(const Path& file_path) : m_type(FSREF_NORMAL), m_normal(new NormalFsRef) {
+    this->m_normal->file_path = file_path.to_string();
 }
 
-FsRef::FsRef(const QString& zip_path, const QString& file_path) : type(FSREF_ZIP), zip(new ZipFsRef) {
-    this->zip->zip_path = zip_path;
-    this->zip->file_path = file_path;
-    this->zip->qz = QSharedPointer<QuaZip>(new QuaZip(zip_path));
-    this->zip->qz->open(QuaZip::mdUnzip);
+FsRef::FsRef(const Path& zip_path, const Path& file_path) : m_type(FSREF_ZIP), m_zip(new ZipFsRef) {
+    this->m_zip->zip_path = zip_path.to_string();
+    this->m_zip->file_path = Path("/").join(file_path).to_string();
+    this->m_zip->qz = QSharedPointer<QuaZip>(new QuaZip(zip_path.to_string()));
+    this->m_zip->qz->open(QuaZip::mdUnzip);
 }
 
-FsRef::FsRef(const FsRef& that) : type(that.type) {
-    switch (that.type) {
+FsRef::FsRef(const FsRef& that) : m_type(that.m_type) {
+    switch (that.m_type) {
         case FSREF_NORMAL:
-            this->normal = new NormalFsRef;
-            this->normal->file_path = that.normal->file_path;
+            this->m_normal = new NormalFsRef;
+            this->m_normal->file_path = that.m_normal->file_path;
             break;
         case FSREF_ZIP:
-            this->zip = new ZipFsRef;
-            this->zip->zip_path = that.zip->zip_path;
-            this->zip->qz = that.zip->qz;
-            this->zip->file_path = that.zip->file_path;
+            this->m_zip = new ZipFsRef;
+            this->m_zip->zip_path = that.m_zip->zip_path;
+            this->m_zip->qz = that.m_zip->qz;
+            this->m_zip->file_path = that.m_zip->file_path;
             break;
     }
 }
 
 FsRef::~FsRef() {
-    switch (this->type) {
+    switch (this->m_type) {
         case FSREF_NORMAL:
-            delete this->normal;
+            delete this->m_normal;
             break;
         case FSREF_ZIP:
-            delete this->zip;
+            delete this->m_zip;
             break;
         default:
             unreachable();
@@ -47,31 +47,31 @@ FsRef::~FsRef() {
 }
 
 bool FsRef::read_only() const {
-    switch (this->type) {
+    switch (this->m_type) {
         case FSREF_NORMAL:
-            return !QFileInfo(this->normal->file_path).isWritable();
+            return !QFileInfo(this->m_normal->file_path).isWritable();
         case FSREF_ZIP:
-            return !QFileInfo(this->zip->zip_path).isWritable();
+            return !QFileInfo(this->m_zip->zip_path).isWritable();
         default:
             unreachable();
     }
 }
 
 bool FsRef::is_file() const {
-    switch (this->type) {
+    switch (this->m_type) {
         case FSREF_NORMAL:
-            return QFileInfo(this->normal->file_path).isFile();
+            return QFileInfo(this->m_normal->file_path).isFile();
         case FSREF_ZIP:
-            return QuaZip(this->zip->zip_path).getFileNameList().contains(this->zip->file_path);
+            return QuaZip(this->m_zip->zip_path).getFileNameList().contains(this->m_zip->file_path);
         default:
             unreachable();
     }
 }
 
 bool FsRef::is_dir() const {
-    switch (this->type) {
+    switch (this->m_type) {
         case FSREF_NORMAL:
-            return QFileInfo(this->normal->file_path).isDir();
+            return QFileInfo(this->m_normal->file_path).isDir();
         case FSREF_ZIP:
             return !this->is_file();
         default:
@@ -80,9 +80,9 @@ bool FsRef::is_dir() const {
 }
 
 bool FsRef::is_link() const {
-    switch (this->type) {
+    switch (this->m_type) {
         case FSREF_NORMAL:
-            return !QFileInfo(this->normal->file_path).isSymbolicLink();
+            return !QFileInfo(this->m_normal->file_path).isSymbolicLink();
         case FSREF_ZIP:
             return false; // ain't no links in zip files
         default:
@@ -91,97 +91,89 @@ bool FsRef::is_link() const {
 }
 
 QString FsRef::file_name() const {
-    // TODO cache
-    QStringRef file_name;
-    int from = 0;
-    int idx;
+    return this->path().file_name();
+}
 
-    QString file_path;
-
-    switch (this->type) {
+Path FsRef::path() const {
+    switch (this->m_type) {
         case FSREF_NORMAL:
-            file_path = this->normal->file_path;
-            break;
+            return this->m_normal->file_path;
         case FSREF_ZIP:
-            file_path = this->zip->file_path;
-            break;
+            return this->m_zip->file_path;
         default:
             unreachable();
     }
-
-    while (from < file_path.length()) {
-        idx = file_path.indexOf('/', from);
-        if (idx == -1) break;
-        int next = file_path.indexOf('/', idx + 1);
-        if (next == -1) next = file_path.length();
-        if (next - idx - 1 >= 1) {
-            file_name = QStringRef(&file_path, idx + 1, next - idx - 1);
-        }
-        from = next;
-    }
-
-    if (file_name.isNull()) return "<???>";
-
-    return file_name.toString();
 }
 
 QSharedPointer<QIODevice> FsRef::open() const {
-    switch (this->type) {
+    switch (this->m_type) {
         case FSREF_NORMAL:
-            return QSharedPointer<QIODevice>(new QFile(this->normal->file_path));
+            return QSharedPointer<QIODevice>(new QFile(this->m_normal->file_path));
         case FSREF_ZIP:
-            return QSharedPointer<QIODevice>(new QuaZipFile(this->zip->zip_path, this->zip->zip_path));
+            return QSharedPointer<QIODevice>(new QuaZipFile(this->m_zip->zip_path, this->m_zip->zip_path));
         default:
             unreachable();
     }
 }
 
 QList<DirEntry> FsRef::read_dir() const {
-    switch (this->type) {
+    qDebug() << "read_dir" << this->path().to_string();
+    switch (this->m_type) {
         case FSREF_NORMAL: {
             QList<DirEntry> list;
-            QDir dir(this->normal->file_path);
-            qDebug() << this->normal->file_path;
-            qDebug() << QFileInfo(this->normal->file_path).absoluteDir();
-            for (auto entry : dir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot)) {
-                qDebug() << entry;
+            QDir dir(this->m_normal->file_path);
+//            qDebug() << this->m_normal->file_path;
+//            qDebug() << QFileInfo(this->m_normal->file_path).absoluteDir();
+
+            for (const auto& entry : dir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot)) {
+//                qDebug() << entry;
                 list += DirEntry {
                     .is_file = entry.isFile(),
                     .is_dir = entry.isDir(),
                     .is_symlink = entry.isSymbolicLink(),
-                    .file_name = entry.fileName(),
-                    .real_path = FsRef(entry.filePath()),
+                    .path = entry.fileName(),
+                    .ref = FsRef(entry.filePath()),
                 };
             }
+
             return list;
         }
         case FSREF_ZIP: {
             QList<DirEntry> list;
-            QSet<QString> scanned;
-            QuaZip qz(this->zip->zip_path);
+            QSet<Path> scanned;
+            QuaZip qz(this->m_zip->zip_path);
             qz.open(QuaZip::mdUnzip);
-            if (qz.getFileNameList().contains(this->zip->file_path)) return list;
-            for (auto entry : qz.getFileInfoList64()) {
-                QString prefix = this->zip->file_path;
-                if (!prefix.endsWith('/')) prefix += '/';
-                if (prefix == "/") prefix = "";
-                qDebug() << prefix << entry.name;
-                if (entry.name.startsWith(prefix)) {
-                    int start = prefix.size();
-                    int end = entry.name.indexOf('/', start);
-                    bool is_dir = end != -1;
-                    if (end == -1) end = entry.name.length();
-                    QString name = entry.name.mid(start, end - start);
-                    if (!scanned.contains(name)) {
-                        qDebug() << is_dir << name;
+            if (qz.getFileNameList().contains(Path(this->m_zip->file_path).strip_prefix("/").to_string())) return list;
+
+            Path cwd = "/";
+            cwd.push(this->m_zip->file_path);
+
+            for (const auto& entry : qz.getFileInfoList64()) {
+                Path entry_path = "/";
+                entry_path.push(entry.name);
+
+                if (entry_path.starts_with(cwd)) {
+                    Path file = entry_path.strip_prefix(cwd);
+                    QString entry_name = file.components().next().to_string();
+
+                    // entry_name is a directory if file has more than just the
+                    // first path component (since then we have a file that's
+                    // inside the entry_name directory)
+                    bool is_dir = file.components().size() > 1;
+
+                    // qDebug() << cwd.to_string() << entry_path.to_string() << file.to_string() << entry_name << is_dir;
+
+                    if (!scanned.contains(entry_name)) {
+                        if(is_dir)
+//                        qDebug() << is_dir << entry_name;
                         list += DirEntry {
                             .is_file = !is_dir,
                             .is_dir = is_dir,
                             .is_symlink = false,
-                            .file_name = name,
-                            .real_path = FsRef(this->zip->zip_path, entry.name),
+                            .path = entry_name,
+                            .ref = FsRef(this->m_zip->zip_path, cwd.join(entry_name)),
                         };
-                        scanned += name;
+                        scanned += entry_name;
                     }
                 }
             }
@@ -192,18 +184,108 @@ QList<DirEntry> FsRef::read_dir() const {
     }
 }
 
-bool FsRef::remove(bool recursive) const {
-    switch (this->type) {
+
+QList<DirEntry> FsRef::read_dir_recursive() const {
+    switch (this->m_type) {
         case FSREF_NORMAL: {
-            QFileInfo fi(this->normal->file_path);
+            QList<DirEntry> list;
+            QDir dir(this->m_normal->file_path);
+//            qDebug() << this->m_normal->file_path;
+//            qDebug() << QFileInfo(this->m_normal->file_path).absoluteDir();
+
+            for (const auto& entry : dir.entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot)) {
+//                qDebug() << entry;
+                list += DirEntry {
+                    .is_file = entry.isFile(),
+                    .is_dir = entry.isDir(),
+                    .is_symlink = entry.isSymbolicLink(),
+                    .path = entry.fileName(),
+                    .ref = FsRef(entry.filePath()),
+                };
+
+                if (list.last().is_dir) {
+                    list += list.last().ref.read_dir_recursive();
+                }
+            }
+
+            return list;
+        }
+        case FSREF_ZIP: {
+            QList<DirEntry> list;
+            QSet<Path> dirs;
+            QuaZip qz(this->m_zip->zip_path);
+            qz.open(QuaZip::mdUnzip);
+            if (qz.getFileNameList().contains(this->m_zip->file_path)) return list;
+
+            Path cwd = "/";
+            cwd.push(this->m_zip->file_path);
+
+            QList<QuaZipFileInfo64> qList = qz.getFileInfoList64();
+
+            for (const auto& entry : qList) {
+                Path entry_path = "/";
+                entry_path.push(entry.name);
+
+//                qDebug() << cwd.to_string() << entry_path.to_string();
+
+                if (entry_path.starts_with(cwd)) {
+                    Path file = entry_path.strip_prefix(cwd);
+
+                    Path path = entry_path.parent();
+                    QList<Path> paths_to_create;
+
+                    while (!path.is_empty() && path != cwd && !dirs.contains(path)) {
+                        paths_to_create += path;
+                        path = path.parent();
+                    }
+
+                    while (!paths_to_create.isEmpty()) {
+                        Path p = paths_to_create.takeLast();
+                        dirs += p;
+
+                        qDebug() << p.to_string();
+
+                        list += DirEntry {
+                            .is_file = false,
+                            .is_dir = true,
+                            .is_symlink = false,
+                            .path = p.strip_prefix(cwd),
+                            .ref = FsRef(this->m_zip->zip_path, p),
+                        };
+                    }
+
+                    list += DirEntry {
+                        .is_file = true,
+                        .is_dir = false,
+                        .is_symlink = false,
+                        .path = file,
+                        .ref = FsRef(this->m_zip->zip_path, entry.name),
+                    };
+                }
+            }
+
+            std::sort(list.begin(), list.end(), [](const DirEntry& a, const DirEntry& b) { return (a.is_dir && !b.is_dir) || a.path.to_string() < b.path.to_string(); });
+
+
+            return list;
+        }
+        default:
+            unreachable();
+    }
+}
+
+bool FsRef::remove(bool recursive) const {
+    switch (this->m_type) {
+        case FSREF_NORMAL: {
+            QFileInfo fi(this->m_normal->file_path);
             if (fi.isFile()) {
-                return QFile::remove(this->normal->file_path);
+                return QFile::remove(this->m_normal->file_path);
             } else if (fi.isDir()) {
                 if (recursive) {
-                    return QDir(this->normal->file_path).removeRecursively();
+                    return QDir(this->m_normal->file_path).removeRecursively();
                 } else {
                     // TODO does this remove directories? There's no QDir::remove for one path
-                    return QFile::remove(this->normal->file_path);
+                    return QFile::remove(this->m_normal->file_path);
                 }
             }
             return false;
@@ -215,21 +297,21 @@ bool FsRef::remove(bool recursive) const {
     }
 }
 
-FsRef FsRef::join(const QString& rel_path) {
-    switch (this->type) {
+FsRef FsRef::join(const Path& rel_path) {
+    switch (this->m_type) {
         case FSREF_NORMAL:
-            return FsRef(this->normal->file_path + "/" + rel_path);
+            return FsRef(Path(this->m_normal->file_path).join(rel_path));
         case FSREF_ZIP:
-            return FsRef(this->zip->zip_path, this->zip->file_path + "/" + rel_path);
+            return FsRef(this->m_zip->zip_path, Path(this->m_zip->file_path).join(rel_path));
         default:
             unreachable();
     }
 }
 
 FsRef FsRef::parent() const {
-    switch (this->type) {
+    switch (this->m_type) {
         case FSREF_NORMAL: {
-            auto dir = QDir(this->normal->file_path);
+            auto dir = QDir(this->m_normal->file_path);
             dir.cdUp();
             return FsRef(dir.path());
         }
@@ -240,12 +322,16 @@ FsRef FsRef::parent() const {
     }
 }
 
-FileType FsRef::get_type() const {
+FileType FsRef::file_type() const {
     // shitty detection for now
-    if (this->file_name().endsWith(".json") && this->parent().file_name() == "lang") {
+    if (this->path().extension() == "json" && this->parent().file_name() == "lang") {
         return FILETYPE_LANGUAGE_PART;
     } else if (this->file_name() == "lang") {
         return FILETYPE_LANGUAGE;
     }
     return FILETYPE_NONE;
+}
+
+FsRefType FsRef::type() const {
+    return this->m_type;
 }

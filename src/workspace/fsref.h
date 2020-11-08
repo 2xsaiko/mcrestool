@@ -7,6 +7,7 @@
 #include <QList>
 #include <QSharedPointer>
 #include <quazip.h>
+#include <path.h>
 
 struct DirEntry;
 
@@ -21,44 +22,55 @@ struct ZipFsRef {
     QString file_path;
 };
 
+enum FsRefType {
+    FSREF_NORMAL,
+    FSREF_ZIP
+};
+
 class FsRef {
 
 public:
-    explicit FsRef(const QString& file_path);
+    explicit FsRef(const Path& file_path);
 
-    explicit FsRef(const QString& zip_path, const QString& file_path);
+    explicit FsRef(const Path& zip_path, const Path& file_path);
 
     FsRef(const FsRef&);
 
     ~FsRef();
 
-    bool read_only() const;
+    [[nodiscard]] bool read_only() const;
 
-    bool is_file() const;
+    [[nodiscard]] bool is_file() const;
 
-    bool is_dir() const;
+    [[nodiscard]] bool is_dir() const;
 
-    bool is_link() const;
+    [[nodiscard]] bool is_link() const;
 
-    QString file_name() const;
+    [[nodiscard]] QString file_name() const;
 
-    QSharedPointer<QIODevice> open() const;
+    [[nodiscard]] Path path() const;
 
-    QList<DirEntry> read_dir() const;
+    [[nodiscard]] QSharedPointer<QIODevice> open() const;
+
+    [[nodiscard]] QList<DirEntry> read_dir() const;
+
+    [[nodiscard]] QList<DirEntry> read_dir_recursive() const;
 
     bool remove(bool recursive) const;
 
-    FileType get_type() const;
+    [[nodiscard]] FileType file_type() const;
 
-    FsRef parent() const;
+    [[nodiscard]] FsRef parent() const;
 
-    FsRef join(const QString& rel_path);
+    FsRef join(const Path& rel_path);
+
+    [[nodiscard]] FsRefType type() const;
 
 private:
-    enum { FSREF_NORMAL, FSREF_ZIP } type;
+    FsRefType m_type;
     union {
-        NormalFsRef* normal;
-        ZipFsRef* zip;
+        NormalFsRef* m_normal;
+        ZipFsRef* m_zip;
     };
 
 };

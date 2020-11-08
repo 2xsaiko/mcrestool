@@ -41,12 +41,12 @@ bool LanguageTableContainer::read_only() const {
 void LanguageTableContainer::save() {
     if (read_only()) return;
 
-    for (auto entry: this->fs_ref.read_dir()) {
-        qDebug() << entry.file_name;
-        if (entry.file_name.endsWith(".json") && entry.is_file) {
-            QString lang = entry.file_name.left(entry.file_name.length() - 5);
+    for (const auto& entry: this->fs_ref.read_dir()) {
+        qDebug() << entry.path.file_name();
+        if (entry.path.extension() == "json" && entry.is_file) {
+            QString lang = entry.path.file_stem();
             if (!this->lt->data().contains_language(lang)) {
-                entry.real_path.remove(false);
+                entry.ref.remove(false);
             }
         }
     }
@@ -85,8 +85,9 @@ void LanguageTableContainer::load() {
     // move en_us to the beginning
     for (int i = 0; i < list.size(); i++) {
         DirEntry entry = list[i];
-        if (entry.file_name.endsWith(".json") && entry.is_file) {
-            QString lang = entry.file_name.left(entry.file_name.length() - 5);
+        qDebug() << entry.path.to_string() << entry.path.file_stem() << entry.path.extension();
+        if (entry.path.extension() == "json" && entry.is_file) {
+            QString lang = entry.path.file_stem();
             if (lang == "en_us") {
                 list.removeAt(i);
                 list.insert(0, entry);
@@ -96,10 +97,10 @@ void LanguageTableContainer::load() {
     }
 
     for (auto entry: list) {
-        if (entry.file_name.endsWith(".json") && entry.is_file) {
-            QString lang = entry.file_name.left(entry.file_name.length() - 5);
+        if (entry.path.extension() == "json" && entry.is_file) {
+            QString lang = entry.path.file_stem();
             this->lt->data().add_language(lang);
-            QSharedPointer<QIODevice> dev = entry.real_path.open();
+            QSharedPointer<QIODevice> dev = entry.ref.open();
             dev->open(QIODevice::ReadOnly | QIODevice::Text);
             QJsonParseError err;
             auto doc = QJsonDocument::fromJson(dev->readAll(), &err);

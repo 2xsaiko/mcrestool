@@ -2,6 +2,8 @@
 #define MCRESTOOL_WORKSPACE_H
 
 #include "direntry.h"
+#include "fstree.h"
+
 
 #include <QString>
 
@@ -13,13 +15,13 @@ class WorkspaceRoot : public QObject {
 public:
     WorkspaceRoot(QString name, FsRef root, QObject* parent = nullptr);
 
-    FsTreeEntry* get_tree();
+    FsTreeEntry* tree();
 
-    const QString& get_name() const;
+    const QString& name() const;
 
 private:
-    QString name;
-    FsTreeEntry* tree;
+    QString m_name;
+    FsTreeEntry* m_tree;
 
 };
 
@@ -46,7 +48,7 @@ signals:
     void entry_removed(WorkspaceRoot* root);
 
 private:
-    QVector<WorkspaceRoot*> roots;
+    QVector<WorkspaceRoot*> m_roots;
 
 };
 

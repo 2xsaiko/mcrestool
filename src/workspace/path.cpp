@@ -3,6 +3,8 @@
 #include <utility>
 #include <QDebug>
 
+#include <mcrtutil.h>
+
 Path::Path() : m_inner() {
 }
 
@@ -50,6 +52,51 @@ void Path::push(const Path& right) {
 #endif
 }
 
+bool Path::pop() {
+    Path p = this->parent();
+
+    if (p.is_null()) return false;
+
+    this->m_inner = p.m_inner;
+    return true;
+}
+
+Path Path::strip_prefix(const Path& base) const {
+    auto this_iter = this->components();
+    auto base_iter = base.components();
+
+    while (!base_iter.is_empty()) {
+        if (this_iter.is_empty()) return Path();
+        if (this_iter.next() != base_iter.next()) return Path();
+    }
+
+    return this_iter.to_path();
+}
+
+bool Path::starts_with(const Path& base) const {
+    auto this_iter = this->components();
+    auto base_iter = base.components();
+
+    while (!base_iter.is_empty()) {
+        if (this_iter.is_empty()) return false;
+        if (this_iter.next() != base_iter.next()) return false;
+    }
+
+    return true;
+}
+
+bool Path::ends_with(const Path& child) const {
+    auto this_iter = this->components();
+    auto child_iter = child.components();
+
+    while (!child_iter.is_empty()) {
+        if (this_iter.is_empty()) return false;
+        if (this_iter.next() != child_iter.next()) return false;
+    }
+
+    return true;
+}
+
 PathComponents Path::components() const {
     return PathComponents(this->m_inner);
 }
@@ -63,6 +110,31 @@ QString Path::file_name() const {
     }
 
     return QString();
+}
+
+QString Path::file_stem() const {
+    QString file_name = this->file_name();
+    if (file_name.isEmpty()) return QString();
+
+    int i = file_name.lastIndexOf('.');
+
+    if (i < 1) {
+        return file_name;
+    }
+
+    return file_name.left(i);
+}
+
+QString Path::extension() const {
+    QString file_name = this->file_name();
+    int i = file_name.lastIndexOf('.');
+
+    // ignore first dot in file names like .gitignore
+    if (i < 1) {
+        return QString();
+    }
+
+    return file_name.right(file_name.length() - i - 1);
 }
 
 const QString& Path::to_string() const {
@@ -79,6 +151,10 @@ bool Path::is_absolute() const {
 
 bool Path::is_null() const {
     return this->m_inner.isNull();
+}
+
+bool Path::is_empty() const {
+    return this->m_inner.isEmpty();
 }
 
 PathComponent::PathComponent() : type(PATHCOMP_NULL) {
@@ -99,8 +175,29 @@ PathComponent::PathComponent(const QStringRef& text) {
     }
 }
 
+QString PathComponent::to_string() const {
+    switch (this->type) {
+        case PATHCOMP_NULL:
+            return QString();
+        case PATHCOMP_ROOT:
+            return "/";
+        case PATHCOMP_CUR_DIR:
+            return ".";
+        case PATHCOMP_PARENT_DIR:
+            return "..";
+        case PATHCOMP_NORMAL:
+            return this->text;
+        default:
+            unreachable();
+    }
+}
+
 bool PathComponent::is_null() const {
     return this->type == PATHCOMP_NULL;
+}
+
+bool operator==(const PathComponent& left, const PathComponent& right) {
+    return left.type == right.type && (left.type != PATHCOMP_NORMAL || left.text == right.text);
 }
 
 PathComponents::PathComponents(const Path& path) :
@@ -110,6 +207,12 @@ PathComponents::PathComponents(const Path& path) :
 
     // initial clean up end of path
     this->peek_back();
+}
+
+PathComponents::PathComponents(const PathComponents& that) :
+    m_inner(that.m_inner),
+    m_left_end(that.m_left_end),
+    m_right_end(that.m_right_end) {
 }
 
 PathComponent PathComponents::peek() {
@@ -259,4 +362,16 @@ Path PathComponents::to_path() const {
 
 bool PathComponents::is_empty() const {
     return this->m_left_end >= this->m_right_end;
+}
+
+int PathComponents::size() const {
+    PathComponents copy = *this;
+    int size = 0;
+
+    while (!copy.is_empty()) {
+        copy.skip(1);
+        size += 1;
+    }
+
+    return size;
 }
