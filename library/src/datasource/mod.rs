@@ -18,7 +18,7 @@ pub enum DataSource {
 }
 
 impl DataSource {
-    pub fn open(&self, path: impl AsRef<Path>, opts: OpenOptions) -> Result<ResFile, Error> {
+    pub fn open<P: AsRef<Path>>(&self, path: P, opts: OpenOptions) -> Result<ResFile, Error> {
         match self {
             DataSource::Dir(ds) => {
                 Ok(ResFile::File(ds.open(path, opts.into())?))
@@ -38,45 +38,52 @@ impl DataSource {
         }
     }
 
-    pub fn create_dir(&self, path: impl AsRef<Path>) -> Result<(), Error> {
+    pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
         match self {
             DataSource::Dir(ds) => Ok(ds.create_dir(path)?),
             DataSource::Zip(_) => Err(Error::ReadOnly),
         }
     }
 
-    pub fn create_dir_all(&self, path: impl AsRef<Path>) -> Result<(), Error> {
+    pub fn create_dir_all<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
         match self {
             DataSource::Dir(ds) => Ok(ds.create_dir_all(path)?),
             DataSource::Zip(_) => Err(Error::ReadOnly),
         }
     }
 
-    pub fn delete_file(&self, path: impl AsRef<Path>) -> Result<(), Error> {
+    pub fn delete_file<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
         match self {
             DataSource::Dir(ds) => Ok(ds.delete_file(path)?),
             DataSource::Zip(_) => Err(Error::ReadOnly),
         }
     }
 
-    pub fn delete_dir(&self, path: impl AsRef<Path>) -> Result<(), Error> {
+    pub fn delete_dir<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
         match self {
             DataSource::Dir(ds) => Ok(ds.delete_dir(path)?),
             DataSource::Zip(_) => Err(Error::ReadOnly),
         }
     }
 
-    pub fn delete_dir_all(&self, path: impl AsRef<Path>) -> Result<(), Error> {
+    pub fn delete_dir_all<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
         match self {
             DataSource::Dir(ds) => Ok(ds.delete_dir_all(path)?),
             DataSource::Zip(_) => Err(Error::ReadOnly),
         }
     }
 
-    pub fn list_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, Error> {
+    pub fn list_dir<P: AsRef<Path>>(&self, path: P) -> Result<Vec<DirEntry>, Error> {
         match self {
             DataSource::Dir(ds) => Ok(ds.list_dir(path)?),
             DataSource::Zip(ds) => Ok(ds.list_dir(path)?),
+        }
+    }
+
+    pub fn read_info<P: AsRef<Path>>(&self, path: P) -> Result<FileInfo, Error> {
+        match self {
+            DataSource::Dir(ds) => Ok(ds.read_info(path)?),
+            DataSource::Zip(ds) => Ok(ds.read_info(path)?),
         }
     }
 }
@@ -117,14 +124,13 @@ impl From<zip::Error> for Error {
             zip::Error::Zip(ZipError::FileNotFound) => Error::NotFound,
             zip::Error::Zip(ZipError::InvalidArchive(_)) |
             zip::Error::Zip(ZipError::UnsupportedArchive(_)) => Error::Io,
-            zip::Error::Zip(ZipError::Io(e)) => {
+            zip::Error::Zip(ZipError::Io(e)) | zip::Error::Io(e) => {
                 match e.kind() {
                     ErrorKind::NotFound => Error::NotFound,
                     ErrorKind::PermissionDenied => Error::PermissionDenied,
                     _ => Error::Io
                 }
             }
-            zip::Error::Io(_) => unreachable!(),
             zip::Error::InvalidPath(p) => Error::InvalidPath(p)
         }
     }
@@ -196,8 +202,13 @@ impl Into<fs::OpenOptions> for OpenOptions {
 }
 
 pub struct DirEntry {
+    pub file_name: OsString,
+    pub info: FileInfo,
+}
+
+pub struct FileInfo {
     pub is_file: bool,
     pub is_dir: bool,
     pub is_symlink: bool,
-    pub file_name: OsString,
+    pub read_only: bool,
 }

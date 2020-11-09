@@ -1,9 +1,9 @@
 use std::io;
-use std::ops::Deref;
-use std::path::PathBuf;
 
 use datasource::{DataSource, dir, zip};
 use datasource::DataSource as DataSource_;
+
+use crate::datasource::FileInfo;
 
 mod datasource;
 
@@ -14,10 +14,15 @@ mod ffi {
     }
 
     pub struct DirEntry {
+        pub file_name: String,
+        pub info: FileInfo,
+    }
+
+    pub struct FileInfo {
         pub is_file: bool,
         pub is_dir: bool,
         pub is_symlink: bool,
-        pub file_name: String,
+        pub read_only: bool,
     }
 
     extern "C" {}
@@ -40,6 +45,8 @@ mod ffi {
         fn delete_dir_all(self: &DataSource, path: &str) -> Result<()>;
 
         fn list_dir(self: &DataSource, path: &str) -> Result<Vec<DirEntry>>;
+
+        fn read_info(self: &DataSource, path: &str) -> Result<FileInfo>;
     }
 }
 
@@ -73,20 +80,30 @@ impl ffi::DataSource {
     }
 
     fn list_dir(&self, path: &str) -> Result<Vec<ffi::DirEntry>, datasource::Error> {
-        match self.inner.list_dir(path) {
-            Err(e) => Err(e),
-            Ok(v) => Ok(v.into_iter().map(|a| a.into()).collect())
-        }
+        self.inner.list_dir(path).map(|v| v.into_iter().map(|a| a.into()).collect())
+    }
+
+    fn read_info(&self, path: &str) -> Result<ffi::FileInfo, datasource::Error> {
+        self.inner.read_info(path).map(|v| v.into())
     }
 }
 
 impl From<datasource::DirEntry> for ffi::DirEntry {
     fn from(e: datasource::DirEntry) -> Self {
         ffi::DirEntry {
-            is_file: e.is_file,
-            is_dir: e.is_dir,
-            is_symlink: e.is_symlink,
             file_name: e.file_name.to_str().expect("invalid characters in file name for UTF-8 string").to_string(),
+            info: e.info.into(),
+        }
+    }
+}
+
+impl From<datasource::FileInfo> for ffi::FileInfo {
+    fn from(fi: FileInfo) -> Self {
+        ffi::FileInfo {
+            is_file: fi.is_file,
+            is_dir: fi.is_dir,
+            is_symlink: fi.is_symlink,
+            read_only: fi.read_only,
         }
     }
 }
