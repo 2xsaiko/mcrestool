@@ -1,7 +1,7 @@
 #ifndef MCRESTOOL_MCRTLIB_H
 #define MCRESTOOL_MCRTLIB_H
 
-#include <string>
+#include <lib.rs.h>
 
 #if defined(_MSC_VER)
 #   define EXPORT __declspec(dllexport)
@@ -21,6 +21,7 @@
 #   define MCRTLIB_PUBLIC IMPORT
 #endif
 
-MCRTLIB_PUBLIC void say_hi_to_rust(std::string& str);
+namespace mcrtlib {
+}
 
 #endif //MCRESTOOL_MCRTLIB_H

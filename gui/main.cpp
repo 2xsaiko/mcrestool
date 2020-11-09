@@ -6,8 +6,7 @@
 #include <mcrtlib.h>
 
 int main(int argc, char* argv[]) {
-    std::string s("C++");
-    say_hi_to_rust(s);
+    mcrtlib::ffi::DataSource source = mcrtlib::ffi::datasource_open_zip("../minecraft-1.16.2-client.jar");
 
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);

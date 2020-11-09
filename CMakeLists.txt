@@ -31,5 +31,7 @@ find_package(KF5 REQUIRED
 
 find_package(QuaZip-Qt5 REQUIRED)
 
+add_definitions(-fexceptions)
+
 add_subdirectory(library)
 add_subdirectory(gui)
