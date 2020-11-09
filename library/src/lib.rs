@@ -2,6 +2,7 @@ use std::io;
 
 use datasource::{DataSource, dir, zip};
 use datasource::DataSource as DataSource_;
+use datasource::resfile::ResFile as ResFile_;
 
 use crate::datasource::FileInfo;
 
@@ -11,6 +12,10 @@ mod datasource;
 mod ffi {
     pub struct DataSource {
         pub inner: Box<DataSource_>,
+    }
+
+    pub struct ResFile {
+        pub inner: Box<ResFile_>,
     }
 
     pub struct DirEntry {
@@ -29,10 +34,13 @@ mod ffi {
 
     extern "Rust" {
         type DataSource_;
+        type ResFile_;
 
         fn datasource_open(path: &str) -> Result<DataSource>;
 
         fn datasource_open_zip(path: &str) -> Result<DataSource>;
+
+        fn open(self: &DataSource, path: &str, mode: &str) -> Result<ResFile>;
 
         fn create_dir(self: &DataSource, path: &str) -> Result<()>;
 
@@ -59,6 +67,21 @@ fn datasource_open_zip(path: &str) -> Result<ffi::DataSource, zip::Error> {
 }
 
 impl ffi::DataSource {
+    fn open(&self, path: &str, mode: &str) -> Result<ffi::ResFile, datasource::Error> {
+        let mut opts = datasource::OpenOptions::new();
+
+        for char in mode.chars() {
+            match char {
+                'r' => { opts.read(true); }
+                'w' => { opts.write(true); }
+                'c' => { opts.create(true); }
+                _ => {}
+            }
+        }
+
+        Ok(ffi::ResFile { inner: Box::new(self.inner.open(path, opts)?) })
+    }
+
     fn create_dir(&self, path: &str) -> Result<(), datasource::Error> {
         self.inner.create_dir(path)
     }
@@ -87,6 +110,8 @@ impl ffi::DataSource {
         self.inner.read_info(path).map(|v| v.into())
     }
 }
+
+impl ffi::ResFile {}
 
 impl From<datasource::DirEntry> for ffi::DirEntry {
     fn from(e: datasource::DirEntry) -> Self {

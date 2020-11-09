@@ -1,3 +1,4 @@
+use std::ffi::OsString;
 use std::fs;
 use std::io::{Cursor, ErrorKind};
 use std::path::{Component, Path, PathBuf};
@@ -6,7 +7,6 @@ use ::zip::result::ZipError;
 use thiserror::Error;
 
 use resfile::ResFile;
-use std::ffi::OsString;
 
 pub mod dir;
 pub mod zip;
@@ -167,6 +167,10 @@ impl Default for OpenOptions {
 }
 
 impl OpenOptions {
+    pub fn new() -> OpenOptions {
+        OpenOptions { read: false, write: false, create: false }
+    }
+
     pub fn reading() -> OpenOptions {
         OpenOptions { read: true, write: false, create: false }
     }
