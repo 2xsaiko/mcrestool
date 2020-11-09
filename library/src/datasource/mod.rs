@@ -6,6 +6,7 @@ use ::zip::result::ZipError;
 use thiserror::Error;
 
 use resfile::ResFile;
+use std::ffi::OsString;
 
 pub mod dir;
 pub mod zip;
@@ -72,7 +73,7 @@ impl DataSource {
         }
     }
 
-    pub fn list_dir(&self, path: impl AsRef<Path>) -> Result<Vec<PathBuf>, Error> {
+    pub fn list_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, Error> {
         match self {
             DataSource::Dir(ds) => Ok(ds.list_dir(path)?),
             DataSource::Zip(ds) => Ok(ds.list_dir(path)?),
@@ -198,5 +199,5 @@ pub struct DirEntry {
     pub is_file: bool,
     pub is_dir: bool,
     pub is_symlink: bool,
-    pub name: String,
+    pub file_name: OsString,
 }

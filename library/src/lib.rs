@@ -13,6 +13,13 @@ mod ffi {
         pub inner: Box<DataSource_>,
     }
 
+    pub struct DirEntry {
+        pub is_file: bool,
+        pub is_dir: bool,
+        pub is_symlink: bool,
+        pub file_name: String,
+    }
+
     extern "C" {}
 
     extern "Rust" {
@@ -32,7 +39,7 @@ mod ffi {
 
         fn delete_dir_all(self: &DataSource, path: &str) -> Result<()>;
 
-        fn list_dir(self: &DataSource, path: &str) -> Result<Vec<String>>;
+        fn list_dir(self: &DataSource, path: &str) -> Result<Vec<DirEntry>>;
     }
 }
 
@@ -65,12 +72,21 @@ impl ffi::DataSource {
         self.inner.delete_dir_all(path)
     }
 
-    fn list_dir(&self, path: &str) -> Result<Vec<String>, datasource::Error> {
+    fn list_dir(&self, path: &str) -> Result<Vec<ffi::DirEntry>, datasource::Error> {
         match self.inner.list_dir(path) {
             Err(e) => Err(e),
-            Ok(v) => Ok(v.into_iter()
-                .map(|a| a.to_str().expect("failed to convert to string").to_string())
-                .collect())
+            Ok(v) => Ok(v.into_iter().map(|a| a.into()).collect())
+        }
+    }
+}
+
+impl From<datasource::DirEntry> for ffi::DirEntry {
+    fn from(e: datasource::DirEntry) -> Self {
+        ffi::DirEntry {
+            is_file: e.is_file,
+            is_dir: e.is_dir,
+            is_symlink: e.is_symlink,
+            file_name: e.file_name.to_str().expect("invalid characters in file name for UTF-8 string").to_string(),
         }
     }
 }

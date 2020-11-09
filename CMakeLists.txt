@@ -19,7 +19,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 
 find_package(Corrosion REQUIRED)
-find_program(CXXBRIDGE cxxbridge REQUIRED)
+find_program(CXXBRIDGE cxxbridge REQUIRED PATHS $ENV{HOME}/.cargo/bin)
 message(STATUS "Using cxxbridge: ${CXXBRIDGE}")
 
 find_package(Qt5 CONFIG REQUIRED

@@ -2,7 +2,7 @@ use std::{fs, io};
 use std::fs::{File, OpenOptions};
 use std::path::{Path, PathBuf};
 
-use crate::datasource::normalize_path;
+use crate::datasource::{normalize_path, DirEntry};
 
 pub struct DataSource {
     dir: PathBuf,
@@ -22,11 +22,20 @@ impl DataSource {
         Ok(opts.open(self.get_full_path(path)?)?)
     }
 
-    pub fn list_dir(&self, path: impl AsRef<Path>) -> Result<Vec<PathBuf>, Error> {
+    pub fn list_dir(&self, path: impl AsRef<Path>) -> Result<Vec<DirEntry>, Error> {
         let result = fs::read_dir(self.get_full_path(path)?)?;
         Ok(result
             .filter_map(|e| e.ok())
-            .map(|e| e.path().strip_prefix(&self.dir).unwrap().to_path_buf())
+            .map(|e| {
+                let meta = e.metadata().expect("failed to load file metadata");
+                let ft = meta.file_type();
+                DirEntry {
+                    is_file: ft.is_file(),
+                    is_dir: ft.is_dir(),
+                    is_symlink: ft.is_symlink(),
+                    file_name: e.file_name(),
+                }
+            })
             .collect())
     }
 
