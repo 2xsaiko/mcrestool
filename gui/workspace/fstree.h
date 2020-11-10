@@ -1,10 +1,9 @@
 #ifndef MCRESTOOL_FSTREE_H
 #define MCRESTOOL_FSTREE_H
 
-#include "direntry.h"
-#include "filetype.h"
-
+#include <QObject>
 #include <QList>
+#include <mcrtlib.h>
 
 class WorkspaceRoot;
 
@@ -12,15 +11,15 @@ class FsTreeEntry : public QObject {
 Q_OBJECT
 
 public:
-    explicit FsTreeEntry(const FsRef& ref, WorkspaceRoot* root, FsTreeEntry* parent = nullptr);
+    explicit FsTreeEntry(const QString& path, WorkspaceRoot* root, FsTreeEntry* parent = nullptr);
 
     void refresh();
 
-    const FsRef& ref() const;
+    const QString& path() const;
 
     QString file_name() const;
 
-    FileType file_type() const;
+    mcrtlib::ffi::FileType file_type() const;
 
     FsTreeEntry* parent();
 
@@ -34,18 +33,13 @@ public:
 
     FsTreeEntry* by_name(const QString& name);
 
-private:
-    void refresh_as_zip();
-
-    void refresh_as_normal();
-
 signals:
 
     void children_changed();
 
 private:
-    FsRef m_ref;
-    FileType m_type;
+    QString m_path;
+    mcrtlib::ffi::FileType m_type;
 
     FsTreeEntry* m_parent;
     QVector<FsTreeEntry*> m_children;

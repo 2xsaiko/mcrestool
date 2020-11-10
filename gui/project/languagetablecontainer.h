@@ -1,26 +1,25 @@
 #ifndef MCRESTOOL_LANGUAGETABLECONTAINER_H
 #define MCRESTOOL_LANGUAGETABLECONTAINER_H
 
-#include <fsref.h>
-#include <languagetablemodel.h>
-
 #include <QObject>
+#include <mcrtlib.h>
+#include <languagetablemodel.h>
 
 class LanguageTableContainer : public QObject {
 Q_OBJECT
 
 public:
-    explicit LanguageTableContainer(FsRef fs_ref, QObject* parent = nullptr);
+    explicit LanguageTableContainer(const mcrtlib::ffi::DataSource& ds, QString path, QObject* parent = nullptr);
 
-    ~LanguageTableContainer();
+    ~LanguageTableContainer() override;
 
     LanguageTableModel* language_table();
 
-    bool persistent() const;
+    [[nodiscard]] bool persistent() const;
 
-    bool changed() const;
+    [[nodiscard]] bool changed() const;
 
-    bool read_only() const;
+    [[nodiscard]] bool read_only() const;
 
     void save();
 
@@ -37,13 +36,13 @@ signals:
     void changed();
 
 private:
-    FsRef fs_ref;
-    LanguageTableModel* lt;
+    const mcrtlib::ffi::DataSource& m_ds;
+    QString m_path;
+    LanguageTableModel* m_lt;
 
-    bool _persistent;
-    bool _changed;
-    bool _deleted;
-
+    bool m_persistent;
+    bool m_changed;
+    bool m_deleted;
 };
 
 #endif //MCRESTOOL_LANGUAGETABLECONTAINER_H

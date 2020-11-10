@@ -1,11 +1,10 @@
 #ifndef MCRESTOOL_WORKSPACE_H
 #define MCRESTOOL_WORKSPACE_H
 
-#include "direntry.h"
-#include "fstree.h"
-
-
 #include <QString>
+#include <mcrtlib.h>
+
+#include "fstree.h"
 
 class FsTreeEntry;
 
@@ -13,14 +12,17 @@ class WorkspaceRoot : public QObject {
     Q_OBJECT
 
 public:
-    WorkspaceRoot(QString name, FsRef root, QObject* parent = nullptr);
+    WorkspaceRoot(QString name, mcrtlib::ffi::DataSource ds, QObject* parent = nullptr);
 
     FsTreeEntry* tree();
 
-    const QString& name() const;
+    [[nodiscard]] const QString& name() const;
+
+    [[nodiscard]] const mcrtlib::ffi::DataSource& ds() const;
 
 private:
     QString m_name;
+    mcrtlib::ffi::DataSource m_ds;
     FsTreeEntry* m_tree;
 
 };

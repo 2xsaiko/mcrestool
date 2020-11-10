@@ -19,9 +19,6 @@ set(mcrestool_HEADERS
         ui/recipeeditwindow.h
         ui/shapedcraftingwidget.h
         ui/smeltingwidget.h
-        workspace/direntry.h
-        workspace/filetype.h
-        workspace/fsref.h
         workspace/fstree.h
         workspace/fstreemodel.h
         workspace/path.h
@@ -43,7 +40,6 @@ set(mcrestool_SRC
         ui/recipeeditwindow.cpp
         ui/shapedcraftingwidget.cpp
         ui/smeltingwidget.cpp
-        workspace/fsref.cpp
         workspace/fstree.cpp
         workspace/fstreemodel.cpp
         workspace/path.cpp

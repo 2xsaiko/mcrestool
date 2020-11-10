@@ -1,10 +1,10 @@
 #ifndef MCRESTOOL_FSTREEMODEL_H
 #define MCRESTOOL_FSTREEMODEL_H
 
+#include <QAbstractItemModel>
+
 #include "fstree.h"
 #include "workspace.h"
-
-#include <QAbstractItemModel>
 
 class FsTreeModel : public QAbstractItemModel {
     Q_OBJECT

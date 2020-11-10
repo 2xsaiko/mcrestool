@@ -1,12 +1,11 @@
 #ifndef MCRESTOOL_LANGUAGETABLEMODEL_H
 #define MCRESTOOL_LANGUAGETABLEMODEL_H
 
-#include <languagetable.h>
-#include <fsref.h>
-
 #include <QObject>
 #include <QMap>
 #include <QAbstractTableModel>
+#include <mcrtlib.h>
+#include <languagetable.h>
 
 class LanguageTableModel : public QAbstractTableModel {
 Q_OBJECT
@@ -16,7 +15,7 @@ public:
 
     void set_entry(QString language, QString key, QString value);
 
-    static LanguageTableModel* from_dir(FsRef path, QObject* parent);
+    static LanguageTableModel* from_dir(const mcrtlib::ffi::DataSource& ds, QString path, QObject* parent);
 
     [[nodiscard]] int rowCount(const QModelIndex& parent) const override;
 
@@ -41,7 +40,7 @@ signals:
     void changed(const QString& language, const QString& key, const QString& value);
 
 private:
-    LanguageTable lt;
+    LanguageTable m_lt;
 
     [[nodiscard]] QString get_column_name(int idx) const;
 

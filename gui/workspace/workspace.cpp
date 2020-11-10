@@ -1,10 +1,15 @@
 #include "workspace.h"
+
+#include <utility>
 #include "fstree.h"
 
-WorkspaceRoot::WorkspaceRoot(QString name, FsRef root, QObject* parent) :
+using mcrtlib::ffi::DataSource;
+
+WorkspaceRoot::WorkspaceRoot(QString name, DataSource ds, QObject* parent) :
     QObject(parent),
-    m_name(name),
-    m_tree(new FsTreeEntry(root, this)) {
+    m_name(std::move(name)),
+    m_ds(std::move(ds)),
+    m_tree(new FsTreeEntry("/", this)) {
     this->m_tree->refresh();
 }
 
@@ -16,18 +21,24 @@ const QString& WorkspaceRoot::name() const {
     return this->m_name;
 }
 
+const DataSource& WorkspaceRoot::ds() const {
+    return this->m_ds;
+}
+
 
 Workspace::Workspace(QObject* parent) :
     QObject(parent),
     m_roots(QVector<WorkspaceRoot*>()) {}
 
 void Workspace::add_dir(QString path) {
-    this->m_roots += new WorkspaceRoot(path, FsRef(path), this);
+    DataSource ds = mcrtlib::datasource_open(path);
+    this->m_roots += new WorkspaceRoot(path, ds, this);
     emit entry_added(this->m_roots.last());
 }
 
 void Workspace::add_file(QString path) {
-    this->m_roots += new WorkspaceRoot(path, FsRef(path, "/"), this);
+    DataSource ds = mcrtlib::datasource_open_zip(path);
+    this->m_roots += new WorkspaceRoot(path, ds, this);
     emit entry_added(this->m_roots.last());
 }
 

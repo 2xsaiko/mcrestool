@@ -1,21 +1,26 @@
-#include <direntry.h>
-#include "languagetablecontainer.h"
-
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QDebug>
+#include <utility>
+#include <mcrtlib.h>
+#include <path.h>
+#include "languagetablecontainer.h"
+
+using mcrtlib::ffi::DataSource;
 
 LanguageTableContainer::LanguageTableContainer(
-    FsRef fs_ref,
+    const DataSource& ds,
+    QString path,
     QObject* parent
 ) : QObject(parent),
-    fs_ref(fs_ref),
-    lt(new LanguageTableModel(LanguageTable(), this)) {
-    this->_persistent = false;
-    this->_changed = false;
-    this->_deleted = false;
+    m_ds(ds),
+    m_path(std::move(path)),
+    m_lt(new LanguageTableModel(LanguageTable(), this)) {
+    this->m_persistent = false;
+    this->m_changed = false;
+    this->m_deleted = false;
 
-    connect(lt, SIGNAL(changed(const QString&, const QString&, const QString&)), this, SLOT(on_changed()));
+    connect(m_lt, SIGNAL(changed(const QString&, const QString&, const QString&)), this, SLOT(on_changed()));
 }
 
 LanguageTableContainer::~LanguageTableContainer() {
@@ -23,15 +28,15 @@ LanguageTableContainer::~LanguageTableContainer() {
 }
 
 LanguageTableModel* LanguageTableContainer::language_table() {
-    return this->lt;
+    return this->m_lt;
 }
 
 bool LanguageTableContainer::persistent() const {
-    return this->_persistent;
+    return this->m_persistent;
 }
 
 bool LanguageTableContainer::changed() const {
-    return this->_changed;
+    return this->m_changed;
 }
 
 bool LanguageTableContainer::read_only() const {
@@ -41,20 +46,21 @@ bool LanguageTableContainer::read_only() const {
 void LanguageTableContainer::save() {
     if (read_only()) return;
 
-    for (const auto& entry: this->fs_ref.read_dir()) {
-        qDebug() << entry.path.file_name();
-        if (entry.path.extension() == "json" && entry.is_file) {
-            QString lang = entry.path.file_stem();
-            if (!this->lt->data().contains_language(lang)) {
-                entry.ref.remove(false);
+    for (const auto& entry: this->m_ds.list_dir(TO_RUST_STR(this->m_path))) {
+        const QString& file_name = TO_QSTR(entry.file_name);
+        qDebug() << file_name;
+        if (Path(file_name).extension() == "json" && entry.info.is_file) {
+            QString lang = Path(file_name).file_stem();
+            if (!this->m_lt->data().contains_language(lang)) {
+                this->m_ds.delete_file(TO_RUST_STR(this->m_path + "/" + file_name));
             }
         }
     }
 
-    for (int i = 0; i < this->lt->data().language_count(); i++) {
-        QString lang = this->lt->data().get_language_at(i);
+    for (int i = 0; i < this->m_lt->data().language_count(); i++) {
+        QString lang = this->m_lt->data().get_language_at(i);
         QJsonObject obj;
-        QMap<QString, QString> map = this->lt->data().get_entries_for(lang);
+        QMap<QString, QString> map = this->m_lt->data().get_entries_for(lang);
         if (!map.isEmpty()) {
             for (auto key: map.keys()) {
                 QString value = map[key];
@@ -73,21 +79,21 @@ void LanguageTableContainer::save() {
         dev->close();
     }
 
-    _persistent = true;
-    _changed = false;
+    m_persistent = true;
+    m_changed = false;
 }
 
 void LanguageTableContainer::load() {
-    this->lt->data().clear();
+    this->m_lt->data().clear();
 
     QList<DirEntry> list = this->fs_ref.read_dir();
 
     // move en_us to the beginning
     for (int i = 0; i < list.size(); i++) {
         DirEntry entry = list[i];
-        qDebug() << entry.path.to_string() << entry.path.file_stem() << entry.path.extension();
-        if (entry.path.extension() == "json" && entry.is_file) {
-            QString lang = entry.path.file_stem();
+        qDebug() << entry.m_path.to_string() << entry.m_path.file_stem() << entry.m_path.extension();
+        if (entry.m_path.extension() == "json" && entry.is_file) {
+            QString lang = entry.m_path.file_stem();
             if (lang == "en_us") {
                 list.removeAt(i);
                 list.insert(0, entry);
@@ -97,9 +103,9 @@ void LanguageTableContainer::load() {
     }
 
     for (auto entry: list) {
-        if (entry.path.extension() == "json" && entry.is_file) {
-            QString lang = entry.path.file_stem();
-            this->lt->data().add_language(lang);
+        if (entry.m_path.extension() == "json" && entry.is_file) {
+            QString lang = entry.m_path.file_stem();
+            this->m_lt->data().add_language(lang);
             QSharedPointer<QIODevice> dev = entry.ref.open();
             dev->open(QIODevice::ReadOnly | QIODevice::Text);
             QJsonParseError err;
@@ -113,17 +119,17 @@ void LanguageTableContainer::load() {
             for (QString key: object.keys()) {
                 QJsonValueRef value = object[key];
                 if (!value.isString()) continue;
-                this->lt->data().insert(lang, key, value.toString());
+                this->m_lt->data().insert(lang, key, value.toString());
             }
         }
     }
 
-    _persistent = true;
-    _changed = false;
-    emit lt->layoutChanged();
+    m_persistent = true;
+    m_changed = false;
+    emit m_lt->layoutChanged();
 }
 
 void LanguageTableContainer::on_changed() {
-    _changed = true;
+    m_changed = true;
     emit changed();
 }
