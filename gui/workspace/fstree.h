@@ -11,15 +11,15 @@ class FsTreeEntry : public QObject {
 Q_OBJECT
 
 public:
-    explicit FsTreeEntry(const QString& path, WorkspaceRoot* root, FsTreeEntry* parent = nullptr);
+    explicit FsTreeEntry(QString  path, WorkspaceRoot* root, FsTreeEntry* parent = nullptr);
 
     void refresh();
 
-    const QString& path() const;
+    [[nodiscard]] const QString& path() const;
 
-    QString file_name() const;
+    [[nodiscard]] QString file_name() const;
 
-    mcrtlib::ffi::FileType file_type() const;
+    [[nodiscard]] mcrtlib::ffi::FileType file_type() const;
 
     FsTreeEntry* parent();
 

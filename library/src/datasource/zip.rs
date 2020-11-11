@@ -78,26 +78,30 @@ impl DataSource {
         let tree = self.tree.borrow();
         let tree = tree.as_ref().unwrap();
         let path = path.as_ref();
-        let file_name = path.file_name().ok_or_else(|| Error::InvalidPath(path.to_path_buf()))?;
 
-        match path.parent() {
-            None => Ok(FileInfo {
+        if Path::new("/").join(path) == Path::new("/") {
+            Ok(FileInfo {
                 is_file: false,
                 is_dir: true,
                 is_symlink: false,
                 read_only: true,
-            }),
-            Some(parent) => {
-                let parent = resolve_path_for_archive(parent)?;
-                let cd = tree.navigate(parent)
-                    .ok_or_else(|| Error::Io(io::Error::new(io::ErrorKind::NotFound, "directory not found")))?;
+            })
+        } else {
+            match path.parent() {
+                None => Err(Error::InvalidPath(path.to_path_buf())),
+                Some(parent) => {
+                    let file_name = path.file_name().ok_or_else(|| Error::InvalidPath(path.to_path_buf()))?;
+                    let parent = resolve_path_for_archive(parent)?;
+                    let cd = tree.navigate(parent)
+                        .ok_or_else(|| Error::Io(io::Error::new(io::ErrorKind::NotFound, "directory not found")))?;
 
-                if cd.children.binary_search_by(|a| (OsStr::new(&a.name)).cmp(&file_name)).is_ok() {
-                    Ok(FileInfo { is_file: false, is_dir: true, is_symlink: false, read_only: true })
-                } else if cd.files.binary_search_by(|a| (OsStr::new(&a)).cmp(&file_name)).is_ok() {
-                    Ok(FileInfo { is_file: true, is_dir: false, is_symlink: false, read_only: true })
-                } else {
-                    Err(Error::Io(io::Error::new(ErrorKind::NotFound, "file or directory not found")))
+                    if cd.children.binary_search_by(|a| (OsStr::new(&a.name)).cmp(&file_name)).is_ok() {
+                        Ok(FileInfo { is_file: false, is_dir: true, is_symlink: false, read_only: true })
+                    } else if cd.files.binary_search_by(|a| (OsStr::new(&a)).cmp(&file_name)).is_ok() {
+                        Ok(FileInfo { is_file: true, is_dir: false, is_symlink: false, read_only: true })
+                    } else {
+                        Err(Error::Io(io::Error::new(ErrorKind::NotFound, "file or directory not found")))
+                    }
                 }
             }
         }

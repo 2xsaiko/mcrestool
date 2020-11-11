@@ -16,4 +16,12 @@ namespace mcrtlib {
         const std::string& string = path.toStdString();
         return ffi::get_file_type(ds, string);
     }
+
+    QString to_qstring(const rust::Str& str) {
+        return QString::fromStdString(std::string(str));
+    }
+
+    QString to_qstring(const rust::String& str) {
+        return QString::fromStdString(std::string(str));
+    }
 }

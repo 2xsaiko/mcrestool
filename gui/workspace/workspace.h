@@ -12,7 +12,7 @@ class WorkspaceRoot : public QObject {
     Q_OBJECT
 
 public:
-    WorkspaceRoot(QString name, mcrtlib::ffi::DataSource ds, QObject* parent = nullptr);
+    WorkspaceRoot(QString name, mcrtlib::ffi::DataSource&& ds, QObject* parent = nullptr);
 
     FsTreeEntry* tree();
 

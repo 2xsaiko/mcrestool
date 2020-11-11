@@ -63,6 +63,10 @@ mod types {
 
         fn read_info(self: &DataSource, path: &str) -> Result<FileInfo>;
 
+        fn is_file(self: &DataSource, path: &str) -> bool;
+
+        fn is_dir(self: &DataSource, path: &str) -> bool;
+
         // ResFile
         // TODO: mutable slice support for cxx
         // fn read(self: &mut ResFile, buf: &mut [u8]) -> Result<usize>;
@@ -129,6 +133,14 @@ impl types::DataSource {
 
     fn read_info(&self, path: &str) -> Result<types::FileInfo, datasource::Error> {
         self.inner.read_info(path).map(|v| v.into())
+    }
+
+    fn is_file(&self, path: &str) -> bool {
+        self.inner.is_file(path)
+    }
+
+    fn is_dir(&self, path: &str) -> bool {
+        self.inner.is_dir(path)
     }
 }
 

@@ -5,7 +5,7 @@
 
 class Identifier {
 public:
-    explicit Identifier(QString spec);
+    explicit Identifier(const QString& spec);
 
     Identifier(QString domain, QString path);
 
@@ -16,8 +16,8 @@ public:
     [[nodiscard]] QString to_string() const;
 
 private:
-    QString _domain;
-    QString _path;
+    QString m_domain;
+    QString m_path;
 };
 
 #endif //MCRESTOOL_IDENTIFIER_H

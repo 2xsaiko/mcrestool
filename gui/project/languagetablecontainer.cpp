@@ -10,6 +10,7 @@
 
 using mcrtlib::ffi::DataSource;
 using mcrtlib::ffi::DirEntry;
+using mcrtlib::to_qstring;
 
 LanguageTableContainer::LanguageTableContainer(
     const DataSource& ds,
@@ -43,19 +44,23 @@ bool LanguageTableContainer::changed() const {
 }
 
 bool LanguageTableContainer::read_only() const {
-    return this->m_ds.read_info(TO_RUST_STR(this->m_path)).read_only;
+    std::string str = this->m_path.toStdString();
+    return this->m_ds.read_info(rust::Str(str)).read_only;
 }
 
 void LanguageTableContainer::save() {
     if (read_only()) return;
 
-    for (const auto& entry: this->m_ds.list_dir(TO_RUST_STR(this->m_path))) {
-        const QString& file_name = TO_QSTR(entry.file_name);
+    std::string path = this->m_path.toStdString();
+
+    for (const auto& entry: this->m_ds.list_dir(rust::Str(path))) {
+        const QString& file_name = to_qstring(entry.file_name);
         qDebug() << file_name;
         if (Path(file_name).extension() == "json" && entry.info.is_file) {
             QString lang = Path(file_name).file_stem();
             if (!this->m_lt->data().contains_language(lang)) {
-                this->m_ds.delete_file(TO_RUST_STR(this->m_path + "/" + file_name));
+                std::string entry_path = this->m_path.toStdString() + "/" + file_name.toStdString();
+                this->m_ds.delete_file(rust::Str(entry_path));
             }
         }
     }
@@ -75,8 +80,8 @@ void LanguageTableContainer::save() {
         QJsonDocument d;
         d.setObject(obj);
 
-        QString path = this->m_path + "/" + lang + ".json";
-        mcrtlib::ffi::ResFile file = this->m_ds.open(TO_RUST_STR(path), "wct");
+        std::string path = this->m_path.toStdString() + "/" + lang.toStdString() + ".json";
+        mcrtlib::ffi::ResFile file = this->m_ds.open(rust::Str(path), "wct");
         const QByteArray& array = d.toJson(QJsonDocument::Compact);
         file.write(rust::Slice<uint8_t>((const uint8_t*) array.constData(), array.length()));
     }
@@ -88,7 +93,8 @@ void LanguageTableContainer::save() {
 void LanguageTableContainer::load() {
     this->m_lt->data().clear();
 
-    rust::Vec<DirEntry> list = this->m_ds.list_dir(TO_RUST_STR(this->m_path));
+    std::string path = this->m_path.toStdString();
+    rust::Vec<DirEntry> list = this->m_ds.list_dir(rust::Str(path));
 
     unimplemented();
 

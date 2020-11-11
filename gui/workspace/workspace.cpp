@@ -5,7 +5,7 @@
 
 using mcrtlib::ffi::DataSource;
 
-WorkspaceRoot::WorkspaceRoot(QString name, DataSource ds, QObject* parent) :
+WorkspaceRoot::WorkspaceRoot(QString name, DataSource&& ds, QObject* parent) :
     QObject(parent),
     m_name(std::move(name)),
     m_ds(std::move(ds)),
@@ -31,14 +31,12 @@ Workspace::Workspace(QObject* parent) :
     m_roots(QVector<WorkspaceRoot*>()) {}
 
 void Workspace::add_dir(QString path) {
-    DataSource ds = mcrtlib::datasource_open(path);
-    this->m_roots += new WorkspaceRoot(path, ds, this);
+    this->m_roots += new WorkspaceRoot(path, mcrtlib::datasource_open(path), this);
     emit entry_added(this->m_roots.last());
 }
 
 void Workspace::add_file(QString path) {
-    DataSource ds = mcrtlib::datasource_open_zip(path);
-    this->m_roots += new WorkspaceRoot(path, ds, this);
+    this->m_roots += new WorkspaceRoot(path, mcrtlib::datasource_open_zip(path), this);
     emit entry_added(this->m_roots.last());
 }
 

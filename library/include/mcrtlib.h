@@ -22,15 +22,16 @@
 #   define MCRTLIB_PUBLIC IMPORT
 #endif
 
-#define TO_QSTR(str) (QString::fromStdString(std::string(str)))
-#define TO_RUST_STR(str) (rust::Str((str).toUtf8().constData()))
-
 namespace mcrtlib {
     MCRTLIB_PUBLIC ffi::DataSource datasource_open(QString path);
 
     MCRTLIB_PUBLIC ffi::DataSource datasource_open_zip(QString path);
 
     MCRTLIB_PUBLIC ffi::FileType get_file_type(const ffi::DataSource& ds, QString path);
+
+    MCRTLIB_PUBLIC QString to_qstring(const rust::Str& str);
+
+    MCRTLIB_PUBLIC QString to_qstring(const rust::String& str);
 }
 
 #endif //MCRESTOOL_MCRTLIB_H

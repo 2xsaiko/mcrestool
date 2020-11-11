@@ -1,29 +1,31 @@
 #include "identifier.h"
 
-Identifier::Identifier(QString spec) {
+#include <utility>
+
+Identifier::Identifier(const QString& spec) {
     int i = spec.indexOf(':');
     if (i == -1) {
-        _domain = "minecraft";
-        _path = spec;
+        m_domain = "minecraft";
+        m_path = spec;
     } else {
-        _domain = spec.left(i);
-        _path = spec.mid(i + 1);
+        m_domain = spec.left(i);
+        m_path = spec.mid(i + 1);
     }
 }
 
 Identifier::Identifier(QString domain, QString path) {
-    _domain = domain;
-    _path = path;
+    m_domain = std::move(domain);
+    m_path = std::move(path);
 }
 
 QString Identifier::domain() const {
-    return _domain;
+    return m_domain;
 }
 
 QString Identifier::path() const {
-    return _path;
+    return m_path;
 }
 
 QString Identifier::to_string() const {
-    return _domain + ":" + _path;
+    return m_domain + ":" + m_path;
 }
