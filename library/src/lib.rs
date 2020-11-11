@@ -3,7 +3,7 @@ use std::path::Path;
 
 use crate::datasource::DataSource;
 
-mod datasource;
+pub mod datasource;
 mod ffi;
 
 #[derive(Eq, PartialEq)]
