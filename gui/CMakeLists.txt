@@ -56,8 +56,6 @@ set_property(TARGET mcrestool PROPERTY CXX_STANDARD 20)
 target_link_libraries(mcrestool PUBLIC
         Qt5::Core
         Qt5::Widgets
-        KF5::Archive
-        QuaZip::QuaZip
         mcrestool-library)
         
 

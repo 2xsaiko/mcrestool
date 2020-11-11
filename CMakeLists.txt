@@ -26,11 +26,6 @@ find_package(Qt5 CONFIG REQUIRED
         Core
         Widgets)
 
-find_package(KF5 REQUIRED
-        Archive)
-
-find_package(QuaZip-Qt5 REQUIRED)
-
 add_definitions(-fexceptions)
 
 add_subdirectory(library)
