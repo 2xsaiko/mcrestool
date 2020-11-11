@@ -86,6 +86,14 @@ impl DataSource {
             DataSource::Zip(ds) => Ok(ds.read_info(path)?),
         }
     }
+
+    pub fn is_file<P: AsRef<Path>>(&self, path: P) -> bool {
+        self.read_info(path).map(|i| i.is_file).unwrap_or(false)
+    }
+
+    pub fn is_dir<P: AsRef<Path>>(&self, path: P) -> bool {
+        self.read_info(path).map(|i| i.is_dir).unwrap_or(false)
+    }
 }
 
 #[derive(Error, Debug)]
@@ -158,6 +166,7 @@ pub struct OpenOptions {
     read: bool,
     write: bool,
     create: bool,
+    truncate: bool,
 }
 
 impl Default for OpenOptions {
@@ -168,15 +177,15 @@ impl Default for OpenOptions {
 
 impl OpenOptions {
     pub fn new() -> OpenOptions {
-        OpenOptions { read: false, write: false, create: false }
+        OpenOptions { ..Default::default() }
     }
 
     pub fn reading() -> OpenOptions {
-        OpenOptions { read: true, write: false, create: false }
+        OpenOptions { read: true, ..Default::default() }
     }
 
     pub fn writing(create: bool) -> OpenOptions {
-        OpenOptions { read: false, write: true, create }
+        OpenOptions { write: true, create, ..Default::default() }
     }
 
     pub fn read(&mut self, read: bool) -> &mut OpenOptions {
@@ -193,6 +202,11 @@ impl OpenOptions {
         self.create = create;
         self
     }
+
+    pub fn truncate(&mut self, truncate: bool) -> &mut OpenOptions {
+        self.truncate = truncate;
+        self
+    }
 }
 
 impl Into<fs::OpenOptions> for OpenOptions {
@@ -201,6 +215,8 @@ impl Into<fs::OpenOptions> for OpenOptions {
         options.read(self.read);
         options.write(self.write);
         options.create(self.create);
+        options.append(!self.truncate);
+        options.truncate(self.truncate);
         options
     }
 }

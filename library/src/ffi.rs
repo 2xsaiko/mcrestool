@@ -3,7 +3,7 @@ use std::io;
 use crate::datasource::{self, DataSource, dir, zip};
 use crate::datasource::DataSource as DataSource_;
 use crate::datasource::resfile::ResFile as ResFile_;
-use crate::FileType;
+use std::io::{Read, Write};
 
 #[cxx::bridge(namespace = "mcrtlib::ffi")]
 mod types {
@@ -46,6 +46,7 @@ mod types {
 
         fn get_file_type(ds: &DataSource, path: &str) -> FileType;
 
+        // DataSource
         fn open(self: &DataSource, path: &str, mode: &str) -> Result<ResFile>;
 
         fn create_dir(self: &DataSource, path: &str) -> Result<()>;
@@ -61,6 +62,12 @@ mod types {
         fn list_dir(self: &DataSource, path: &str) -> Result<Vec<DirEntry>>;
 
         fn read_info(self: &DataSource, path: &str) -> Result<FileInfo>;
+
+        // ResFile
+        // TODO: mutable slice support for cxx
+        // fn read(self: &mut ResFile, buf: &mut [u8]) -> Result<usize>;
+
+        fn write(self: &mut ResFile, buf: &[u8]) -> Result<usize>;
     }
 }
 
@@ -88,6 +95,7 @@ impl types::DataSource {
                 'r' => { opts.read(true); }
                 'w' => { opts.write(true); }
                 'c' => { opts.create(true); }
+                't' => { opts.truncate(true); }
                 _ => {}
             }
         }
@@ -124,7 +132,15 @@ impl types::DataSource {
     }
 }
 
-impl types::ResFile {}
+impl types::ResFile {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.inner.read(buf)
+    }
+
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.inner.write(buf)
+    }
+}
 
 impl From<datasource::DirEntry> for types::DirEntry {
     fn from(e: datasource::DirEntry) -> Self {

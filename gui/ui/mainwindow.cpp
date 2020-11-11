@@ -9,6 +9,8 @@
 #include <QInputDialog>
 #include <QDebug>
 
+using mcrtlib::ffi::FileType;
+
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow), ws(new Workspace(this)) {
     ui->setupUi(this);
 
@@ -135,10 +137,10 @@ void MainWindow::show_restree_context_menu(const QPoint& pt) {
 void MainWindow::restree_open(const QModelIndex& index) {
     if (auto item = qobject_cast<FsTreeEntry*>(static_cast<QObject*>(index.internalPointer()))) {
         switch (item->file_type()) {
-            case FILETYPE_LANGUAGE_PART:
-            case FILETYPE_LANGUAGE:
+            case FileType::FILETYPE_LANGUAGE_PART:
+            case FileType::FILETYPE_LANGUAGE:
                 qDebug() << "opening lang page window!" << item->file_name();
-                auto* ltw = new LanguageTableWindow(new LanguageTableContainer(item->ref(), this), this);
+                auto* ltw = new LanguageTableWindow(new LanguageTableContainer(item->root()->ds(), item->path(), this), this);
                 ltw->reload();
                 ui->mdi_area->addSubWindow(ltw);
                 ltw->show();
