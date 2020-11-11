@@ -34,7 +34,8 @@ mod types {
         FILETYPE_RECIPE,
     }
 
-    extern "C" {}
+    extern "C++" {
+    }
 
     extern "Rust" {
         type DataSource_;
@@ -68,8 +69,7 @@ mod types {
         fn is_dir(self: &DataSource, path: &str) -> bool;
 
         // ResFile
-        // TODO: mutable slice support for cxx
-        // fn read(self: &mut ResFile, buf: &mut [u8]) -> Result<usize>;
+        fn read(self: &mut ResFile, buf: &mut [u8]) -> Result<usize>;
 
         fn write(self: &mut ResFile, buf: &[u8]) -> Result<usize>;
     }

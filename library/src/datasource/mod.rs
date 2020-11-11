@@ -177,15 +177,15 @@ impl Default for OpenOptions {
 
 impl OpenOptions {
     pub fn new() -> OpenOptions {
-        OpenOptions { ..Default::default() }
+        OpenOptions { read: false, write: false, create: false, truncate: false }
     }
 
     pub fn reading() -> OpenOptions {
-        OpenOptions { read: true, ..Default::default() }
+        OpenOptions { read: true, write: false, create: false, truncate: false }
     }
 
     pub fn writing(create: bool) -> OpenOptions {
-        OpenOptions { write: true, create, ..Default::default() }
+        OpenOptions { read: false, write: true, create, truncate: false }
     }
 
     pub fn read(&mut self, read: bool) -> &mut OpenOptions {

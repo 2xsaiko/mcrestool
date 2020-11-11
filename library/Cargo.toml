@@ -5,7 +5,8 @@ authors = ["2xsaiko <git@dblsaiko.net>"]
 edition = "2018"
 
 [dependencies]
-cxx = "0.5"
+#cxx = "0.5"
+cxx = { git = "https://github.com/2xsaiko/cxx.git", branch = "mutu8" }
 zip = "0.5.8"
 serde = "1.0.117"
 serde_json = "1.0.59"
