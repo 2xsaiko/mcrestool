@@ -166,7 +166,7 @@ pub struct OpenOptions {
     read: bool,
     write: bool,
     create: bool,
-    truncate: bool,
+    append: bool,
 }
 
 impl Default for OpenOptions {
@@ -177,15 +177,15 @@ impl Default for OpenOptions {
 
 impl OpenOptions {
     pub fn new() -> OpenOptions {
-        OpenOptions { read: false, write: false, create: false, truncate: false }
+        OpenOptions { read: false, write: false, create: false, append: false }
     }
 
     pub fn reading() -> OpenOptions {
-        OpenOptions { read: true, write: false, create: false, truncate: false }
+        OpenOptions { read: true, write: false, create: false, append: false }
     }
 
     pub fn writing(create: bool) -> OpenOptions {
-        OpenOptions { read: false, write: true, create, truncate: false }
+        OpenOptions { read: false, write: true, create, append: false }
     }
 
     pub fn read(&mut self, read: bool) -> &mut OpenOptions {
@@ -203,8 +203,8 @@ impl OpenOptions {
         self
     }
 
-    pub fn truncate(&mut self, truncate: bool) -> &mut OpenOptions {
-        self.truncate = truncate;
+    pub fn append(&mut self, append: bool) -> &mut OpenOptions {
+        self.append = append;
         self
     }
 }
@@ -215,8 +215,8 @@ impl Into<fs::OpenOptions> for OpenOptions {
         options.read(self.read);
         options.write(self.write);
         options.create(self.create);
-        options.append(!self.truncate);
-        options.truncate(self.truncate);
+        options.append(self.append);
+        options.truncate(!self.append);
         options
     }
 }

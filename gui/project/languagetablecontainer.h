@@ -21,6 +21,8 @@ public:
 
     [[nodiscard]] bool read_only() const;
 
+    [[nodiscard]] const QString& path() const;
+
     void save();
 
     void load();
