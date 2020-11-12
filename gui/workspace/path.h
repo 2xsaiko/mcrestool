@@ -14,8 +14,6 @@ class Path {
 public:
     Path();
 
-    Path(const Path& that);
-
     Path(QString spec);
 
     Path(const char* spec);

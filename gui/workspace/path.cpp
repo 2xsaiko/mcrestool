@@ -8,9 +8,6 @@
 Path::Path() : m_inner() {
 }
 
-Path::Path(const Path& that) : m_inner(that.m_inner) {
-}
-
 Path::Path(QString spec) : m_inner(std::move(spec)) {
 }
 
