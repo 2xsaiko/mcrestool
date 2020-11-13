@@ -50,6 +50,10 @@ bool LanguageTableContainer::read_only() const {
     return this->m_ds.read_info(rust::Str(str)).read_only;
 }
 
+const QString& LanguageTableContainer::path() const {
+    return this->m_path;
+}
+
 void LanguageTableContainer::save() {
     if (read_only()) return;
 
@@ -96,18 +100,18 @@ void LanguageTableContainer::load() {
     this->m_lt->data().clear();
 
     std::string path = this->m_path.toStdString();
-    rust::Vec<DirEntry> vec = this->m_ds.list_dir(rust::Str(path));
-
-    // still need this because Vec is unusable from C++ right now :(
+    rust::Vec<DirEntry> vec =this->m_ds.list_dir(rust::Str(path));
     QList<DirEntry> list;
-    for (auto entry: vec) {
+
+    for (const auto& entry: vec) {
         list += entry;
     }
 
     // move en_us to the beginning
     for (int i = 0; i < list.size(); i++) {
         DirEntry entry = list[i];
-        const QString& file_name = to_qstring(entry.file_name);
+        QString file_name = to_qstring(entry.file_name);
+
         if (Path(file_name).extension() == "json" && entry.info.is_file) {
             QString lang = Path(file_name).file_stem();
             if (lang == "en_us") {
@@ -118,15 +122,15 @@ void LanguageTableContainer::load() {
         }
     }
 
-    for (auto entry: list) {
-        const Path& file_name = Path(to_qstring(entry.file_name));
-        if (file_name.extension() == "json" && entry.info.is_file) {
-            QString lang = file_name.file_stem();
+    for (const auto& entry: list) {
+        QString file_name = to_qstring(entry.file_name);
+        if (Path(file_name).extension() == "json" && entry.info.is_file) {
+            QString lang = Path(file_name).file_stem();
             this->m_lt->data().add_language(lang);
-            const std::string& path = this->m_path.toStdString() + "/" + file_name.file_name().toStdString();
+            std::string path = (this->m_path + "/" + file_name).toStdString();
             ResFile file = this->m_ds.open(path, "r");
+            QJsonParseError err;
             QByteArray data = read_all(file);
-            QJsonParseError err {};
             auto doc = QJsonDocument::fromJson(data, &err);
 
             // TODO actually show errors

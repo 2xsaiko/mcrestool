@@ -7,6 +7,8 @@ LanguageTableWindow::LanguageTableWindow(LanguageTableContainer* ltc, QWidget* p
                                                                                          ui(new Ui::LanguageTableWindow),
                                                                                          ltc(ltc) {
     ui->setupUi(this);
+    const QString& string = ltc->path();
+    this->setWindowTitle(this->windowTitle() + " - " + string);
 
     ltc->language_table()->add_language("en_us");
 

@@ -34,8 +34,7 @@ mod types {
         FILETYPE_RECIPE,
     }
 
-    extern "C++" {
-    }
+    extern "C++" {}
 
     extern "Rust" {
         type DataSource_;
@@ -99,7 +98,7 @@ impl types::DataSource {
                 'r' => { opts.read(true); }
                 'w' => { opts.write(true); }
                 'c' => { opts.create(true); }
-                't' => { opts.truncate(true); }
+                'a' => { opts.append(true); }
                 _ => {}
             }
         }

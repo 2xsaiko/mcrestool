@@ -1,20 +1,24 @@
 #include <mcrtlib.h>
 #include <lib.rs.h>
 
-using rust::Slice;
-
 namespace mcrtlib {
-    ffi::DataSource datasource_open(QString path) {
+    using rust::Slice;
+
+    using ffi::DataSource;
+    using ffi::FileType;
+    using ffi::ResFile;
+
+    DataSource datasource_open(QString path) {
         const std::string& string = path.toStdString();
         return ffi::datasource_open(string);
     }
 
-    ffi::DataSource datasource_open_zip(QString path) {
+    DataSource datasource_open_zip(QString path) {
         const std::string& string = path.toStdString();
         return ffi::datasource_open_zip(string);
     }
 
-    ffi::FileType get_file_type(const ffi::DataSource& ds, QString path) {
+    FileType get_file_type(const DataSource& ds, QString path) {
         const std::string& string = path.toStdString();
         return ffi::get_file_type(ds, string);
     }
@@ -32,7 +36,7 @@ namespace mcrtlib {
         return rust::String(array, array.length());
     }
 
-    QByteArray read_all(ffi::ResFile& file) {
+    QByteArray read_all(ResFile& file) {
         QByteArray b;
         uint8_t buf[4096];
         size_t c;

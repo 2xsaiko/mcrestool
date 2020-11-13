@@ -33,8 +33,6 @@ namespace mcrtlib {
 
     MCRTLIB_PUBLIC QString to_qstring(const rust::String& str);
 
-    MCRTLIB_PUBLIC rust::String to_rstring(const QString& str);
-
     MCRTLIB_PUBLIC QByteArray read_all(ffi::ResFile& file);
 }
 

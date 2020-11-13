@@ -4,6 +4,7 @@ use std::path::Path;
 use crate::datasource::DataSource;
 
 pub mod datasource;
+mod fstree;
 mod ffi;
 
 #[derive(Eq, PartialEq)]
