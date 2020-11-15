@@ -10,8 +10,12 @@
 #include <QDebug>
 
 using mcrtlib::ffi::FileType;
+using mcrtlib::ffi::FsTreeEntry;
+using mcrtlib::ffi::fstreeentry_from_ptr;
+using mcrtlib::ffi::workspace_new;
+using mcrtlib::to_qstring;
 
-MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow), ws(new Workspace(this)) {
+MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow), ws(workspace_new()) {
     ui->setupUi(this);
 
     connect(ui->action_quit, SIGNAL(triggered()), this, SLOT(quit()));
@@ -94,7 +98,8 @@ void MainWindow::add_res_file() {
     model->beginInsertRows1(QModelIndex(), count, count + sources.size() - 1);
 
     for (const auto& source: sources) {
-        this->ws->add_file(source);
+        const std::string& path = source.toStdString();
+        this->ws.add_zip(path);
     }
 
     model->endInsertRows1();
@@ -107,7 +112,8 @@ void MainWindow::add_res_dir() {
     int count = model->rowCount(QModelIndex());
     model->beginInsertRows1(QModelIndex(), count, count);
 
-    this->ws->add_dir(source);
+    const std::string& path = source.toStdString();
+    this->ws.add_dir(path);
 
     model->endInsertRows1();
 }
@@ -135,12 +141,12 @@ void MainWindow::show_restree_context_menu(const QPoint& pt) {
 }
 
 void MainWindow::restree_open(const QModelIndex& index) {
-    if (auto item = qobject_cast<FsTreeEntry*>(static_cast<QObject*>(index.internalPointer()))) {
-        switch (item->file_type()) {
+    FsTreeEntry item = fstreeentry_from_ptr((size_t) index.internalPointer());
+    if (!item.is_null_e()) {
+        switch (item.file_type()) {
             case FileType::FILETYPE_LANGUAGE_PART:
             case FileType::FILETYPE_LANGUAGE:
-                qDebug() << "opening lang page window!" << item->file_name();
-                auto* ltw = new LanguageTableWindow(new LanguageTableContainer(item->root()->ds(), item->path(), this), this);
+                auto* ltw = new LanguageTableWindow(new LanguageTableContainer(item.root().ds(), to_qstring(item.path()), this), this);
                 ltw->reload();
                 ui->mdi_area->addSubWindow(ltw);
                 ltw->show();

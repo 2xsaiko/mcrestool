@@ -15,11 +15,11 @@ using mcrtlib::to_qstring;
 using mcrtlib::read_all;
 
 LanguageTableContainer::LanguageTableContainer(
-    const DataSource& ds,
+    DataSource ds,
     QString path,
     QObject* parent
 ) : QObject(parent),
-    m_ds(ds),
+    m_ds(std::move(ds)),
     m_path(std::move(path)),
     m_lt(new LanguageTableModel(LanguageTable(), this)) {
     this->m_persistent = false;

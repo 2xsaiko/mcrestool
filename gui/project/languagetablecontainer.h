@@ -9,7 +9,7 @@ class LanguageTableContainer : public QObject {
 Q_OBJECT
 
 public:
-    explicit LanguageTableContainer(const mcrtlib::ffi::DataSource& ds, QString path, QObject* parent = nullptr);
+    explicit LanguageTableContainer(mcrtlib::ffi::DataSource ds, QString path, QObject* parent = nullptr);
 
     ~LanguageTableContainer() override;
 
@@ -38,7 +38,7 @@ signals:
     void changed();
 
 private:
-    const mcrtlib::ffi::DataSource& m_ds;
+    mcrtlib::ffi::DataSource m_ds;
     QString m_path;
     LanguageTableModel* m_lt;
 

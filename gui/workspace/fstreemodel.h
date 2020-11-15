@@ -2,15 +2,13 @@
 #define MCRESTOOL_FSTREEMODEL_H
 
 #include <QAbstractItemModel>
-
-#include "fstree.h"
-#include "workspace.h"
+#include <lib.rs.h>
 
 class FsTreeModel : public QAbstractItemModel {
     Q_OBJECT
 
 public:
-    explicit FsTreeModel(Workspace* ws, QObject* parent = nullptr);
+    explicit FsTreeModel(mcrtlib::ffi::Workspace& ws, QObject* parent = nullptr);
 
     [[nodiscard]] QModelIndex index(int row, int column, const QModelIndex& parent) const override;
 
@@ -33,7 +31,7 @@ public:
 public slots:
 
 private:
-    Workspace* ws;
+    mcrtlib::ffi::Workspace& ws;
 
 };
 

@@ -5,7 +5,7 @@
 #include <QScopedPointer>
 #include <QMdiSubWindow>
 #include <languagetablemodel.h>
-#include <workspace.h>
+#include <lib.rs.h>
 
 namespace Ui {
     class MainWindow;
@@ -53,7 +53,7 @@ private slots:
 
 private:
     QScopedPointer<Ui::MainWindow> ui;
-    Workspace* ws;
+    mcrtlib::ffi::Workspace ws;
 
 };
 

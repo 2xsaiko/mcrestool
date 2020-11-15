@@ -7,7 +7,7 @@ pub mod datasource;
 mod fstree;
 mod ffi;
 
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 enum FileType {
     Language,
     LanguagePart,

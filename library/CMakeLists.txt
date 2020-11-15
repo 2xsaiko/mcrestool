@@ -9,12 +9,13 @@ set(library_SRC
 corrosion_import_crate(MANIFEST_PATH Cargo.toml)
 set(BRIDGE_IN "${CMAKE_CURRENT_SOURCE_DIR}/src/ffi.rs")
 set(BRIDGE_OUT "${CMAKE_CURRENT_BINARY_DIR}/lib.rs.cpp")
+set(BRIDGE_ARGS -istdexcept)
 # stdexcept here added because otherwise it's trying to use a type that isn't
 # included
 add_custom_command(
         OUTPUT ${BRIDGE_OUT}
-        COMMAND ${CXXBRIDGE} ${BRIDGE_IN} -istdexcept --header > ${CMAKE_CURRENT_BINARY_DIR}/lib.rs.h
-        COMMAND ${CXXBRIDGE} ${BRIDGE_IN} -istdexcept > ${BRIDGE_OUT}
+        COMMAND ${CXXBRIDGE} ${BRIDGE_IN} ${BRIDGE_ARGS} --header > ${CMAKE_CURRENT_BINARY_DIR}/lib.rs.h
+        COMMAND ${CXXBRIDGE} ${BRIDGE_IN} ${BRIDGE_ARGS} > ${BRIDGE_OUT}
         DEPENDS ${BRIDGE_IN})
 
 add_library(mcrestool-library STATIC ${library_SRC} ${BRIDGE_OUT})

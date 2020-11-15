@@ -1,20 +1,20 @@
 use std::{fs, io};
-use std::fs::{File, OpenOptions, Metadata};
+use std::fs::{File, Metadata, OpenOptions};
 use std::path::{Path, PathBuf};
 
 use crate::datasource::{DirEntry, FileInfo, normalize_path};
 
+#[derive(Debug)]
 pub struct DataSource {
     dir: PathBuf,
 }
 
 impl DataSource {
-    pub fn new<P: AsRef<Path>>(dir: P) -> Result<Self, io::Error> {
+    pub fn new<P: Into<PathBuf>>(dir: P) -> Result<Self, io::Error> {
+        let dir = dir.into();
         match fs::read_dir(&dir) {
             Err(e) => Err(e),
-            Ok(_) => Ok(DataSource {
-                dir: dir.as_ref().to_path_buf(),
-            })
+            Ok(_) => Ok(DataSource { dir })
         }
     }
 

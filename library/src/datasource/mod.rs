@@ -1,5 +1,5 @@
 use std::ffi::OsString;
-use std::fs;
+use std::{fs, io};
 use std::io::{Cursor, ErrorKind};
 use std::path::{Component, Path, PathBuf};
 
@@ -12,13 +12,16 @@ pub mod dir;
 pub mod zip;
 pub mod resfile;
 
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug)]
 pub enum DataSource {
     Dir(dir::DataSource),
     Zip(zip::DataSource),
 }
 
 impl DataSource {
-    pub fn open<P: AsRef<Path>>(&self, path: P, opts: OpenOptions) -> Result<ResFile, Error> {
+    pub fn open<P: AsRef<Path>>(&self, path: P, opts: OpenOptions) -> Result<ResFile> {
         match self {
             DataSource::Dir(ds) => {
                 Ok(ResFile::File(ds.open(path, opts.into())?))
@@ -38,49 +41,49 @@ impl DataSource {
         }
     }
 
-    pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
+    pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         match self {
             DataSource::Dir(ds) => Ok(ds.create_dir(path)?),
             DataSource::Zip(_) => Err(Error::ReadOnly),
         }
     }
 
-    pub fn create_dir_all<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
+    pub fn create_dir_all<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         match self {
             DataSource::Dir(ds) => Ok(ds.create_dir_all(path)?),
             DataSource::Zip(_) => Err(Error::ReadOnly),
         }
     }
 
-    pub fn delete_file<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
+    pub fn delete_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         match self {
             DataSource::Dir(ds) => Ok(ds.delete_file(path)?),
             DataSource::Zip(_) => Err(Error::ReadOnly),
         }
     }
 
-    pub fn delete_dir<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
+    pub fn delete_dir<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         match self {
             DataSource::Dir(ds) => Ok(ds.delete_dir(path)?),
             DataSource::Zip(_) => Err(Error::ReadOnly),
         }
     }
 
-    pub fn delete_dir_all<P: AsRef<Path>>(&self, path: P) -> Result<(), Error> {
+    pub fn delete_dir_all<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         match self {
             DataSource::Dir(ds) => Ok(ds.delete_dir_all(path)?),
             DataSource::Zip(_) => Err(Error::ReadOnly),
         }
     }
 
-    pub fn list_dir<P: AsRef<Path>>(&self, path: P) -> Result<Vec<DirEntry>, Error> {
+    pub fn list_dir<P: AsRef<Path>>(&self, path: P) -> Result<Vec<DirEntry>> {
         match self {
             DataSource::Dir(ds) => Ok(ds.list_dir(path)?),
             DataSource::Zip(ds) => Ok(ds.list_dir(path)?),
         }
     }
 
-    pub fn read_info<P: AsRef<Path>>(&self, path: P) -> Result<FileInfo, Error> {
+    pub fn read_info<P: AsRef<Path>>(&self, path: P) -> Result<FileInfo> {
         match self {
             DataSource::Dir(ds) => Ok(ds.read_info(path)?),
             DataSource::Zip(ds) => Ok(ds.read_info(path)?),

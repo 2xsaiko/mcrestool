@@ -10,13 +10,16 @@ use zip::ZipArchive;
 
 use crate::datasource::{DirEntry, FileInfo, normalize_path};
 
+pub type Result<T, E = Error> = std::result::Result<T, E>;
+
+#[derive(Debug)]
 pub struct DataSource {
     archive: RefCell<ZipArchive<File>>,
     tree: RefCell<Option<DirTree>>,
 }
 
 impl DataSource {
-    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
         let file = File::open(path)?;
         let za = ZipArchive::new(file)?;
         Ok(DataSource {
@@ -25,7 +28,7 @@ impl DataSource {
         })
     }
 
-    pub fn open<P: AsRef<Path>>(&self, path: P) -> Result<Vec<u8>, Error> {
+    pub fn open<P: AsRef<Path>>(&self, path: P) -> Result<Vec<u8>> {
         let path = resolve_path_for_archive(&path)?;
         let mut archive = self.archive.borrow_mut();
         let mut file = archive.by_name(&path)?;
@@ -34,7 +37,7 @@ impl DataSource {
         Ok(buf)
     }
 
-    pub fn list_dir<P: AsRef<Path>>(&self, path: P) -> Result<Vec<DirEntry>, Error> {
+    pub fn list_dir<P: AsRef<Path>>(&self, path: P) -> Result<Vec<DirEntry>> {
         self.init_tree();
         let tree = self.tree.borrow();
         let tree = tree.as_ref().unwrap();
@@ -73,7 +76,7 @@ impl DataSource {
         }
     }
 
-    pub fn read_info<P: AsRef<Path>>(&self, path: P) -> Result<FileInfo, Error> {
+    pub fn read_info<P: AsRef<Path>>(&self, path: P) -> Result<FileInfo> {
         self.init_tree();
         let tree = self.tree.borrow();
         let tree = tree.as_ref().unwrap();
@@ -131,12 +134,13 @@ impl DataSource {
     }
 }
 
-fn resolve_path_for_archive<P: AsRef<Path>>(path: P) -> Result<String, Error> {
+fn resolve_path_for_archive<P: AsRef<Path>>(path: P) -> Result<String> {
     let path = path.as_ref();
     let pb = normalize_path(path).ok_or_else(|| Error::InvalidPath(path.to_path_buf()))?;
     Ok(pb.strip_prefix("/").unwrap().to_str().unwrap().to_string())
 }
 
+#[derive(Debug)]
 struct DirTree {
     name: String,
     children: Vec<DirTree>,

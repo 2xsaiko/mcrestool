@@ -1,18 +1,42 @@
-use std::io;
+use std::{io, mem};
+use std::borrow::Borrow;
+use std::cell::RefCell;
+use std::io::{Read, Write};
+use std::pin::Pin;
+use std::rc::Rc;
+
+use cxx::ExternType;
+use cxx::kind::Opaque;
 
 use crate::datasource::{self, DataSource, dir, zip};
-use crate::datasource::DataSource as DataSource_;
-use crate::datasource::resfile::ResFile as ResFile_;
-use std::io::{Read, Write};
+use crate::datasource::resfile::ResFile as ResFilePrivate;
+use crate::FileType;
+use crate::fstree::{FsTreeEntry, Workspace as WorkspacePrivate, Workspace, WorkspaceRoot};
+
+type WorkspaceRootPrivate = Option<Pin<Rc<RefCell<WorkspaceRoot>>>>;
+type FsTreeEntryPrivate = Option<Pin<Rc<RefCell<FsTreeEntry>>>>;
+type DataSourcePrivate = Pin<Rc<DataSource>>;
 
 #[cxx::bridge(namespace = "mcrtlib::ffi")]
 mod types {
+    pub struct Workspace {
+        pub inner: Box<WorkspacePrivate>,
+    }
+
     pub struct DataSource {
-        pub inner: Box<DataSource_>,
+        pub inner: Box<DataSourcePrivate>,
     }
 
     pub struct ResFile {
-        pub inner: Box<ResFile_>,
+        pub inner: Box<ResFilePrivate>,
+    }
+
+    pub struct WorkspaceRoot {
+        pub inner: Box<WorkspaceRootPrivate>,
+    }
+
+    pub struct FsTreeEntry {
+        pub inner: Box<FsTreeEntryPrivate>,
     }
 
     pub struct DirEntry {
@@ -37,16 +61,62 @@ mod types {
     extern "C++" {}
 
     extern "Rust" {
-        type DataSource_;
-        type ResFile_;
+        type WorkspacePrivate;
+        type DataSourcePrivate;
+        type ResFilePrivate;
+        type WorkspaceRootPrivate;
+        type FsTreeEntryPrivate;
 
+        fn get_file_type(ds: &DataSource, path: &str) -> FileType;
+
+        // Workspace
+        fn workspace_new() -> Workspace;
+
+        fn add_dir(self: &mut Workspace, path: &str) -> Result<()>;
+
+        fn add_zip(self: &mut Workspace, path: &str) -> Result<()>;
+
+        fn root_count(self: &Workspace) -> usize;
+
+        fn by_index_w(self: &Workspace, idx: usize) -> WorkspaceRoot;
+
+        // WorkspaceRoot
+        fn tree(self: &WorkspaceRoot) -> FsTreeEntry;
+
+        fn ds(self: &WorkspaceRoot) -> DataSource;
+
+        fn is_null_r(self: &WorkspaceRoot) -> bool;
+
+        // FsTreeEntry
+        fn fstreeentry_from_ptr(ptr: usize) -> FsTreeEntry;
+
+        fn name(self: &FsTreeEntry) -> String;
+
+        fn file_type(self: &FsTreeEntry) -> FileType;
+
+        fn children_count(self: &FsTreeEntry) -> usize;
+
+        fn by_index_e(self: &FsTreeEntry, idx: usize) -> FsTreeEntry;
+
+        fn index_of(self: &FsTreeEntry, child: &FsTreeEntry) -> isize;
+
+        fn parent(self: &FsTreeEntry) -> FsTreeEntry;
+
+        fn root(self: &FsTreeEntry) -> WorkspaceRoot;
+
+        fn path(self: &FsTreeEntry) -> String;
+
+        fn is_root(self: &FsTreeEntry) -> bool;
+
+        fn is_null_e(self: &FsTreeEntry) -> bool;
+
+        fn to_ptr(self: &FsTreeEntry) -> usize;
+
+        // DataSource
         fn datasource_open(path: &str) -> Result<DataSource>;
 
         fn datasource_open_zip(path: &str) -> Result<DataSource>;
 
-        fn get_file_type(ds: &DataSource, path: &str) -> FileType;
-
-        // DataSource
         fn open(self: &DataSource, path: &str, mode: &str) -> Result<ResFile>;
 
         fn create_dir(self: &DataSource, path: &str) -> Result<()>;
@@ -74,19 +144,178 @@ mod types {
     }
 }
 
+fn get_file_type(ds: &types::DataSource, path: &str) -> types::FileType {
+    crate::get_file_type(&ds.inner, path).into()
+}
+
+fn workspace_new() -> types::Workspace {
+    types::Workspace { inner: Box::new(Workspace::new()) }
+}
+
+impl types::Workspace {
+    fn add_dir(&mut self, path: &str) -> io::Result<()> {
+        self.inner.add_dir(path)
+    }
+
+    fn add_zip(&mut self, path: &str) -> zip::Result<()> {
+        self.inner.add_zip(path)
+    }
+
+    fn root_count(&self) -> usize {
+        let inner: &Box<Workspace> = &self.inner;
+        inner.roots().len()
+    }
+
+    fn by_index_w(&self, idx: usize) -> types::WorkspaceRoot {
+        let inner: &Box<Workspace> = &self.inner;
+        types::WorkspaceRoot { inner: Box::new(inner.roots().get(idx).cloned()) }
+    }
+}
+
+// This is unsafe! Can't put unsafe on it though because cxx won't take it
+// Takes usize because cxx doesn't support pointer types yet
+// fn workspaceroot_from_ptr(ptr: usize) -> types::WorkspaceRoot {
+//     let ptr = ptr as *const RefCell<WorkspaceRoot>;
+//     if ptr.is_null() {
+//         types::WorkspaceRoot { inner: Box::new(None) }
+//     } else {
+//         let rc = Pin::new(unsafe { Rc::from_raw(ptr) });
+//         mem::forget(rc.clone()); // bump ref counter by 1 since the pointer can be used multiple times
+//         types::WorkspaceRoot { inner: Box::new(Some(rc)) }
+//     }
+// }
+
+impl types::WorkspaceRoot {
+    fn null() -> Self {
+        types::WorkspaceRoot { inner: Box::new(None) }
+    }
+
+    fn ds(&self) -> types::DataSource {
+        let inner: &Box<WorkspaceRootPrivate> = &self.inner;
+        let inner = (**inner).as_ref().expect("can't get DataSource from null WorkspaceRoot");
+        types::DataSource { inner: Box::new((**inner).borrow().ds().clone()) }
+    }
+
+    fn is_null_r(&self) -> bool {
+        self.inner.is_none()
+    }
+
+    fn tree(&self) -> types::FsTreeEntry {
+        let inner: &Box<WorkspaceRootPrivate> = &self.inner;
+        types::FsTreeEntry { inner: Box::new((**inner).as_ref().map(|e| (**e).borrow().root().clone())) }
+    }
+
+    // Returns usize because cxx doesn't support pointer types yet
+    // fn to_ptr(&self) -> usize {
+    //     let inner: &Box<WorkspaceRootPrivate> = &self.inner;
+    //     match **inner {
+    //         Some(ref a) => (unsafe { Rc::as_ptr(&Pin::into_inner_unchecked(a.clone())) }) as usize,
+    //         None => 0
+    //     }
+    // }
+}
+
+// This is unsafe! Can't put unsafe on it though because cxx won't take it
+// Takes usize because cxx doesn't support pointer types yet
+fn fstreeentry_from_ptr(ptr: usize) -> types::FsTreeEntry {
+    let ptr = ptr as *const RefCell<FsTreeEntry>;
+    if ptr.is_null() {
+        types::FsTreeEntry::null()
+    } else {
+        let rc = Pin::new(unsafe { Rc::from_raw(ptr) });
+        mem::forget(rc.clone()); // bump ref counter by 1 since the pointer can be used multiple times
+        types::FsTreeEntry { inner: Box::new(Some(rc)) }
+    }
+}
+
+impl types::FsTreeEntry {
+    fn null() -> Self {
+        types::FsTreeEntry { inner: Box::new(None) }
+    }
+
+    fn name(&self) -> String {
+        let inner: &Box<FsTreeEntryPrivate> = &self.inner;
+        (**inner).as_ref()
+            .map(|s| (**s).borrow().display_name().into())
+            .unwrap_or_default()
+    }
+
+    fn file_type(&self) -> types::FileType {
+        let inner: &Box<FsTreeEntryPrivate> = &self.inner;
+        (**inner).as_ref().map(|s| (**s).borrow().file_type().into()).unwrap_or_default()
+    }
+
+    fn children_count(&self) -> usize {
+        let inner: &Box<FsTreeEntryPrivate> = &self.inner;
+        (**inner).as_ref()
+            .map(|a| (**a).borrow().children().len())
+            .unwrap_or_default()
+    }
+
+    fn by_index_e(&self, idx: usize) -> types::FsTreeEntry {
+        let inner: &Box<FsTreeEntryPrivate> = &self.inner;
+        let content = (**inner).as_ref()
+            .and_then(|a| (**a).borrow().children().get(idx).cloned());
+        types::FsTreeEntry { inner: Box::new(content) }
+    }
+
+    fn index_of(&self, child: &types::FsTreeEntry) -> isize {
+        let inner: &Box<FsTreeEntryPrivate> = &self.inner;
+        let ch_inner: &Box<FsTreeEntryPrivate> = &child.inner;
+        (**ch_inner).as_ref().and_then(|ch_inner|
+            (**inner).as_ref()
+                .and_then(|a| (**a).borrow().index_of(&ch_inner)))
+            .map_or(-1, |a| a as isize)
+    }
+
+    fn parent(&self) -> types::FsTreeEntry {
+        let inner: &Box<FsTreeEntryPrivate> = &self.inner;
+        (**inner).as_ref()
+            .and_then(|e| (**e).borrow().parent().clone())
+            .and_then(|s| s.upgrade())
+            .map_or_else(|| types::FsTreeEntry::null(), |s| types::FsTreeEntry { inner: Box::new(Some(s)) })
+    }
+
+    fn root(&self) -> types::WorkspaceRoot {
+        let inner: &Box<FsTreeEntryPrivate> = &self.inner;
+        (**inner).as_ref()
+            .map(|e| (**e).borrow().root().clone())
+            .and_then(|s| s.upgrade())
+            .map_or_else(|| types::WorkspaceRoot::null(), |s| types::WorkspaceRoot { inner: Box::new(Some(s)) })
+    }
+
+    fn path(&self) -> String {
+        let inner: &Box<FsTreeEntryPrivate> = &self.inner;
+        (**inner).as_ref()
+            .map(|e| (**e).borrow().path().to_str().unwrap().to_string())
+            .unwrap_or_default()
+    }
+
+    fn is_root(&self) -> bool {
+        let inner: &Box<FsTreeEntryPrivate> = &self.inner;
+        Option::as_ref(inner).map(|e| (**e).borrow().is_root()).unwrap_or(false)
+    }
+
+    fn is_null_e(&self) -> bool {
+        self.inner.is_none()
+    }
+
+    // Returns usize because cxx doesn't support pointer types yet
+    fn to_ptr(&self) -> usize {
+        let inner: &Box<FsTreeEntryPrivate> = &self.inner;
+        match **inner {
+            Some(ref a) => (unsafe { Rc::as_ptr(&Pin::into_inner_unchecked(a.clone())) }) as usize,
+            None => 0
+        }
+    }
+}
+
 fn datasource_open(path: &str) -> Result<types::DataSource, io::Error> {
-    Ok(types::DataSource { inner: Box::new(DataSource::Dir(dir::DataSource::new(path)?)) })
+    Ok(types::DataSource { inner: Box::new(Rc::pin(DataSource::Dir(dir::DataSource::new(path)?))) })
 }
 
 fn datasource_open_zip(path: &str) -> Result<types::DataSource, zip::Error> {
-    Ok(types::DataSource { inner: Box::new(DataSource::Zip(zip::DataSource::new(path)?)) })
-}
-
-fn get_file_type(ds: &types::DataSource, path: &str) -> types::FileType {
-    match crate::get_file_type(&ds.inner, path) {
-        None => types::FileType::FILETYPE_NONE,
-        Some(t) => t.into(),
-    }
+    Ok(types::DataSource { inner: Box::new(Rc::pin(DataSource::Zip(zip::DataSource::new(path)?))) })
 }
 
 impl types::DataSource {
@@ -181,4 +410,17 @@ impl From<crate::FileType> for types::FileType {
             crate::FileType::Recipe => types::FileType::FILETYPE_RECIPE,
         }
     }
+}
+
+impl From<Option<crate::FileType>> for types::FileType {
+    fn from(t: Option<FileType>) -> Self {
+        match t {
+            None => types::FileType::FILETYPE_NONE,
+            Some(t) => t.into(),
+        }
+    }
+}
+
+impl Default for types::FileType {
+    fn default() -> Self { types::FileType::FILETYPE_NONE }
 }

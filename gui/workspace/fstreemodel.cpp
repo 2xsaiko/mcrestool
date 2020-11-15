@@ -1,24 +1,35 @@
 #include "fstreemodel.h"
+#include <QDebug>
+#include <mcrtlib.h>
 #include <mcrtutil.h>
 
-FsTreeModel::FsTreeModel(Workspace* ws, QObject* parent) :
+using mcrtlib::ffi::Workspace;
+using mcrtlib::ffi::WorkspaceRoot;
+using mcrtlib::ffi::FsTreeEntry;
+using mcrtlib::ffi::fstreeentry_from_ptr;
+using mcrtlib::to_qstring;
+
+FsTreeModel::FsTreeModel(Workspace& ws, QObject* parent) :
     QAbstractItemModel(parent),
     ws(ws) {}
 
 QModelIndex FsTreeModel::index(int row, int column, const QModelIndex& parent) const {
     if (!hasIndex(row, column, parent)) return QModelIndex();
 
-    void* data = nullptr;
+    void* data;
 
     if (!parent.isValid()) {
-        data = this->ws->by_index(row);
+        FsTreeEntry entry = this->ws.by_index_w(row).tree();
+        assert(!entry.is_null_e());
+        data = (void*) entry.to_ptr();
+        qDebug() << "indexing from <invalid> to" << to_qstring(entry.path());
     } else {
-        QObject* ptr = static_cast<QObject*>(parent.internalPointer());
-        if (auto item = qobject_cast<WorkspaceRoot*>(ptr)) {
-            data = item->tree()->by_index(row);
-        } else if (auto item = qobject_cast<FsTreeEntry*>(ptr)) {
-            data = item->by_index(row);
-        }
+        FsTreeEntry entry = fstreeentry_from_ptr((size_t) parent.internalPointer());
+        assert(!entry.is_null_e());
+        FsTreeEntry child = entry.by_index_e(row);
+        assert(!child.is_null_e());
+        data = (void*) child.to_ptr();
+        qDebug() << "indexing from" << to_qstring(entry.path()) << "to" << to_qstring(child.path());
     }
 
     if (!data) {
@@ -31,21 +42,18 @@ QModelIndex FsTreeModel::index(int row, int column, const QModelIndex& parent) c
 QModelIndex FsTreeModel::parent(const QModelIndex& child) const {
     if (!child.isValid()) return QModelIndex();
 
-    QObject* ptr = static_cast<QObject*>(child.internalPointer());
-    if (auto item = qobject_cast<FsTreeEntry*>(ptr)) {
-        FsTreeEntry* root = item->parent();
-        assert(root != nullptr);
-
-        if (root->parent() == nullptr) {
-            // parent is top-level (WorkspaceRoot)
-            return createIndex(root->index_of(item), 0, root->root());
-        }
-
-        return createIndex(root->index_of(item), 0, root);
-    } else if (auto item = qobject_cast<WorkspaceRoot*>(ptr)) {
+    FsTreeEntry entry = fstreeentry_from_ptr((size_t) child.internalPointer());
+    assert(!entry.is_null_e());
+    if (entry.is_root()) {
+        qDebug() << "parent indexing from" << to_qstring(entry.path()) << "to <invalid>";
         return QModelIndex();
     } else {
-        return QModelIndex();
+        FsTreeEntry parent = entry.parent();
+        assert(!parent.is_null_e());
+
+        qDebug() << "parent indexing from" << to_qstring(entry.path()) << "to" << to_qstring(parent.path());
+
+        return createIndex((int) parent.index_of(entry), 0, (void*) parent.to_ptr());
     }
 }
 
@@ -53,14 +61,10 @@ QVariant FsTreeModel::data(const QModelIndex& index, int role) const {
     if (!index.isValid()) return QVariant();
     if (role != Qt::DisplayRole) return QVariant();
 
-    QObject* ptr = static_cast<QObject*>(index.internalPointer());
-    if (auto item = qobject_cast<WorkspaceRoot*>(ptr)) {
-        return item->name();
-    } else if (auto item = qobject_cast<FsTreeEntry*>(ptr)) {
-        return item->file_name();
-    } else {
-        return QVariant();
-    }
+    FsTreeEntry entry = fstreeentry_from_ptr((size_t) index.internalPointer());
+    assert(!entry.is_null_e());
+
+    return to_qstring(entry.name());
 }
 
 Qt::ItemFlags FsTreeModel::flags(const QModelIndex& index) const {
@@ -76,13 +80,13 @@ QVariant FsTreeModel::headerData(int section, Qt::Orientation orientation, int r
 int FsTreeModel::rowCount(const QModelIndex& parent) const {
     if (parent.column() > 0) return 0;
 
-    QObject* ptr = static_cast<QObject*>(parent.internalPointer());
-    if (auto item = qobject_cast<FsTreeEntry*>(ptr)) {
-        return item->children_count();
-    } else if (auto item = qobject_cast<WorkspaceRoot*>(ptr)) {
-        return item->tree()->children_count();
+    FsTreeEntry entry = fstreeentry_from_ptr((size_t) parent.internalPointer());
+    if (entry.is_null_e()) {
+        qDebug() << "root count:" << this->ws.root_count();
+        return this->ws.root_count();
     } else {
-        return this->ws->root_count();
+        qDebug() << "children of " << to_qstring(entry.path()) << "count:" << entry.children_count();
+        return entry.children_count();
     }
 }
 
