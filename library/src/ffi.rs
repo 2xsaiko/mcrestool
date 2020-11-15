@@ -1,21 +1,16 @@
 use std::{io, mem};
-use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::io::{Read, Write};
-use std::pin::Pin;
 use std::rc::Rc;
-
-use cxx::ExternType;
-use cxx::kind::Opaque;
 
 use crate::datasource::{self, DataSource, dir, zip};
 use crate::datasource::resfile::ResFile as ResFilePrivate;
 use crate::FileType;
 use crate::fstree::{FsTreeEntry, Workspace as WorkspacePrivate, Workspace, WorkspaceRoot};
 
-type WorkspaceRootPrivate = Option<Pin<Rc<RefCell<WorkspaceRoot>>>>;
-type FsTreeEntryPrivate = Option<Pin<Rc<RefCell<FsTreeEntry>>>>;
-type DataSourcePrivate = Pin<Rc<DataSource>>;
+type WorkspaceRootPrivate = Option<Rc<RefCell<WorkspaceRoot>>>;
+type FsTreeEntryPrivate = Option<Rc<RefCell<FsTreeEntry>>>;
+type DataSourcePrivate = Rc<DataSource>;
 
 #[cxx::bridge(namespace = "mcrtlib::ffi")]
 mod types {
@@ -172,19 +167,6 @@ impl types::Workspace {
     }
 }
 
-// This is unsafe! Can't put unsafe on it though because cxx won't take it
-// Takes usize because cxx doesn't support pointer types yet
-// fn workspaceroot_from_ptr(ptr: usize) -> types::WorkspaceRoot {
-//     let ptr = ptr as *const RefCell<WorkspaceRoot>;
-//     if ptr.is_null() {
-//         types::WorkspaceRoot { inner: Box::new(None) }
-//     } else {
-//         let rc = Pin::new(unsafe { Rc::from_raw(ptr) });
-//         mem::forget(rc.clone()); // bump ref counter by 1 since the pointer can be used multiple times
-//         types::WorkspaceRoot { inner: Box::new(Some(rc)) }
-//     }
-// }
-
 impl types::WorkspaceRoot {
     fn null() -> Self {
         types::WorkspaceRoot { inner: Box::new(None) }
@@ -204,15 +186,6 @@ impl types::WorkspaceRoot {
         let inner: &Box<WorkspaceRootPrivate> = &self.inner;
         types::FsTreeEntry { inner: Box::new((**inner).as_ref().map(|e| (**e).borrow().root().clone())) }
     }
-
-    // Returns usize because cxx doesn't support pointer types yet
-    // fn to_ptr(&self) -> usize {
-    //     let inner: &Box<WorkspaceRootPrivate> = &self.inner;
-    //     match **inner {
-    //         Some(ref a) => (unsafe { Rc::as_ptr(&Pin::into_inner_unchecked(a.clone())) }) as usize,
-    //         None => 0
-    //     }
-    // }
 }
 
 // This is unsafe! Can't put unsafe on it though because cxx won't take it
@@ -222,7 +195,7 @@ fn fstreeentry_from_ptr(ptr: usize) -> types::FsTreeEntry {
     if ptr.is_null() {
         types::FsTreeEntry::null()
     } else {
-        let rc = Pin::new(unsafe { Rc::from_raw(ptr) });
+        let rc = unsafe { Rc::from_raw(ptr) };
         mem::forget(rc.clone()); // bump ref counter by 1 since the pointer can be used multiple times
         types::FsTreeEntry { inner: Box::new(Some(rc)) }
     }
@@ -304,18 +277,18 @@ impl types::FsTreeEntry {
     fn to_ptr(&self) -> usize {
         let inner: &Box<FsTreeEntryPrivate> = &self.inner;
         match **inner {
-            Some(ref a) => (unsafe { Rc::as_ptr(&Pin::into_inner_unchecked(a.clone())) }) as usize,
+            Some(ref a) => (Rc::as_ptr(a)) as usize,
             None => 0
         }
     }
 }
 
 fn datasource_open(path: &str) -> Result<types::DataSource, io::Error> {
-    Ok(types::DataSource { inner: Box::new(Rc::pin(DataSource::Dir(dir::DataSource::new(path)?))) })
+    Ok(types::DataSource { inner: Box::new(Rc::new(DataSource::Dir(dir::DataSource::new(path)?))) })
 }
 
 fn datasource_open_zip(path: &str) -> Result<types::DataSource, zip::Error> {
-    Ok(types::DataSource { inner: Box::new(Rc::pin(DataSource::Zip(zip::DataSource::new(path)?))) })
+    Ok(types::DataSource { inner: Box::new(Rc::new(DataSource::Zip(zip::DataSource::new(path)?))) })
 }
 
 impl types::DataSource {

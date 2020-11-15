@@ -11,7 +11,6 @@ zip = "0.5.8"
 serde = "1.0.117"
 serde_json = "1.0.59"
 thiserror = "1.0.22"
-pin-weak = "1.0.0"
 
 [lib]
 crate-type = ["staticlib"]

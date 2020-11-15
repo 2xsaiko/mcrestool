@@ -112,7 +112,7 @@ impl DataSource {
 
     fn init_tree(&self) {
         if self.tree.borrow().is_none() {
-            let mut archive = self.archive.borrow();
+            let archive = self.archive.borrow();
             let mut tree = DirTree::new("/");
 
             for path in archive.file_names() {

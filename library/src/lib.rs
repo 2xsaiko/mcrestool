@@ -8,7 +8,7 @@ mod fstree;
 mod ffi;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
-enum FileType {
+pub enum FileType {
     Language,
     LanguagePart,
     Recipe,

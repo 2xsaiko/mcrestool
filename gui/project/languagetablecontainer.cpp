@@ -1,6 +1,5 @@
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QDebug>
 #include <QList>
 #include <utility>
 #include <mcrtlib.h>
@@ -100,7 +99,7 @@ void LanguageTableContainer::load() {
     this->m_lt->data().clear();
 
     std::string path = this->m_path.toStdString();
-    rust::Vec<DirEntry> vec =this->m_ds.list_dir(rust::Str(path));
+    rust::Vec<DirEntry> vec = this->m_ds.list_dir(rust::Str(path));
     QList<DirEntry> list;
 
     for (const auto& entry: vec) {

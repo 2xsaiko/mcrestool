@@ -61,9 +61,7 @@ impl DataSource {
     }
 
     fn get_full_path<P: AsRef<Path>>(&self, path: P) -> Result<PathBuf, Error> {
-        let buf = self.dir.join(normalize_path(&path).ok_or_else(|| Error::InvalidPath(path.as_ref().to_path_buf()))?.strip_prefix("/").unwrap());
-        println!("{}", buf.to_str().unwrap());
-        Ok(buf)
+        Ok(self.dir.join(normalize_path(&path).ok_or_else(|| Error::InvalidPath(path.as_ref().to_path_buf()))?.strip_prefix("/").unwrap()))
     }
 }
 

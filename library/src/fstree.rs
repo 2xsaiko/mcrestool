@@ -3,33 +3,30 @@ use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::io;
 use std::path::PathBuf;
-use std::pin::Pin;
-use std::rc::Rc;
-
-use pin_weak::rc::PinWeak;
+use std::rc::{Rc, Weak};
 
 use crate::{FileType, get_file_type};
 use crate::datasource::{DataSource, dir, zip};
 
 #[derive(Debug)]
 pub struct Workspace {
-    roots: Vec<Pin<Rc<RefCell<WorkspaceRoot>>>>,
+    roots: Vec<Rc<RefCell<WorkspaceRoot>>>,
 }
 
 #[derive(Debug)]
 pub struct WorkspaceRoot {
     name: String,
-    ds: Pin<Rc<DataSource>>,
-    root: Pin<Rc<RefCell<FsTreeEntry>>>,
+    ds: Rc<DataSource>,
+    root: Rc<RefCell<FsTreeEntry>>,
 }
 
 #[derive(Debug)]
 pub struct FsTreeEntry {
     path: PathBuf,
     file_type: Option<FileType>,
-    children: Vec<Pin<Rc<RefCell<FsTreeEntry>>>>,
-    parent: Option<PinWeak<RefCell<FsTreeEntry>>>,
-    root: PinWeak<RefCell<WorkspaceRoot>>,
+    children: Vec<Rc<RefCell<FsTreeEntry>>>,
+    parent: Option<Weak<RefCell<FsTreeEntry>>>,
+    root: Weak<RefCell<WorkspaceRoot>>,
     is_top_level: bool,
 }
 
@@ -58,27 +55,27 @@ impl Workspace {
         Ok(())
     }
 
-    pub fn roots(&self) -> &[Pin<Rc<RefCell<WorkspaceRoot>>>] { &self.roots }
+    pub fn roots(&self) -> &[Rc<RefCell<WorkspaceRoot>>] { &self.roots }
 }
 
 impl WorkspaceRoot {
-    pub fn new<S: Into<String>>(name: S, ds: DataSource) -> Pin<Rc<RefCell<Self>>> {
-        let wsr = Rc::pin(RefCell::new(WorkspaceRoot {
+    pub fn new<S: Into<String>>(name: S, ds: DataSource) -> Rc<RefCell<Self>> {
+        let wsr = Rc::new(RefCell::new(WorkspaceRoot {
             name: name.into(),
-            ds: Rc::pin(ds),
-            root: Rc::pin(RefCell::new(FsTreeEntry::new_top_level())),
+            ds: Rc::new(ds),
+            root: Rc::new(RefCell::new(FsTreeEntry::new_top_level())),
         }));
 
         let copy = wsr.clone();
-        wsr.borrow_mut().root.borrow_mut().root = PinWeak::downgrade(copy);
+        wsr.borrow_mut().root.borrow_mut().root = Rc::downgrade(&copy);
         let fstree = wsr.borrow().root.clone();
         FsTreeEntry::refresh(&fstree);
         wsr
     }
 
-    pub fn root(&self) -> &Pin<Rc<RefCell<FsTreeEntry>>> { &self.root }
+    pub fn root(&self) -> &Rc<RefCell<FsTreeEntry>> { &self.root }
 
-    pub fn ds(&self) -> &Pin<Rc<DataSource>> { &self.ds }
+    pub fn ds(&self) -> &Rc<DataSource> { &self.ds }
 }
 
 impl FsTreeEntry {
@@ -88,17 +85,17 @@ impl FsTreeEntry {
             file_type: None,
             children: Default::default(),
             parent: None,
-            root: PinWeak::default(),
+            root: Weak::new(),
             is_top_level: true,
         }
     }
 
-    fn new<P: Into<PathBuf>>(path: P, parent: Pin<Rc<RefCell<FsTreeEntry>>>, root: PinWeak<RefCell<WorkspaceRoot>>) -> Self {
+    fn new<P: Into<PathBuf>>(path: P, parent: Rc<RefCell<FsTreeEntry>>, root: Weak<RefCell<WorkspaceRoot>>) -> Self {
         FsTreeEntry {
             path: path.into(),
             file_type: None,
             children: Default::default(),
-            parent: Some(PinWeak::downgrade(parent)),
+            parent: Some(Rc::downgrade(&parent)),
             root,
             is_top_level: false,
         }
@@ -122,21 +119,21 @@ impl FsTreeEntry {
 
     pub fn is_root(&self) -> bool { self.is_top_level }
 
-    pub fn parent(&self) -> &Option<PinWeak<RefCell<FsTreeEntry>>> { &self.parent }
+    pub fn parent(&self) -> &Option<Weak<RefCell<FsTreeEntry>>> { &self.parent }
 
-    pub fn root(&self) -> &PinWeak<RefCell<WorkspaceRoot>> { &self.root }
+    pub fn root(&self) -> &Weak<RefCell<WorkspaceRoot>> { &self.root }
 
     pub fn path(&self) -> &PathBuf { &self.path }
 
-    pub fn children(&self) -> &[Pin<Rc<RefCell<FsTreeEntry>>>] { &self.children }
+    pub fn children(&self) -> &[Rc<RefCell<FsTreeEntry>>] { &self.children }
 
-    pub fn index_of(&self, child: &Pin<Rc<RefCell<FsTreeEntry>>>) -> Option<usize> {
+    pub fn index_of(&self, child: &Rc<RefCell<FsTreeEntry>>) -> Option<usize> {
         self.children.iter().enumerate()
             .find(|(_, a)| a.as_ptr() == child.as_ptr())
             .map(|(idx, _)| idx)
     }
 
-    pub fn refresh(entry: &Pin<Rc<RefCell<Self>>>) {
+    pub fn refresh(entry: &Rc<RefCell<Self>>) {
         let mut e = (*entry).borrow_mut();
 
         let root = match e.root.upgrade() {
@@ -188,7 +185,7 @@ impl FsTreeEntry {
                     if !found {
                         let path = e.path.join(dir_entry.file_name);
                         let root = e.root.clone();
-                        e.children.insert(i, Rc::pin(RefCell::new(FsTreeEntry::new(path, entry.clone(), root))));
+                        e.children.insert(i, Rc::new(RefCell::new(FsTreeEntry::new(path, entry.clone(), root))));
                         changed = true;
                     }
                 }

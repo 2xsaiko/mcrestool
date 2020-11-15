@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::{Cursor, ErrorKind, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
 use std::io;
 
+#[derive(Debug)]
 pub enum ResFile {
     File(File),
     ZipEntry(Cursor<Vec<u8>>),

@@ -1,5 +1,5 @@
 use std::ffi::OsString;
-use std::{fs, io};
+use std::fs;
 use std::io::{Cursor, ErrorKind};
 use std::path::{Component, Path, PathBuf};
 
@@ -122,7 +122,10 @@ impl From<dir::Error> for Error {
                 match e.kind() {
                     ErrorKind::NotFound => Error::NotFound,
                     ErrorKind::PermissionDenied => Error::PermissionDenied,
-                    _ => Error::Io
+                    e => {
+                        eprintln!("unhandled error: {:?}", e);
+                        Error::Io
+                    }
                 }
             }
         }
@@ -218,8 +221,8 @@ impl Into<fs::OpenOptions> for OpenOptions {
         options.read(self.read);
         options.write(self.write);
         options.create(self.create);
-        options.append(self.append);
-        options.truncate(!self.append);
+        options.append(self.write && self.append);
+        options.truncate(self.write && !self.append);
         options
     }
 }
