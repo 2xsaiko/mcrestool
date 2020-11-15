@@ -1,4 +1,4 @@
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io::{Cursor, ErrorKind};
 use std::path::{Component, Path, PathBuf};
@@ -227,11 +227,19 @@ impl Into<fs::OpenOptions> for OpenOptions {
     }
 }
 
+#[derive(Debug)]
 pub struct DirEntry {
-    pub file_name: OsString,
+    pub path: PathBuf,
     pub info: FileInfo,
 }
 
+impl DirEntry {
+    pub fn file_name(&self) -> &OsStr {
+        self.path.file_name().unwrap()
+    }
+}
+
+#[derive(Debug)]
 pub struct FileInfo {
     pub is_file: bool,
     pub is_dir: bool,

@@ -29,7 +29,7 @@ impl DataSource {
             .map(|e| {
                 let meta = e.metadata().expect("failed to load file metadata");
                 DirEntry {
-                    file_name: e.file_name(),
+                    path: Path::new("/").join(e.path().strip_prefix(&self.dir).unwrap()),
                     info: meta.into(),
                 }
             })

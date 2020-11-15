@@ -1,14 +1,12 @@
 project(gui)
 
 set(mcrestool_INCLUDES
-        languagetable
         model
         project
         ui
         workspace)
 
 set(mcrestool_HEADERS
-        languagetable/languagetable.h
         model/languagetablemodel.h
         project/languagetablecontainer.h
         ui/geneditorwindow.h
@@ -27,7 +25,6 @@ set(mcrestool_HEADERS
         table.h)
 
 set(mcrestool_SRC
-        languagetable/languagetable.cpp
         model/languagetablemodel.cpp
         project/languagetablecontainer.cpp
         ui/geneditorwindow.cpp

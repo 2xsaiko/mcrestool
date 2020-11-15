@@ -1,12 +1,14 @@
 use std::{io, mem};
 use std::cell::RefCell;
 use std::io::{Read, Write};
+use std::path::Path;
 use std::rc::Rc;
 
+use crate::{FileType, langtable};
 use crate::datasource::{self, DataSource, dir, zip};
 use crate::datasource::resfile::ResFile as ResFilePrivate;
-use crate::FileType;
 use crate::fstree::{FsTreeEntry, Workspace as WorkspacePrivate, Workspace, WorkspaceRoot};
+use crate::langtable::{LanguageTable as LanguageTablePrivate, LanguageTable};
 
 type WorkspaceRootPrivate = Option<Rc<RefCell<WorkspaceRoot>>>;
 type FsTreeEntryPrivate = Option<Rc<RefCell<FsTreeEntry>>>;
@@ -35,7 +37,7 @@ mod types {
     }
 
     pub struct DirEntry {
-        pub file_name: String,
+        pub path: String,
         pub info: FileInfo,
     }
 
@@ -44,6 +46,10 @@ mod types {
         pub is_dir: bool,
         pub is_symlink: bool,
         pub read_only: bool,
+    }
+
+    pub struct LanguageTable {
+        pub inner: Box<LanguageTablePrivate>,
     }
 
     pub enum FileType {
@@ -61,6 +67,7 @@ mod types {
         type ResFilePrivate;
         type WorkspaceRootPrivate;
         type FsTreeEntryPrivate;
+        type LanguageTablePrivate;
 
         fn get_file_type(ds: &DataSource, path: &str) -> FileType;
 
@@ -107,6 +114,9 @@ mod types {
 
         fn to_ptr(self: &FsTreeEntry) -> usize;
 
+        // DirEntry
+        fn file_name(self: &DirEntry) -> &str;
+
         // DataSource
         fn datasource_open(path: &str) -> Result<DataSource>;
 
@@ -136,6 +146,29 @@ mod types {
         fn read(self: &mut ResFile, buf: &mut [u8]) -> Result<usize>;
 
         fn write(self: &mut ResFile, buf: &[u8]) -> Result<usize>;
+
+        // LanguageTable
+        fn languagetable_new() -> LanguageTable;
+
+        fn languagetable_load(ds: &DataSource, path: &str) -> Result<LanguageTable>;
+
+        fn insert(self: &mut LanguageTable, language: &str, key: &str, value: &str);
+
+        fn add_key(self: &mut LanguageTable, key: &str);
+
+        fn add_language(self: &mut LanguageTable, language: &str);
+
+        fn key_count(self: &LanguageTable) -> usize;
+
+        fn language_count(self: &LanguageTable) -> usize;
+
+        fn get(self: &LanguageTable, language: &str, key: &str) -> Result<String>;
+
+        fn get_language_at(self: &LanguageTable, idx: usize) -> Result<String>;
+
+        fn get_key_at(self: &LanguageTable, idx: usize) -> Result<String>;
+
+        fn save(self: &LanguageTable, ds: &DataSource, path: &str) -> Result<()>;
     }
 }
 
@@ -283,6 +316,13 @@ impl types::FsTreeEntry {
     }
 }
 
+impl types::DirEntry {
+    fn file_name(&self) -> &str {
+        let p = Path::new(&self.path);
+        p.file_name().unwrap().to_str().unwrap()
+    }
+}
+
 fn datasource_open(path: &str) -> Result<types::DataSource, io::Error> {
     Ok(types::DataSource { inner: Box::new(Rc::new(DataSource::Dir(dir::DataSource::new(path)?))) })
 }
@@ -355,10 +395,56 @@ impl types::ResFile {
     }
 }
 
+fn languagetable_new() -> types::LanguageTable {
+    types::LanguageTable { inner: Box::new(LanguageTable::new()) }
+}
+
+fn languagetable_load(ds: &types::DataSource, path: &str) -> langtable::Result<types::LanguageTable> {
+    Ok(types::LanguageTable { inner: Box::new(LanguageTable::load(&ds.inner, path)?) })
+}
+
+impl types::LanguageTable {
+    fn insert(&mut self, language: &str, key: &str, value: &str) {
+        self.inner.insert(language, key, value);
+    }
+
+    fn add_key(&mut self, key: &str) {
+        self.inner.add_key(key);
+    }
+
+    fn add_language(&mut self, language: &str) {
+        self.inner.add_language(language);
+    }
+
+    fn key_count(&self) -> usize {
+        self.inner.key_count()
+    }
+
+    fn language_count(&self) -> usize {
+        self.inner.lang_count()
+    }
+
+    fn get(&self, language: &str, key: &str) -> Result<String, &'static str> {
+        self.inner.get(language, key).map(|s| s.to_string()).ok_or("entry not found in table")
+    }
+
+    fn get_language_at(&self, idx: usize) -> Result<String, &'static str> {
+        self.inner.get_language_at(idx).map(|s| s.to_string()).ok_or("language not found in table")
+    }
+
+    fn get_key_at(&self, idx: usize) -> Result<String, &'static str> {
+        self.inner.get_key_at(idx).map(|s| s.to_string()).ok_or("key not found in table")
+    }
+
+    fn save(&self, ds: &types::DataSource, path: &str) -> langtable::Result<()> {
+        self.inner.save(&ds.inner, path)
+    }
+}
+
 impl From<datasource::DirEntry> for types::DirEntry {
     fn from(e: datasource::DirEntry) -> Self {
         types::DirEntry {
-            file_name: e.file_name.to_str().expect("invalid characters in file name for UTF-8 string").to_string(),
+            path: e.path.to_str().expect("invalid characters in path for UTF-8 string").to_string(),
             info: e.info.into(),
         }
     }

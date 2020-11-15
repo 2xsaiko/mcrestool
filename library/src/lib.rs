@@ -6,6 +6,7 @@ use crate::datasource::DataSource;
 pub mod datasource;
 mod fstree;
 mod ffi;
+mod langtable;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum FileType {

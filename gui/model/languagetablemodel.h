@@ -5,13 +5,12 @@
 #include <QMap>
 #include <QAbstractTableModel>
 #include <mcrtlib.h>
-#include <languagetable.h>
 
 class LanguageTableModel : public QAbstractTableModel {
 Q_OBJECT
 
 public:
-    explicit LanguageTableModel(LanguageTable lt, QObject* parent = nullptr);
+    explicit LanguageTableModel(mcrtlib::ffi::LanguageTable lt, QObject* parent = nullptr);
 
     void set_entry(QString language, QString key, QString value);
 
@@ -33,14 +32,14 @@ public:
 
     void add_language(QString language);
 
-    [[nodiscard]] LanguageTable& data();
+    [[nodiscard]] mcrtlib::ffi::LanguageTable& data();
 
 signals:
 
     void changed(const QString& language, const QString& key, const QString& value);
 
 private:
-    LanguageTable m_lt;
+    mcrtlib::ffi::LanguageTable m_lt;
 
     [[nodiscard]] QString get_column_name(int idx) const;
 

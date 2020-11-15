@@ -5,16 +5,22 @@
 #include "languagetablemodel.h"
 
 using std::optional;
+using mcrtlib::ffi::LanguageTable;
+using mcrtlib::ffi::languagetable_new;
+using mcrtlib::to_qstring;
 
 LanguageTableModel::LanguageTableModel(LanguageTable lt, QObject* parent) : QAbstractTableModel(parent), m_lt(std::move(lt)) {}
 
 void LanguageTableModel::set_entry(QString language, QString key, QString value) {
-    m_lt.insert(language, key, value);
+    std::string s1 = language.toStdString();
+    std::string s2 = key.toStdString();
+    std::string s3 = value.toStdString();
+    m_lt.insert(s1, s2, s3);
     emit changed(language, key, value);
 }
 
 LanguageTableModel* LanguageTableModel::from_dir(const mcrtlib::ffi::DataSource& ds, QString path, QObject* parent) {
-    return new LanguageTableModel(LanguageTable(), parent);
+    return new LanguageTableModel(languagetable_new(), parent);
 }
 
 int LanguageTableModel::rowCount(const QModelIndex& parent) const {
@@ -27,11 +33,13 @@ int LanguageTableModel::columnCount(const QModelIndex& parent) const {
 
 QVariant LanguageTableModel::data(const QModelIndex& index, int role) const {
     if (role == Qt::DisplayRole || role == Qt::EditRole) {
-        QString column = get_column_name(index.column());
-        QString row = get_row_name(index.row());
-        QString str = m_lt.get(column.toLocal8Bit(), row.toLocal8Bit());
-        if (!str.isNull()) {
-            return str;
+        std::string column = get_column_name(index.column()).toStdString();
+        std::string row = get_row_name(index.row()).toStdString();
+        try {
+            rust::String str = m_lt.get(column, row);
+            return to_qstring(str);
+        } catch (const rust::Str& e) {
+
         }
     }
     return QVariant();
@@ -50,11 +58,11 @@ QVariant LanguageTableModel::headerData(int section, Qt::Orientation orientation
 }
 
 QString LanguageTableModel::get_column_name(int idx) const {
-    return m_lt.get_language_at(idx);
+    return to_qstring(m_lt.get_language_at(idx));
 }
 
 QString LanguageTableModel::get_row_name(int idx) const {
-    return m_lt.get_key_at(idx);
+    return to_qstring(m_lt.get_key_at(idx));
 }
 
 bool LanguageTableModel::setData(const QModelIndex& index, const QVariant& value, int role) {
@@ -72,13 +80,15 @@ Qt::ItemFlags LanguageTableModel::flags(const QModelIndex& index) const {
 
 void LanguageTableModel::add_locale_key(QString locale_key) {
     emit layoutAboutToBeChanged();
-    m_lt.add_key(locale_key);
+    std::string s = locale_key.toStdString();
+    m_lt.add_key(s);
     emit layoutChanged();
 }
 
 void LanguageTableModel::add_language(QString language) {
     emit layoutAboutToBeChanged();
-    m_lt.add_language(language);
+    std::string s = language.toStdString();
+    m_lt.add_language(s);
     emit layoutChanged();
 }
 

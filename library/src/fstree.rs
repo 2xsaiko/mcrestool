@@ -166,7 +166,7 @@ impl FsTreeEntry {
 
                     while e.children.len() > i {
                         let ch = e.children[i].borrow();
-                        match ch.path.file_name().unwrap().cmp(&dir_entry.file_name) {
+                        match ch.path.cmp(&dir_entry.path) {
                             Ordering::Less => {
                                 drop(ch);
                                 e.children.remove(i);
@@ -183,7 +183,7 @@ impl FsTreeEntry {
                     }
 
                     if !found {
-                        let path = e.path.join(dir_entry.file_name);
+                        let path = dir_entry.path;
                         let root = e.root.clone();
                         e.children.insert(i, Rc::new(RefCell::new(FsTreeEntry::new(path, entry.clone(), root))));
                         changed = true;

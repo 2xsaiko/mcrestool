@@ -49,7 +49,7 @@ impl DataSource {
 
                 for x in t.children.iter() {
                     vec.push(DirEntry {
-                        file_name: x.name.to_string().into(),
+                        path: x.path.clone(),
                         info: FileInfo {
                             is_file: false,
                             is_dir: true,
@@ -61,7 +61,7 @@ impl DataSource {
 
                 for x in t.files.iter() {
                     vec.push(DirEntry {
-                        file_name: x.into(),
+                        path: t.path.join(x),
                         info: FileInfo {
                             is_file: true,
                             is_dir: false,
@@ -98,7 +98,7 @@ impl DataSource {
                     let cd = tree.navigate(parent)
                         .ok_or_else(|| Error::Io(io::Error::new(io::ErrorKind::NotFound, "directory not found")))?;
 
-                    if cd.children.binary_search_by(|a| (OsStr::new(&a.name)).cmp(&file_name)).is_ok() {
+                    if cd.children.binary_search_by(|a| (OsStr::new(&a.path.file_name().unwrap())).cmp(&file_name)).is_ok() {
                         Ok(FileInfo { is_file: false, is_dir: true, is_symlink: false, read_only: true })
                     } else if cd.files.binary_search_by(|a| (OsStr::new(&a)).cmp(&file_name)).is_ok() {
                         Ok(FileInfo { is_file: true, is_dir: false, is_symlink: false, read_only: true })
@@ -142,22 +142,22 @@ fn resolve_path_for_archive<P: AsRef<Path>>(path: P) -> Result<String> {
 
 #[derive(Debug)]
 struct DirTree {
-    name: String,
+    path: PathBuf,
     children: Vec<DirTree>,
     files: Vec<String>,
 }
 
 impl DirTree {
-    fn new<S: Into<String>>(name: S) -> DirTree {
+    fn new<S: Into<PathBuf>>(path: S) -> DirTree {
         DirTree {
-            name: name.into(),
+            path: path.into(),
             children: vec![],
             files: vec![],
         }
     }
 
     fn append(&mut self, file: &str) {
-        if self.children.binary_search_by(|a| (*a.name).cmp(file)).is_ok() {
+        if self.children.binary_search_by(|a| (*a.path.file_name().unwrap()).cmp(OsStr::new(file))).is_ok() {
             return;
         }
 
@@ -167,7 +167,7 @@ impl DirTree {
     }
 
     fn subdir(&self, dir: &str) -> Option<&DirTree> {
-        self.children.binary_search_by(|a| (*a.name).cmp(dir)).ok().map(|idx| &self.children[idx])
+        self.children.binary_search_by(|a| (*a.path.file_name().unwrap()).cmp(OsStr::new(dir))).ok().map(|idx| &self.children[idx])
     }
 
     fn subdir_or_create(&mut self, dir: &str) -> &mut DirTree {
@@ -175,12 +175,12 @@ impl DirTree {
             self.files.remove(idx);
         }
 
-        match self.children.binary_search_by(|a| (*a.name).cmp(dir)) {
+        match self.children.binary_search_by(|a| (*a.path.file_name().unwrap()).cmp(OsStr::new(dir))) {
             Ok(idx) => {
                 &mut self.children[idx]
             }
             Err(idx) => {
-                let dt = DirTree::new(dir);
+                let dt = DirTree::new(self.path.join(dir));
                 self.children.insert(idx, dt);
                 &mut self.children[idx]
             }
