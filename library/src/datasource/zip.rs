@@ -14,15 +14,18 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug)]
 pub struct DataSource {
+    zip_path: PathBuf,
     archive: RefCell<ZipArchive<File>>,
     tree: RefCell<Option<DirTree>>,
 }
 
 impl DataSource {
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let path = path.as_ref();
         let file = File::open(path)?;
         let za = ZipArchive::new(file)?;
         Ok(DataSource {
+            zip_path: path.to_path_buf(),
             archive: RefCell::new(za),
             tree: Default::default(),
         })
@@ -108,6 +111,10 @@ impl DataSource {
                 }
             }
         }
+    }
+
+    pub fn zip_path(&self) -> &Path {
+        &self.zip_path
     }
 
     fn init_tree(&self) {

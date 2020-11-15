@@ -1,24 +1,11 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::cmp::Ordering;
-use std::io;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 
 use crate::{FileType, get_file_type};
-use crate::datasource::{DataSource, dir, zip};
-
-#[derive(Debug)]
-pub struct Workspace {
-    roots: Vec<Rc<RefCell<WorkspaceRoot>>>,
-}
-
-#[derive(Debug)]
-pub struct WorkspaceRoot {
-    name: String,
-    ds: Rc<DataSource>,
-    root: Rc<RefCell<FsTreeEntry>>,
-}
+use crate::workspace::WorkspaceRoot;
 
 #[derive(Debug)]
 pub struct FsTreeEntry {
@@ -26,60 +13,12 @@ pub struct FsTreeEntry {
     file_type: Option<FileType>,
     children: Vec<Rc<RefCell<FsTreeEntry>>>,
     parent: Option<Weak<RefCell<FsTreeEntry>>>,
-    root: Weak<RefCell<WorkspaceRoot>>,
+    pub(crate) root: Weak<RefCell<WorkspaceRoot>>,
     is_top_level: bool,
 }
 
-impl Workspace {
-    pub fn new() -> Self {
-        Workspace {
-            roots: vec![]
-        }
-    }
-
-    pub fn add_dir<P: Into<PathBuf>>(&mut self, path: P) -> io::Result<()> {
-        let path = path.into();
-        let name = path.to_string_lossy().to_string(); // TODO give these a better default name
-        let ds = DataSource::Dir(dir::DataSource::new(path)?);
-        let root = WorkspaceRoot::new(name, ds);
-        self.roots.push(root);
-        Ok(())
-    }
-
-    pub fn add_zip<P: Into<PathBuf>>(&mut self, path: P) -> zip::Result<()> {
-        let path = path.into();
-        let name = path.to_string_lossy().to_string();
-        let ds = DataSource::Zip(zip::DataSource::new(path)?);
-        let root = WorkspaceRoot::new(name, ds);
-        self.roots.push(root);
-        Ok(())
-    }
-
-    pub fn roots(&self) -> &[Rc<RefCell<WorkspaceRoot>>] { &self.roots }
-}
-
-impl WorkspaceRoot {
-    pub fn new<S: Into<String>>(name: S, ds: DataSource) -> Rc<RefCell<Self>> {
-        let wsr = Rc::new(RefCell::new(WorkspaceRoot {
-            name: name.into(),
-            ds: Rc::new(ds),
-            root: Rc::new(RefCell::new(FsTreeEntry::new_top_level())),
-        }));
-
-        let copy = wsr.clone();
-        wsr.borrow_mut().root.borrow_mut().root = Rc::downgrade(&copy);
-        let fstree = wsr.borrow().root.clone();
-        FsTreeEntry::refresh(&fstree);
-        wsr
-    }
-
-    pub fn root(&self) -> &Rc<RefCell<FsTreeEntry>> { &self.root }
-
-    pub fn ds(&self) -> &Rc<DataSource> { &self.ds }
-}
-
 impl FsTreeEntry {
-    fn new_top_level() -> Self {
+    pub(crate) fn new_top_level() -> Self {
         FsTreeEntry {
             path: "/".into(),
             file_type: None,
@@ -108,7 +47,7 @@ impl FsTreeEntry {
                     println!("fstree entry's root is gone!?");
                     "???".into()
                 }
-                Some(r) => r.borrow().name.clone().into()
+                Some(r) => r.borrow().name().to_string().into()
             }
         } else {
             self.path.file_name().unwrap().to_string_lossy()
@@ -148,7 +87,7 @@ impl FsTreeEntry {
 
         {
             let root = (*root).borrow_mut();
-            let ds = &root.ds;
+            let ds = root.ds();
 
             e.file_type = get_file_type(ds, &e.path);
 

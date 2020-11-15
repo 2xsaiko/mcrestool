@@ -11,17 +11,24 @@
 
 using mcrtlib::ffi::FileType;
 using mcrtlib::ffi::FsTreeEntry;
+using mcrtlib::ffi::Workspace;
 using mcrtlib::ffi::fstreeentry_from_ptr;
 using mcrtlib::ffi::workspace_new;
+using mcrtlib::ffi::workspace_from;
 using mcrtlib::to_qstring;
 
-MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWindow), ws(workspace_new()) {
+MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
+                                          ui(new Ui::MainWindow),
+                                          m_ws(workspace_new()),
+                                          m_ws_path(QString()) {
     ui->setupUi(this);
 
     connect(ui->action_quit, SIGNAL(triggered()), this, SLOT(quit()));
     connect(ui->action_open, SIGNAL(triggered()), this, SLOT(open()));
     connect(ui->action_save, SIGNAL(triggered()), this, SLOT(save()));
-    connect(ui->action_save_workspace_as, SIGNAL(triggered()), this, SLOT(save_as()));
+    connect(ui->action_open_workspace, SIGNAL(triggered()), this, SLOT(open_workspace()));
+    connect(ui->action_save_workspace, SIGNAL(triggered()), this, SLOT(save_workspace()));
+    connect(ui->action_save_workspace_as, SIGNAL(triggered()), this, SLOT(save_workspace_as()));
     connect(ui->action_add_res_file, SIGNAL(triggered()), this, SLOT(add_res_file()));
     connect(ui->action_add_res_folder, SIGNAL(triggered()), this, SLOT(add_res_dir()));
     connect(ui->action_about_qt, &QAction::triggered, &QApplication::aboutQt);
@@ -36,7 +43,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     connect(ui->res_tree_view, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(show_restree_context_menu(QPoint)));
     connect(ui->res_tree_view, SIGNAL(activated(const QModelIndex &)), this, SLOT(restree_open(const QModelIndex &)));
 
-    ui->res_tree_view->setModel(new FsTreeModel(this->ws, this));
+    ui->res_tree_view->setModel(new FsTreeModel(this->m_ws, this));
 }
 
 void MainWindow::center() {
@@ -59,7 +66,7 @@ void MainWindow::save() {
     QMdiSubWindow* window = ui->mdi_area->activeSubWindow();
     if (window) {
         QWidget* widget = window->widget();
-        GenEditorWindow* editorWindow = dynamic_cast<GenEditorWindow*>(widget);
+        auto* editorWindow = dynamic_cast<GenEditorWindow*>(widget);
         if (editorWindow) {
             editorWindow->save();
         } else {
@@ -68,8 +75,32 @@ void MainWindow::save() {
     }
 }
 
-void MainWindow::save_as() {
+void MainWindow::open_workspace() {
+    QString filename = QFileDialog::getOpenFileName(this, tr("Open Workspace"), QString(), "mcrestool Workspace(*.rtw)");
+    if (!filename.isEmpty()) {
+        std::string s = filename.toStdString();
+        this->m_ws.from(s);
+        this->m_ws_path = filename;
+        // TODO update resource tree
+    }
+}
+
+void MainWindow::save_workspace() {
+    if (this->m_ws_path.isEmpty()) {
+        this->save_workspace_as();
+    } else {
+        std::string s = this->m_ws_path.toStdString();
+        this->m_ws.save(s);
+    }
+}
+
+void MainWindow::save_workspace_as() {
     QString filename = QFileDialog::getSaveFileName(this, tr("Save Workspace"), QString(), "mcrestool Workspace(*.rtw)");
+    if (!filename.isEmpty()) {
+        std::string s = filename.toStdString();
+        this->m_ws.save(s);
+        this->m_ws_path = filename;
+    }
 }
 
 void MainWindow::show_resource_tree(bool shown) {
@@ -99,7 +130,7 @@ void MainWindow::add_res_file() {
 
     for (const auto& source: sources) {
         const std::string& path = source.toStdString();
-        this->ws.add_zip(path);
+        this->m_ws.add_zip(path);
     }
 
     model->endInsertRows1();
@@ -113,7 +144,7 @@ void MainWindow::add_res_dir() {
     model->beginInsertRows1(QModelIndex(), count, count);
 
     const std::string& path = source.toStdString();
-    this->ws.add_dir(path);
+    this->m_ws.add_dir(path);
 
     model->endInsertRows1();
 }
@@ -142,7 +173,7 @@ void MainWindow::show_restree_context_menu(const QPoint& pt) {
 
 void MainWindow::restree_open(const QModelIndex& index) {
     FsTreeEntry item = fstreeentry_from_ptr((size_t) index.internalPointer());
-    if (!item.is_null_e()) {
+    if (!item.is_null1()) {
         switch (item.file_type()) {
             case FileType::FILETYPE_LANGUAGE_PART:
             case FileType::FILETYPE_LANGUAGE:

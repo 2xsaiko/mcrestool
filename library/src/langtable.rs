@@ -1,8 +1,8 @@
 use std::borrow::Borrow;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ffi::OsStr;
-use std::{fs, io};
-use std::fs::File;
+use std::io;
+use std::io::Read;
 use std::ops::Deref;
 use std::path::Path;
 use std::rc::Rc;
@@ -12,7 +12,6 @@ use thiserror::Error;
 
 use crate::datasource;
 use crate::datasource::{DataSource, OpenOptions};
-use std::io::{BufReader, Read};
 
 #[derive(Debug, Clone, Default)]
 pub struct LanguageTablePart {
@@ -127,7 +126,7 @@ impl LanguageTable {
 
         // move en_us to the beginning
         let idx = dir.iter().enumerate()
-            .find(|(idx, e)| e.info.is_file && e.path.file_name() == Some(OsStr::new("en_us.json")))
+            .find(|(_, e)| e.info.is_file && e.path.file_name() == Some(OsStr::new("en_us.json")))
             .map(|(idx, _)| idx)
             .filter(|&idx| idx > 0);
 

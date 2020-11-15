@@ -1,14 +1,16 @@
 use std::{io, mem};
 use std::cell::RefCell;
+use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
 use std::rc::Rc;
 
-use crate::{FileType, langtable};
+use crate::{FileType, langtable, workspace};
 use crate::datasource::{self, DataSource, dir, zip};
 use crate::datasource::resfile::ResFile as ResFilePrivate;
-use crate::fstree::{FsTreeEntry, Workspace as WorkspacePrivate, Workspace, WorkspaceRoot};
+use crate::fstree::FsTreeEntry;
 use crate::langtable::{LanguageTable as LanguageTablePrivate, LanguageTable};
+use crate::workspace::{Workspace as WorkspacePrivate, Workspace, WorkspaceRoot};
 
 type WorkspaceRootPrivate = Option<Rc<RefCell<WorkspaceRoot>>>;
 type FsTreeEntryPrivate = Option<Rc<RefCell<FsTreeEntry>>>;
@@ -74,20 +76,26 @@ mod types {
         // Workspace
         fn workspace_new() -> Workspace;
 
+        fn workspace_from(path: &str) -> Result<Workspace>;
+
+        fn from(self: &mut Workspace, path: &str) -> Result<()>;
+
         fn add_dir(self: &mut Workspace, path: &str) -> Result<()>;
 
         fn add_zip(self: &mut Workspace, path: &str) -> Result<()>;
 
         fn root_count(self: &Workspace) -> usize;
 
-        fn by_index_w(self: &Workspace, idx: usize) -> WorkspaceRoot;
+        fn by_index(self: &Workspace, idx: usize) -> WorkspaceRoot;
+
+        fn save(self: &Workspace, path: &str) -> Result<()>;
 
         // WorkspaceRoot
         fn tree(self: &WorkspaceRoot) -> FsTreeEntry;
 
         fn ds(self: &WorkspaceRoot) -> DataSource;
 
-        fn is_null_r(self: &WorkspaceRoot) -> bool;
+        fn is_null(self: &WorkspaceRoot) -> bool;
 
         // FsTreeEntry
         fn fstreeentry_from_ptr(ptr: usize) -> FsTreeEntry;
@@ -98,7 +106,7 @@ mod types {
 
         fn children_count(self: &FsTreeEntry) -> usize;
 
-        fn by_index_e(self: &FsTreeEntry, idx: usize) -> FsTreeEntry;
+        fn by_index1(self: &FsTreeEntry, idx: usize) -> FsTreeEntry;
 
         fn index_of(self: &FsTreeEntry, child: &FsTreeEntry) -> isize;
 
@@ -110,7 +118,7 @@ mod types {
 
         fn is_root(self: &FsTreeEntry) -> bool;
 
-        fn is_null_e(self: &FsTreeEntry) -> bool;
+        fn is_null1(self: &FsTreeEntry) -> bool;
 
         fn to_ptr(self: &FsTreeEntry) -> usize;
 
@@ -168,7 +176,7 @@ mod types {
 
         fn get_key_at(self: &LanguageTable, idx: usize) -> Result<String>;
 
-        fn save(self: &LanguageTable, ds: &DataSource, path: &str) -> Result<()>;
+        fn save1(self: &LanguageTable, ds: &DataSource, path: &str) -> Result<()>;
     }
 }
 
@@ -180,7 +188,16 @@ fn workspace_new() -> types::Workspace {
     types::Workspace { inner: Box::new(Workspace::new()) }
 }
 
+fn workspace_from(path: &str) -> workspace::Result<types::Workspace> {
+    Ok(types::Workspace { inner: Box::new(Workspace::read_from(File::open(path)?)?) })
+}
+
 impl types::Workspace {
+    fn from(&mut self, path: &str) -> workspace::Result<()> {
+        *self = workspace_from(path)?;
+        Ok(())
+    }
+
     fn add_dir(&mut self, path: &str) -> io::Result<()> {
         self.inner.add_dir(path)
     }
@@ -194,9 +211,15 @@ impl types::Workspace {
         inner.roots().len()
     }
 
-    fn by_index_w(&self, idx: usize) -> types::WorkspaceRoot {
+    fn by_index(&self, idx: usize) -> types::WorkspaceRoot {
         let inner: &Box<Workspace> = &self.inner;
         types::WorkspaceRoot { inner: Box::new(inner.roots().get(idx).cloned()) }
+    }
+
+    fn save(&self, path: &str) -> workspace::Result<()> {
+        self.inner.write_into(File::create(path)?)?;
+
+        Ok(())
     }
 }
 
@@ -211,7 +234,7 @@ impl types::WorkspaceRoot {
         types::DataSource { inner: Box::new((**inner).borrow().ds().clone()) }
     }
 
-    fn is_null_r(&self) -> bool {
+    fn is_null(&self) -> bool {
         self.inner.is_none()
     }
 
@@ -258,7 +281,7 @@ impl types::FsTreeEntry {
             .unwrap_or_default()
     }
 
-    fn by_index_e(&self, idx: usize) -> types::FsTreeEntry {
+    fn by_index1(&self, idx: usize) -> types::FsTreeEntry {
         let inner: &Box<FsTreeEntryPrivate> = &self.inner;
         let content = (**inner).as_ref()
             .and_then(|a| (**a).borrow().children().get(idx).cloned());
@@ -302,7 +325,7 @@ impl types::FsTreeEntry {
         Option::as_ref(inner).map(|e| (**e).borrow().is_root()).unwrap_or(false)
     }
 
-    fn is_null_e(&self) -> bool {
+    fn is_null1(&self) -> bool {
         self.inner.is_none()
     }
 
@@ -436,7 +459,7 @@ impl types::LanguageTable {
         self.inner.get_key_at(idx).map(|s| s.to_string()).ok_or("key not found in table")
     }
 
-    fn save(&self, ds: &types::DataSource, path: &str) -> langtable::Result<()> {
+    fn save1(&self, ds: &types::DataSource, path: &str) -> langtable::Result<()> {
         self.inner.save(&ds.inner, path)
     }
 }

@@ -1,4 +1,4 @@
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
 use std::fs;
 use std::io::{Cursor, ErrorKind};
 use std::path::{Component, Path, PathBuf};

@@ -35,7 +35,11 @@ private slots:
 
     void save();
 
-    void save_as();
+    void open_workspace();
+
+    void save_workspace();
+
+    void save_workspace_as();
 
     void add_res_file();
 
@@ -53,7 +57,8 @@ private slots:
 
 private:
     QScopedPointer<Ui::MainWindow> ui;
-    mcrtlib::ffi::Workspace ws;
+    mcrtlib::ffi::Workspace m_ws;
+    QString m_ws_path;
 
 };
 

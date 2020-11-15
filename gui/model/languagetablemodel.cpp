@@ -38,8 +38,8 @@ QVariant LanguageTableModel::data(const QModelIndex& index, int role) const {
         try {
             rust::String str = m_lt.get(column, row);
             return to_qstring(str);
-        } catch (const rust::Str& e) {
-
+        } catch (const std::exception& e) {
+            return QVariant();
         }
     }
     return QVariant();

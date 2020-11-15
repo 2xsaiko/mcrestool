@@ -60,6 +60,8 @@ impl DataSource {
         Ok(fs::remove_dir_all(self.get_full_path(path)?)?)
     }
 
+    pub fn root(&self) -> &Path { &self.dir }
+
     fn get_full_path<P: AsRef<Path>>(&self, path: P) -> Result<PathBuf, Error> {
         Ok(self.dir.join(normalize_path(&path).ok_or_else(|| Error::InvalidPath(path.as_ref().to_path_buf()))?.strip_prefix("/").unwrap()))
     }
