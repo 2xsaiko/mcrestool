@@ -1,5 +1,4 @@
 #include "fstreemodel.h"
-#include <QDebug>
 #include <mcrtlib.h>
 #include <mcrtutil.h>
 
@@ -22,14 +21,12 @@ QModelIndex FsTreeModel::index(int row, int column, const QModelIndex& parent) c
         FsTreeEntry entry = this->ws.by_index_w(row).tree();
         assert(!entry.is_null_e());
         data = (void*) entry.to_ptr();
-        qDebug() << "indexing from <invalid> to" << to_qstring(entry.path());
     } else {
         FsTreeEntry entry = fstreeentry_from_ptr((size_t) parent.internalPointer());
         assert(!entry.is_null_e());
         FsTreeEntry child = entry.by_index_e(row);
         assert(!child.is_null_e());
         data = (void*) child.to_ptr();
-        qDebug() << "indexing from" << to_qstring(entry.path()) << "to" << to_qstring(child.path());
     }
 
     if (!data) {
@@ -45,13 +42,10 @@ QModelIndex FsTreeModel::parent(const QModelIndex& child) const {
     FsTreeEntry entry = fstreeentry_from_ptr((size_t) child.internalPointer());
     assert(!entry.is_null_e());
     if (entry.is_root()) {
-        qDebug() << "parent indexing from" << to_qstring(entry.path()) << "to <invalid>";
         return QModelIndex();
     } else {
         FsTreeEntry parent = entry.parent();
         assert(!parent.is_null_e());
-
-        qDebug() << "parent indexing from" << to_qstring(entry.path()) << "to" << to_qstring(parent.path());
 
         return createIndex((int) parent.index_of(entry), 0, (void*) parent.to_ptr());
     }
@@ -82,10 +76,8 @@ int FsTreeModel::rowCount(const QModelIndex& parent) const {
 
     FsTreeEntry entry = fstreeentry_from_ptr((size_t) parent.internalPointer());
     if (entry.is_null_e()) {
-        qDebug() << "root count:" << this->ws.root_count();
         return this->ws.root_count();
     } else {
-        qDebug() << "children of " << to_qstring(entry.path()) << "count:" << entry.children_count();
         return entry.children_count();
     }
 }
