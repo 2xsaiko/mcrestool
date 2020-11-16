@@ -87,7 +87,7 @@ impl Workspace {
 
     pub fn add_dir<P: Into<PathBuf>>(&mut self, path: P) -> io::Result<()> {
         let path = path.into();
-        let name = path.to_string_lossy().to_string(); // TODO give these a better default name
+        let name = path.file_name().unwrap().to_string_lossy().to_string(); // TODO give these a better default name
         let ds = DataSource::Dir(dir::DataSource::new(path)?);
         let root = WorkspaceRoot::new(name, ds);
         self.roots.push(root);
@@ -96,7 +96,7 @@ impl Workspace {
 
     pub fn add_zip<P: Into<PathBuf>>(&mut self, path: P) -> zip::Result<()> {
         let path = path.into();
-        let name = path.to_string_lossy().to_string();
+        let name = path.file_name().unwrap().to_string_lossy().to_string();
         let ds = DataSource::Zip(zip::DataSource::new(path)?);
         let root = WorkspaceRoot::new(name, ds);
         self.roots.push(root);
