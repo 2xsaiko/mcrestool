@@ -61,7 +61,15 @@
     <property name="title">
      <string>&amp;File</string>
     </property>
-    <addaction name="action_new"/>
+    <widget class="QMenu" name="menu_new">
+     <property name="title">
+      <string>&amp;New…</string>
+     </property>
+     <addaction name="action_new_block_model"/>
+     <addaction name="action_new_block_state"/>
+     <addaction name="action_new_recipe"/>
+    </widget>
+    <addaction name="menu_new"/>
     <addaction name="action_open"/>
     <addaction name="separator"/>
     <addaction name="action_save"/>
@@ -335,15 +343,6 @@
     <string>Close Wor&amp;kspace</string>
    </property>
   </action>
-  <action name="action_new">
-   <property name="icon">
-    <iconset theme="document-new">
-     <normaloff>.</normaloff>.</iconset>
-   </property>
-   <property name="text">
-    <string>&amp;New…</string>
-   </property>
-  </action>
   <action name="action_open_workspace">
    <property name="icon">
     <iconset theme="document-open">
@@ -360,6 +359,21 @@
    </property>
    <property name="text">
     <string>&amp;Close</string>
+   </property>
+  </action>
+  <action name="action_new_block_model">
+   <property name="text">
+    <string>Block &amp;Model</string>
+   </property>
+  </action>
+  <action name="action_new_block_state">
+   <property name="text">
+    <string>Block &amp;State</string>
+   </property>
+  </action>
+  <action name="action_new_recipe">
+   <property name="text">
+    <string>&amp;Recipe</string>
    </property>
   </action>
  </widget>

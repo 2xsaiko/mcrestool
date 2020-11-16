@@ -13,6 +13,7 @@ set(mcrestool_HEADERS
         ui/itembutton.h
         ui/languagetablewindow.h
         ui/mainwindow.h
+        ui/modeleditwindow.h
         ui/recipeeditextensionwidget.h
         ui/recipeeditwindow.h
         ui/shapedcraftingwidget.h
@@ -30,6 +31,7 @@ set(mcrestool_SRC
         ui/itembutton.cpp
         ui/languagetablewindow.cpp
         ui/mainwindow.cpp
+        ui/modeleditwindow.cpp
         ui/recipeeditextensionwidget.cpp
         ui/recipeeditwindow.cpp
         ui/shapedcraftingwidget.cpp

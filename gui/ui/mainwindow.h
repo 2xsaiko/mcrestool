@@ -45,6 +45,8 @@ private slots:
 
     void add_res_dir();
 
+    void test_open_model_win();
+
     void show_resource_tree(bool shown);
 
     void show_game_objects(bool shown);

@@ -1,13 +1,15 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "languagetablewindow.h"
-#include <fstreemodel.h>
 
 #include <QDesktopWidget>
 #include <QScreen>
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QDebug>
+
+#include <fstreemodel.h>
+#include "languagetablewindow.h"
+#include "modeleditwindow.h"
 
 using mcrtlib::ffi::FileType;
 using mcrtlib::ffi::FsTreeEntry;
@@ -32,6 +34,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     connect(ui->action_add_res_file, SIGNAL(triggered()), this, SLOT(add_res_file()));
     connect(ui->action_add_res_folder, SIGNAL(triggered()), this, SLOT(add_res_dir()));
     connect(ui->action_about_qt, &QAction::triggered, &QApplication::aboutQt);
+
+    connect(ui->action_new_block_model, SIGNAL(triggered()), this, SLOT(test_open_model_win()));
 
     connect(ui->action_resource_tree, SIGNAL(triggered(bool)), this, SLOT(show_resource_tree(bool)));
     connect(ui->res_tree, SIGNAL(visibilityChanged(bool)), this, SLOT(show_resource_tree(bool)));
@@ -189,6 +193,12 @@ void MainWindow::restree_open(const QModelIndex& index) {
                 break;
         }
     }
+}
+
+void MainWindow::test_open_model_win() {
+    ModelEditWindow* win = new ModelEditWindow(this);
+    this->ui->mdi_area->addSubWindow(win);
+    win->show();
 }
 
 MainWindow::~MainWindow() = default;
