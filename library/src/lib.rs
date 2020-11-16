@@ -4,10 +4,11 @@ use std::path::Path;
 use crate::datasource::DataSource;
 
 pub mod datasource;
-mod workspace;
-mod fstree;
+pub mod workspace;
+pub mod fstree;
+#[cfg(feature = "cpp")]
 mod ffi;
-mod langtable;
+pub mod langtable;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum FileType {
@@ -16,7 +17,7 @@ pub enum FileType {
     Recipe,
 }
 
-fn get_file_type<P: AsRef<Path>>(ds: &DataSource, path: P) -> Option<FileType> {
+pub fn get_file_type<P: AsRef<Path>>(ds: &DataSource, path: P) -> Option<FileType> {
     // shitty detection for now
     let path = path.as_ref();
     if ds.is_file(path) && has_extension(path, "json") && path.parent().and_then(|p| get_file_type(ds, p)) == Some(FileType::Language) {
@@ -28,10 +29,10 @@ fn get_file_type<P: AsRef<Path>>(ds: &DataSource, path: P) -> Option<FileType> {
     }
 }
 
-fn has_extension<P: AsRef<Path>, S: AsRef<OsStr>>(path: P, ext: S) -> bool {
+pub fn has_extension<P: AsRef<Path>, S: AsRef<OsStr>>(path: P, ext: S) -> bool {
     path.as_ref().extension().map_or(false, |s| s == ext.as_ref())
 }
 
-fn has_file_name<P: AsRef<Path>, S: AsRef<OsStr>>(path: P, name: S) -> bool {
+pub fn has_file_name<P: AsRef<Path>, S: AsRef<OsStr>>(path: P, name: S) -> bool {
     path.as_ref().file_name().map_or(false, |s| s == name.as_ref())
 }

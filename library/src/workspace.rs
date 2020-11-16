@@ -2,21 +2,26 @@ use std::cell::RefCell;
 use std::io;
 use std::io::{Read, Write};
 use std::path::PathBuf;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 use byteorder::{BE, LE, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::datasource::{DataSource, dir, zip};
+#[cfg(feature = "cpp")]
+use crate::ffi::TreeChangeSubscriber as CppTreeChangeSubscriber;
 use crate::fstree::FsTreeEntry;
 
 const MAGIC: u32 = 0x90A7C0DE;
 const VERSION: u16 = 0;
 
-#[derive(Debug)]
 pub struct Workspace {
     roots: Vec<Rc<RefCell<WorkspaceRoot>>>,
+    subscribers: Vec<Weak<dyn TreeChangeSubscriber>>,
+
+    #[cfg(feature = "cpp")]
+    cpp_subscribers: Vec<*mut CppTreeChangeSubscriber>,
 }
 
 #[derive(Debug)]
@@ -35,7 +40,11 @@ struct Root {
 impl Workspace {
     pub fn new() -> Self {
         Workspace {
-            roots: vec![]
+            roots: vec![],
+            subscribers: vec![],
+
+            #[cfg(feature = "cpp")]
+            cpp_subscribers: vec![],
         }
     }
 
@@ -104,6 +113,76 @@ impl Workspace {
     }
 
     pub fn roots(&self) -> &[Rc<RefCell<WorkspaceRoot>>] { &self.roots }
+
+    pub fn subscribe(&mut self, ptr: &Rc<dyn TreeChangeSubscriber>) {
+        self.subscribers.push(Rc::downgrade(ptr));
+    }
+
+    pub fn unsubscribe(&mut self, ptr: &Rc<dyn TreeChangeSubscriber>) {
+        let idx = self.subscribers.iter().enumerate()
+            .find(|(_, el)| el.ptr_eq(&Rc::downgrade(ptr)))
+            .map(|(idx, _)| idx);
+
+        if let Some(idx) = idx {
+            self.subscribers.remove(idx);
+        }
+    }
+
+    #[cfg(feature = "cpp")]
+    pub fn cpp_subscribe(&mut self, ptr: *mut CppTreeChangeSubscriber) {
+        if ptr.is_null() { return; }
+
+        self.cpp_subscribers.push(ptr);
+    }
+
+    #[cfg(feature = "cpp")]
+    pub fn cpp_unsubscribe(&mut self, ptr: *mut CppTreeChangeSubscriber) {
+        if ptr.is_null() { return; }
+
+        let idx = self.cpp_subscribers.iter().enumerate()
+            .find(|(_, &el)| el == ptr)
+            .map(|(idx, _)| idx);
+
+        if let Some(idx) = idx {
+            self.cpp_subscribers.remove(idx);
+        }
+    }
+
+    pub fn dispatcher(&self) -> impl TreeChangeSubscriber {
+        struct Mux {
+            subscribers: Vec<Rc<dyn TreeChangeSubscriber>>,
+
+            #[cfg(feature = "cpp")]
+            cpp_subscribers: Vec<*mut CppTreeChangeSubscriber>,
+        }
+
+        impl TreeChangeSubscriber for Mux {
+            fn pre_insert(&self) {
+                self.subscribers.iter().for_each(|l| l.pre_insert());
+            }
+
+            fn post_insert(&self) {
+                self.subscribers.iter().for_each(|l| l.post_insert());
+            }
+
+            fn pre_remove(&self) {
+                self.subscribers.iter().for_each(|l| l.pre_remove());
+            }
+
+            fn post_remove(&self) {
+                self.subscribers.iter().for_each(|l| l.post_remove());
+            }
+        }
+
+        Mux {
+            subscribers: self.subscribers.iter()
+                .filter_map(|ptr| ptr.upgrade())
+                .collect(),
+
+            #[cfg(feature = "cpp")]
+            cpp_subscribers: Vec::new(),
+        }
+    }
 }
 
 impl WorkspaceRoot {
@@ -126,6 +205,16 @@ impl WorkspaceRoot {
     pub fn root(&self) -> &Rc<RefCell<FsTreeEntry>> { &self.root }
 
     pub fn ds(&self) -> &Rc<DataSource> { &self.ds }
+}
+
+pub trait TreeChangeSubscriber {
+    fn pre_insert(&self);
+
+    fn post_insert(&self);
+
+    fn pre_remove(&self);
+
+    fn post_remove(&self);
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

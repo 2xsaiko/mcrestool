@@ -5,6 +5,7 @@
 #include <QScreen>
 #include <QFileDialog>
 #include <QInputDialog>
+#include <QMessageBox>
 #include <QDebug>
 
 #include <fstreemodel.h>
@@ -31,6 +32,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     connect(ui->action_open_workspace, SIGNAL(triggered()), this, SLOT(open_workspace()));
     connect(ui->action_save_workspace, SIGNAL(triggered()), this, SLOT(save_workspace()));
     connect(ui->action_save_workspace_as, SIGNAL(triggered()), this, SLOT(save_workspace_as()));
+    connect(ui->action_close_workspace, SIGNAL(triggered()), this, SLOT(close_workspace()));
     connect(ui->action_add_res_file, SIGNAL(triggered()), this, SLOT(add_res_file()));
     connect(ui->action_add_res_folder, SIGNAL(triggered()), this, SLOT(add_res_dir()));
     connect(ui->action_about_qt, &QAction::triggered, &QApplication::aboutQt);
@@ -112,6 +114,41 @@ void MainWindow::save_workspace_as() {
     }
 }
 
+void MainWindow::close_workspace() {
+    QList<QMdiSubWindow*> windows = this->ui->mdi_area->subWindowList();
+
+    if (!windows.isEmpty()) {
+        QMessageBox::StandardButton response = QMessageBox::question(
+            this,
+            tr("Close all windows?"),
+            tr("Closing workspace. Do you want to also close all open windows?"),
+            QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+            QMessageBox::StandardButton::Cancel);
+        qDebug() << response;
+
+        switch (response) {
+            case QMessageBox::StandardButton::Yes:
+                for (auto* window: windows) {
+                    auto* editwin = qobject_cast<GenEditorWindow*>(window->widget());
+                    if (!editwin || editwin->pre_close()) {
+                        window->close();
+                    } else {
+                        // user canceled editor window close operation
+                        return;
+                    }
+                }
+                break;
+            case QMessageBox::StandardButton::No:
+                break;
+            case QMessageBox::StandardButton::Cancel:
+                return;
+        }
+
+        this->m_ws.reset();
+    }
+
+}
+
 void MainWindow::show_resource_tree(bool shown) {
     ui->action_resource_tree->setChecked(shown);
     if (shown) {
@@ -132,6 +169,7 @@ void MainWindow::show_game_objects(bool shown) {
 
 void MainWindow::add_res_file() {
     QStringList sources = QFileDialog::getOpenFileNames(this, tr("Add Resource Pack/Mod"), QString(), "Minecraft Content(*.zip *.jar);;All Files(*.*)");
+    if (sources.isEmpty()) return;
 
     auto* model = qobject_cast<FsTreeModel*>(ui->res_tree_view->model());
     int count = model->rowCount(QModelIndex());
@@ -139,7 +177,11 @@ void MainWindow::add_res_file() {
 
     for (const auto& source: sources) {
         const std::string& path = source.toStdString();
-        this->m_ws.add_zip(path);
+        try {
+            this->m_ws.add_zip(path);
+        } catch (const std::exception& e) {
+            qDebug() << "Failed to add path" << source << ":" << e.what();
+        }
     }
 
     model->endInsertRows1();
@@ -147,13 +189,18 @@ void MainWindow::add_res_file() {
 
 void MainWindow::add_res_dir() {
     QString source = QFileDialog::getExistingDirectory(this, tr("Add Resource Folder"));
+    if (source.isEmpty()) return;
 
     auto* model = qobject_cast<FsTreeModel*>(ui->res_tree_view->model());
     int count = model->rowCount(QModelIndex());
     model->beginInsertRows1(QModelIndex(), count, count);
 
     const std::string& path = source.toStdString();
-    this->m_ws.add_dir(path);
+    try {
+        this->m_ws.add_dir(path);
+    } catch (const std::exception& e) {
+        qDebug() << "Failed to add path" << source << ":" << e.what();
+    }
 
     model->endInsertRows1();
 }

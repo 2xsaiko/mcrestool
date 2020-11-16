@@ -33,15 +33,15 @@ LanguageTableModel* LanguageTableContainer::language_table() {
     return this->m_lt;
 }
 
-bool LanguageTableContainer::persistent() const {
+bool LanguageTableContainer::is_persistent() const {
     return this->m_persistent;
 }
 
-bool LanguageTableContainer::changed() const {
+bool LanguageTableContainer::is_changed() const {
     return this->m_changed;
 }
 
-bool LanguageTableContainer::read_only() const {
+bool LanguageTableContainer::is_read_only() const {
     std::string str = this->m_path.toStdString();
     return this->m_ds.read_info(rust::Str(str)).read_only;
 }
@@ -51,7 +51,7 @@ const QString& LanguageTableContainer::path() const {
 }
 
 void LanguageTableContainer::save() {
-    if (read_only()) return;
+    if (is_read_only()) return;
 
     std::string path = this->m_path.toStdString();
     this->m_lt->data().save1(this->m_ds, path);

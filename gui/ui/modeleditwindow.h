@@ -9,7 +9,7 @@ namespace Ui {
     class ModelEditWindow;
 }
 
-class ModelEditWindow : public QWidget, public GenEditorWindow {
+class ModelEditWindow : public GenEditorWindow {
 Q_OBJECT
 
 public:
@@ -20,6 +20,8 @@ public:
     void save() override;
 
     void reload() override;
+
+    EditorStatus status() override;
 
 private:
     QScopedPointer<Ui::ModelEditWindow> ui;

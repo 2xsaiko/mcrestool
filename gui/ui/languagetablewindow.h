@@ -10,7 +10,7 @@ namespace Ui {
     class LanguageTableWindow;
 }
 
-class LanguageTableWindow : public QWidget, public GenEditorWindow {
+class LanguageTableWindow : public GenEditorWindow {
 Q_OBJECT
 
 public:
@@ -25,6 +25,8 @@ public:
     void save() override;
 
     void reload() override;
+
+    EditorStatus status() override;
 
 private:
     QScopedPointer<Ui::LanguageTableWindow> ui;

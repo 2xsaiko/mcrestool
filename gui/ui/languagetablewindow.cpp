@@ -3,7 +3,7 @@
 #include "ui_languagetablewindow.h"
 #include <mcrtutil.h>
 
-LanguageTableWindow::LanguageTableWindow(LanguageTableContainer* ltc, QWidget* parent) : QWidget(parent),
+LanguageTableWindow::LanguageTableWindow(LanguageTableContainer* ltc, QWidget* parent) : GenEditorWindow(parent),
                                                                                          ui(new Ui::LanguageTableWindow),
                                                                                          ltc(ltc) {
     ui->setupUi(this);
@@ -38,6 +38,16 @@ void LanguageTableWindow::save() {
 
 void LanguageTableWindow::reload() {
     ltc->load();
+}
+
+EditorStatus LanguageTableWindow::status() {
+    if (!this->ltc->is_persistent()) {
+        return EDITOR_STATUS_UNSAVED;
+    } else if (this->ltc->is_changed()) {
+        return EDITOR_STATUS_CHANGED;
+    } else {
+        return EDITOR_STATUS_PERSISTENT;
+    }
 }
 
 LanguageTableWindow::~LanguageTableWindow() = default;

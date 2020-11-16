@@ -41,6 +41,8 @@ private slots:
 
     void save_workspace_as();
 
+    void close_workspace();
+
     void add_res_file();
 
     void add_res_dir();

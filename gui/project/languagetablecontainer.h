@@ -15,11 +15,11 @@ public:
 
     LanguageTableModel* language_table();
 
-    [[nodiscard]] bool persistent() const;
+    [[nodiscard]] bool is_persistent() const;
 
-    [[nodiscard]] bool changed() const;
+    [[nodiscard]] bool is_changed() const;
 
-    [[nodiscard]] bool read_only() const;
+    [[nodiscard]] bool is_read_only() const;
 
     [[nodiscard]] const QString& path() const;
 

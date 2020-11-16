@@ -16,6 +16,8 @@ type WorkspaceRootPrivate = Option<Rc<RefCell<WorkspaceRoot>>>;
 type FsTreeEntryPrivate = Option<Rc<RefCell<FsTreeEntry>>>;
 type DataSourcePrivate = Rc<DataSource>;
 
+pub type TreeChangeSubscriber = types::TreeChangeSubscriber;
+
 #[cxx::bridge(namespace = "mcrtlib::ffi")]
 mod types {
     pub struct Workspace {
@@ -61,7 +63,19 @@ mod types {
         FILETYPE_RECIPE,
     }
 
-    extern "C++" {}
+    extern "C++" {
+        include!("mcrtlibd.h");
+
+        type TreeChangeSubscriber;
+
+        fn tcs_pre_insert(s: &TreeChangeSubscriber);
+
+        fn tcs_post_insert(s: &TreeChangeSubscriber);
+
+        fn tcs_pre_remove(s: &TreeChangeSubscriber);
+
+        fn tcs_post_remove(s: &TreeChangeSubscriber);
+    }
 
     extern "Rust" {
         type WorkspacePrivate;
@@ -80,6 +94,8 @@ mod types {
 
         fn from(self: &mut Workspace, path: &str) -> Result<()>;
 
+        fn reset(self: &mut Workspace);
+
         fn add_dir(self: &mut Workspace, path: &str) -> Result<()>;
 
         fn add_zip(self: &mut Workspace, path: &str) -> Result<()>;
@@ -89,6 +105,10 @@ mod types {
         fn by_index(self: &Workspace, idx: usize) -> WorkspaceRoot;
 
         fn save(self: &Workspace, path: &str) -> Result<()>;
+
+        fn subscribe(self: &Workspace, subscriber: &TreeChangeSubscriber);
+
+        fn unsubscribe(self: &Workspace, subscriber: &TreeChangeSubscriber);
 
         // WorkspaceRoot
         fn tree(self: &WorkspaceRoot) -> FsTreeEntry;
@@ -198,6 +218,10 @@ impl types::Workspace {
         Ok(())
     }
 
+    fn reset(&mut self) {
+        *self = workspace_new();
+    }
+
     fn add_dir(&mut self, path: &str) -> io::Result<()> {
         self.inner.add_dir(path)
     }
@@ -220,6 +244,14 @@ impl types::Workspace {
         self.inner.write_into(File::create(path)?)?;
 
         Ok(())
+    }
+
+    fn subscribe(&self, subscriber: &types::TreeChangeSubscriber) {
+
+    }
+
+    fn unsubscribe(&self, subscriber: &types::TreeChangeSubscriber) {
+
     }
 }
 
