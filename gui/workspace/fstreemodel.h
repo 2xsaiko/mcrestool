@@ -28,6 +28,11 @@ public:
 
     void endInsertRows1();
 
+    void beginResetModel1();
+
+    void endResetModel1();
+
+
 public slots:
 
 private:

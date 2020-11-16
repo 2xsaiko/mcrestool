@@ -78,10 +78,15 @@ void MainWindow::save() {
 void MainWindow::open_workspace() {
     QString filename = QFileDialog::getOpenFileName(this, tr("Open Workspace"), QString(), "mcrestool Workspace(*.rtw)");
     if (!filename.isEmpty()) {
+        auto* model = qobject_cast<FsTreeModel*>(ui->res_tree_view->model());
+        model->beginResetModel1();
+
         std::string s = filename.toStdString();
         this->m_ws.from(s);
         this->m_ws_path = filename;
         // TODO update resource tree
+
+        model->endResetModel1();
     }
 }
 

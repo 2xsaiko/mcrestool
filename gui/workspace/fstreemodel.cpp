@@ -94,3 +94,11 @@ void FsTreeModel::endInsertRows1() {
     QAbstractItemModel::endInsertRows();
 }
 
+void FsTreeModel::beginResetModel1() {
+    QAbstractItemModel::beginResetModel();
+}
+
+void FsTreeModel::endResetModel1() {
+    QAbstractItemModel::endResetModel();
+}
+
