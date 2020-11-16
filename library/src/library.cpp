@@ -40,7 +40,7 @@ namespace mcrtlib {
         QByteArray b;
         uint8_t buf[4096];
         size_t c;
-        while (c = file.read(Slice<uint8_t>((uint8_t*) &buf, 4096))) {
+        while ((c = file.read(Slice<uint8_t>((uint8_t*) &buf, 4096)))) {
             b.append((char*) &buf, (int) c);
         }
         return b;
