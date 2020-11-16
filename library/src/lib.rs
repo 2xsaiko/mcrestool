@@ -1,9 +1,8 @@
 use std::ffi::OsStr;
 use std::path::Path;
 
-use crate::datasource::DataSource;
+use matryoshka::DataSource;
 
-pub mod datasource;
 pub mod workspace;
 pub mod fstree;
 #[cfg(feature = "cpp")]

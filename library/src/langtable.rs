@@ -10,8 +10,8 @@ use std::rc::Rc;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
-use crate::datasource;
-use crate::datasource::{DataSource, OpenOptions};
+use matryoshka;
+use matryoshka::{DataSource, OpenOptions};
 
 #[derive(Debug, Clone, Default)]
 pub struct LanguageTablePart {
@@ -103,8 +103,8 @@ impl LanguageTable {
         let path = path.as_ref();
 
         for x in ds.list_dir(path)? {
-            if x.path.extension() == Some(OsStr::new("json")) {
-                ds.delete_file(&x.path)?;
+            if x.path().extension() == Some(OsStr::new("json")) {
+                ds.delete_file(x.path())?;
             }
         }
 
@@ -126,7 +126,7 @@ impl LanguageTable {
 
         // move en_us to the beginning
         let idx = dir.iter().enumerate()
-            .find(|(_, e)| e.info.is_file && e.path.file_name() == Some(OsStr::new("en_us.json")))
+            .find(|(_, e)| e.info().is_file() && e.file_name() == OsStr::new("en_us.json"))
             .map(|(idx, _)| idx)
             .filter(|&idx| idx > 0);
 
@@ -139,11 +139,11 @@ impl LanguageTable {
 
         for entry in dir {
             println!("{:?}", entry);
-            if entry.info.is_file && entry.path.extension() == Some(OsStr::new("json")) {
+            if entry.info().is_file() && entry.path().extension() == Some(OsStr::new("json")) {
                 println!(" - deserialize");
-                let lang: RcString = entry.path.file_stem().unwrap().to_str().unwrap().into();
+                let lang: RcString = entry.path().file_stem().unwrap().to_str().unwrap().into();
                 let mut buf = String::new();
-                ds.open(entry.path, OpenOptions::reading())?.read_to_string(&mut buf)?;
+                ds.open(entry.path(), OpenOptions::reading())?.read_to_string(&mut buf)?;
                 let part: HashMap<RcString, String> = serde_json::from_str(&buf)?;
 
                 println!(" - deduplicate");
@@ -177,7 +177,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("data source error")]
-    DataSource(#[from] datasource::Error),
+    DataSource(#[from] matryoshka::Error),
     #[error("I/O error")]
     Io(#[from] io::Error),
     #[error("serialization error")]

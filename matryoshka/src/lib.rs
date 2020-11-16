@@ -21,6 +21,7 @@ pub enum DataSource {
 }
 
 impl DataSource {
+    /// Opens a file at `path` inside of this `DataSource`.
     pub fn open<P: AsRef<Path>>(&self, path: P, opts: OpenOptions) -> Result<ResFile> {
         match self {
             DataSource::Dir(ds) => {
@@ -41,6 +42,7 @@ impl DataSource {
         }
     }
 
+    /// Creates a directory at `path` inside of this `DataSource`.
     pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         match self {
             DataSource::Dir(ds) => Ok(ds.create_dir(path)?),
@@ -48,6 +50,8 @@ impl DataSource {
         }
     }
 
+    /// Creates a directory including all its parent directories at `path`
+    /// inside of this `DataSource`.
     pub fn create_dir_all<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         match self {
             DataSource::Dir(ds) => Ok(ds.create_dir_all(path)?),
@@ -55,6 +59,7 @@ impl DataSource {
         }
     }
 
+    /// Deletes the file specified by `path` inside of this `DataSource`.
     pub fn delete_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         match self {
             DataSource::Dir(ds) => Ok(ds.delete_file(path)?),
@@ -62,6 +67,8 @@ impl DataSource {
         }
     }
 
+    /// Deletes the directory specified by `path` inside of this `DataSource`.
+    /// This will fail if the directory is not empty.
     pub fn delete_dir<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         match self {
             DataSource::Dir(ds) => Ok(ds.delete_dir(path)?),
@@ -69,6 +76,8 @@ impl DataSource {
         }
     }
 
+    /// Deletes the directory specified by `path` inside of this `DataSource`,
+    /// including all files and directories contained within, recursively.
     pub fn delete_dir_all<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         match self {
             DataSource::Dir(ds) => Ok(ds.delete_dir_all(path)?),
@@ -76,6 +85,7 @@ impl DataSource {
         }
     }
 
+    /// Returns a list of contents of the directory specified by `path`.
     pub fn list_dir<P: AsRef<Path>>(&self, path: P) -> Result<Vec<DirEntry>> {
         match self {
             DataSource::Dir(ds) => Ok(ds.list_dir(path)?),
@@ -83,6 +93,7 @@ impl DataSource {
         }
     }
 
+    /// Returns information about the file or directory specified by `path`.
     pub fn read_info<P: AsRef<Path>>(&self, path: P) -> Result<FileInfo> {
         match self {
             DataSource::Dir(ds) => Ok(ds.read_info(path)?),
@@ -90,10 +101,12 @@ impl DataSource {
         }
     }
 
+    /// Returns whether `path` points to a file.
     pub fn is_file<P: AsRef<Path>>(&self, path: P) -> bool {
         self.read_info(path).map(|i| i.is_file).unwrap_or(false)
     }
 
+    /// Returns whether `path` points to a directory.
     pub fn is_dir<P: AsRef<Path>>(&self, path: P) -> bool {
         self.read_info(path).map(|i| i.is_dir).unwrap_or(false)
     }
@@ -166,9 +179,9 @@ pub fn normalize_path(path: impl AsRef<Path>) -> Option<PathBuf> {
     Some(pb)
 }
 
-#[repr(C)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct OpenOptions {
+    /// Whether to open the file with reading enabled
     read: bool,
     write: bool,
     create: bool,
@@ -229,20 +242,54 @@ impl Into<fs::OpenOptions> for OpenOptions {
 
 #[derive(Debug)]
 pub struct DirEntry {
-    pub path: PathBuf,
-    pub info: FileInfo,
+    path: PathBuf,
+    info: FileInfo,
 }
 
 impl DirEntry {
+    /// Returns full path to this directory entry inside the `DataSource`.
+    pub fn path(&self) -> &Path { &self.path }
+
+    /// Returns the metadata of this directory entry.
+    pub fn info(&self) -> FileInfo { self.info }
+
+    /// Gets the file name from this directory entry. Since the path comes from
+    /// a directory entry, path.file_name() will never return `None`.
     pub fn file_name(&self) -> &OsStr {
         self.path.file_name().unwrap()
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct FileInfo {
-    pub is_file: bool,
-    pub is_dir: bool,
-    pub is_symlink: bool,
-    pub read_only: bool,
+    is_file: bool,
+    is_dir: bool,
+    is_symlink: bool,
+    read_only: bool,
+}
+
+impl FileInfo {
+    /// Returns whether the directory entry represented by this `FileInfo` is a
+    /// file.
+    pub fn is_file(&self) -> bool {
+        self.is_file
+    }
+
+    /// Returns whether the directory entry represented by this `FileInfo` is a
+    /// directory.
+    pub fn is_dir(&self) -> bool {
+        self.is_dir
+    }
+
+    /// Returns whether the directory entry represented by this `FileInfo` is a
+    /// symlink.
+    pub fn is_symlink(&self) -> bool {
+        self.is_symlink
+    }
+
+    /// Returns whether the directory entry represented by this `FileInfo` can
+    /// not be modified.
+    pub fn read_only(&self) -> bool {
+        self.read_only
+    }
 }

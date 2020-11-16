@@ -2,9 +2,11 @@ use std::{fs, io};
 use std::fs::{File, Metadata, OpenOptions};
 use std::path::{Path, PathBuf};
 
-use crate::datasource::{DirEntry, FileInfo, normalize_path};
+use thiserror::Error;
 
-#[derive(Debug)]
+use crate::{DirEntry, FileInfo, normalize_path};
+
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct DataSource {
     dir: PathBuf,
 }
@@ -79,9 +81,13 @@ impl From<fs::Metadata> for FileInfo {
     }
 }
 
+#[derive(Debug, Error)]
 pub enum Error {
+    #[error("root directory not found")]
     RootDirNotFound(io::Error),
+    #[error("invalid path")]
     InvalidPath(PathBuf),
+    #[error("I/O error")]
     Io(io::Error),
 }
 

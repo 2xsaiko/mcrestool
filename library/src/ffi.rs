@@ -6,8 +6,8 @@ use std::path::Path;
 use std::rc::Rc;
 
 use crate::{FileType, langtable, workspace};
-use crate::datasource::{self, DataSource, dir, zip};
-use crate::datasource::resfile::ResFile as ResFilePrivate;
+use matryoshka::{self, DataSource, dir, zip};
+use matryoshka::resfile::ResFile as ResFilePrivate;
 use crate::fstree::FsTreeEntry;
 use crate::langtable::{LanguageTable as LanguageTablePrivate, LanguageTable};
 use crate::workspace::{Workspace as WorkspacePrivate, Workspace, WorkspaceRoot};
@@ -247,11 +247,11 @@ impl types::Workspace {
     }
 
     fn subscribe(&self, subscriber: &types::TreeChangeSubscriber) {
-
+        unimplemented!()
     }
 
     fn unsubscribe(&self, subscriber: &types::TreeChangeSubscriber) {
-
+        unimplemented!()
     }
 }
 
@@ -387,8 +387,8 @@ fn datasource_open_zip(path: &str) -> Result<types::DataSource, zip::Error> {
 }
 
 impl types::DataSource {
-    fn open(&self, path: &str, mode: &str) -> Result<types::ResFile, datasource::Error> {
-        let mut opts = datasource::OpenOptions::new();
+    fn open(&self, path: &str, mode: &str) -> Result<types::ResFile, matryoshka::Error> {
+        let mut opts = matryoshka::OpenOptions::new();
 
         for char in mode.chars() {
             match char {
@@ -403,31 +403,31 @@ impl types::DataSource {
         Ok(types::ResFile { inner: Box::new(self.inner.open(path, opts)?) })
     }
 
-    fn create_dir(&self, path: &str) -> Result<(), datasource::Error> {
+    fn create_dir(&self, path: &str) -> Result<(), matryoshka::Error> {
         self.inner.create_dir(path)
     }
 
-    fn create_dir_all(&self, path: &str) -> Result<(), datasource::Error> {
+    fn create_dir_all(&self, path: &str) -> Result<(), matryoshka::Error> {
         self.inner.create_dir_all(path)
     }
 
-    fn delete_file(&self, path: &str) -> Result<(), datasource::Error> {
+    fn delete_file(&self, path: &str) -> Result<(), matryoshka::Error> {
         self.inner.delete_file(path)
     }
 
-    fn delete_dir(&self, path: &str) -> Result<(), datasource::Error> {
+    fn delete_dir(&self, path: &str) -> Result<(), matryoshka::Error> {
         self.inner.delete_dir(path)
     }
 
-    fn delete_dir_all(&self, path: &str) -> Result<(), datasource::Error> {
+    fn delete_dir_all(&self, path: &str) -> Result<(), matryoshka::Error> {
         self.inner.delete_dir_all(path)
     }
 
-    fn list_dir(&self, path: &str) -> Result<Vec<types::DirEntry>, datasource::Error> {
+    fn list_dir(&self, path: &str) -> Result<Vec<types::DirEntry>, matryoshka::Error> {
         self.inner.list_dir(path).map(|v| v.into_iter().map(|a| a.into()).collect())
     }
 
-    fn read_info(&self, path: &str) -> Result<types::FileInfo, datasource::Error> {
+    fn read_info(&self, path: &str) -> Result<types::FileInfo, matryoshka::Error> {
         self.inner.read_info(path).map(|v| v.into())
     }
 
@@ -496,22 +496,22 @@ impl types::LanguageTable {
     }
 }
 
-impl From<datasource::DirEntry> for types::DirEntry {
-    fn from(e: datasource::DirEntry) -> Self {
+impl From<matryoshka::DirEntry> for types::DirEntry {
+    fn from(e: matryoshka::DirEntry) -> Self {
         types::DirEntry {
-            path: e.path.to_str().expect("invalid characters in path for UTF-8 string").to_string(),
-            info: e.info.into(),
+            path: e.path().to_str().expect("invalid characters in path for UTF-8 string").to_string(),
+            info: e.info().into(),
         }
     }
 }
 
-impl From<datasource::FileInfo> for types::FileInfo {
-    fn from(fi: datasource::FileInfo) -> Self {
+impl From<matryoshka::FileInfo> for types::FileInfo {
+    fn from(fi: matryoshka::FileInfo) -> Self {
         types::FileInfo {
-            is_file: fi.is_file,
-            is_dir: fi.is_dir,
-            is_symlink: fi.is_symlink,
-            read_only: fi.read_only,
+            is_file: fi.is_file(),
+            is_dir: fi.is_dir(),
+            is_symlink: fi.is_symlink(),
+            read_only: fi.read_only(),
         }
     }
 }

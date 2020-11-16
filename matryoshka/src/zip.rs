@@ -8,7 +8,7 @@ use std::path::{Component, Path, PathBuf};
 use thiserror::Error;
 use zip::ZipArchive;
 
-use crate::datasource::{DirEntry, FileInfo, normalize_path};
+use crate::{DirEntry, FileInfo, normalize_path};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 

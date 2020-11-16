@@ -8,7 +8,8 @@ use byteorder::{BE, LE, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::datasource::{DataSource, dir, zip};
+use matryoshka::{DataSource, dir, zip};
+
 #[cfg(feature = "cpp")]
 use crate::ffi::TreeChangeSubscriber as CppTreeChangeSubscriber;
 use crate::fstree::FsTreeEntry;

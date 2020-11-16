@@ -141,6 +141,7 @@ void MainWindow::close_workspace() {
             case QMessageBox::StandardButton::No:
                 break;
             case QMessageBox::StandardButton::Cancel:
+            default:
                 return;
         }
 

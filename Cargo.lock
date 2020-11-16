@@ -130,12 +130,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "matryoshka"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+ "zip",
+]
+
+[[package]]
 name = "mcrestool-library-rs"
 version = "0.1.0"
 dependencies = [
  "bincode",
  "byteorder",
  "cxx",
+ "matryoshka",
  "serde",
  "serde_json",
  "thiserror",
