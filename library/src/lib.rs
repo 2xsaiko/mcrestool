@@ -3,10 +3,11 @@ use std::path::Path;
 
 use matryoshka::DataSource;
 
+pub mod gamedata;
+pub mod langtable;
 pub mod workspace;
 #[cfg(feature = "cpp")]
 mod ffi;
-pub mod langtable;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum FileType {
