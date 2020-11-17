@@ -49,8 +49,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     connect(ui->res_tree_view, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(show_restree_context_menu(QPoint)));
     connect(ui->res_tree_view, SIGNAL(activated(const QModelIndex &)), this, SLOT(restree_open(const QModelIndex &)));
 
+    this->sub_window_focus_change(nullptr);
     ui->res_tree_view->setModel(this->m_fstree_model);
-
     this->m_ws.subscribe(*this->m_fstree_model);
 }
 
@@ -213,14 +213,16 @@ void MainWindow::detach_selected() {
 }
 
 void MainWindow::sub_window_focus_change(QMdiSubWindow* window) {
-    if (window) puts(window->widget()->objectName().toLocal8Bit());
-
     disconnect(ui->action_insert_language, &QAction::triggered, nullptr, nullptr);
     disconnect(ui->action_insert_translation_key, &QAction::triggered, nullptr, nullptr);
+    ui->action_insert_language->setVisible(false);
+    ui->action_insert_translation_key->setVisible(false);
 
     if (auto win = qobject_cast<LanguageTableWindow*>(window)) {
         connect(ui->action_insert_language, &QAction::triggered, win, &LanguageTableWindow::add_language);
         connect(ui->action_insert_translation_key, &QAction::triggered, win, &LanguageTableWindow::add_locale_key);
+        ui->action_insert_language->setVisible(true);
+        ui->action_insert_translation_key->setVisible(true);
     }
 }
 
