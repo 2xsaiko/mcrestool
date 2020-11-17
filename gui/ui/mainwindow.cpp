@@ -32,10 +32,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     connect(ui->action_save, SIGNAL(triggered()), this, SLOT(save()));
     connect(ui->action_open_workspace, SIGNAL(triggered()), this, SLOT(open_workspace()));
     connect(ui->action_save_workspace, SIGNAL(triggered()), this, SLOT(save_workspace()));
-    connect(ui->action_save_workspace_as, SIGNAL(triggered()), this, SLOT(save_workspace_as()));
     connect(ui->action_close_workspace, SIGNAL(triggered()), this, SLOT(close_workspace()));
-    connect(ui->action_add_res_file, SIGNAL(triggered()), this, SLOT(add_res_file()));
-    connect(ui->action_add_res_folder, SIGNAL(triggered()), this, SLOT(add_res_dir()));
     connect(ui->action_about_qt, &QAction::triggered, &QApplication::aboutQt);
 
     connect(ui->action_new_block_model, SIGNAL(triggered()), this, SLOT(test_open_model_win()));
