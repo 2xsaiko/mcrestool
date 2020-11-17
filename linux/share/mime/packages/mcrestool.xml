@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
     <mime-type type="application/mcrestool-workspace">
-        <comment xml:lang="en">mcrestool Workspace</comment>
+        <comment xml:lang="en">mcrestool workspace</comment>
         <magic priority="50">
-            <match type="big32" value="0x90A7C0DE" offset="0" />
+            <match type="big16" value="0x3B1C" offset="0" />
         </magic>
         <glob pattern="*.rtw" />
         <icon name="mcrestool-workspace" />

@@ -19,7 +19,7 @@ use crate::ffi::TreeChangeSubscriber as CppTreeChangeSubscriber;
 
 mod fstree;
 
-pub const MAGIC: u32 = 0x90A7C0DE;
+pub const MAGIC: u16 = 0x3B1C;
 pub const VERSION: u16 = 0;
 
 pub struct Workspace {
@@ -102,7 +102,7 @@ impl Workspace {
     pub fn read_from_in_place<R: Read>(&mut self, mut pipe: R) -> Result<()> {
         self.reset();
 
-        let magic = pipe.read_u32::<BE>()?;
+        let magic = pipe.read_u16::<BE>()?;
         if magic != MAGIC {
             return Err(Error::MagicError(magic));
         }
@@ -130,7 +130,7 @@ impl Workspace {
     }
 
     pub fn write_into<W: Write>(&self, mut pipe: W) -> Result<()> {
-        pipe.write_u32::<BE>(MAGIC)?;
+        pipe.write_u16::<BE>(MAGIC)?;
         pipe.write_u16::<LE>(VERSION)?;
 
         let roots: Vec<_> = self.roots.iter()
@@ -264,7 +264,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("invalid magic")]
-    MagicError(u32),
+    MagicError(u16),
     #[error("unimplemented file version")]
     FileVersionError(u16),
     #[error("I/O error")]
