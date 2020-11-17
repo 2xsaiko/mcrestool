@@ -1,3 +1,5 @@
+#![feature(str_split_once)]
+
 use std::ffi::OsStr;
 use std::path::Path;
 
@@ -28,10 +30,10 @@ pub fn get_file_type<P: AsRef<Path>>(ds: &DataSource, path: P) -> Option<FileTyp
     }
 }
 
-pub fn has_extension<P: AsRef<Path>, S: AsRef<OsStr>>(path: P, ext: S) -> bool {
+fn has_extension<P: AsRef<Path>, S: AsRef<OsStr>>(path: P, ext: S) -> bool {
     path.as_ref().extension().map_or(false, |s| s == ext.as_ref())
 }
 
-pub fn has_file_name<P: AsRef<Path>, S: AsRef<OsStr>>(path: P, name: S) -> bool {
+fn has_file_name<P: AsRef<Path>, S: AsRef<OsStr>>(path: P, name: S) -> bool {
     path.as_ref().file_name().map_or(false, |s| s == name.as_ref())
 }

@@ -142,6 +142,8 @@ impl LanguageTable {
             if entry.info().is_file() && entry.path().extension() == Some(OsStr::new("json")) {
                 println!(" - deserialize");
                 let lang: RcString = entry.path().file_stem().unwrap().to_str().unwrap().into();
+
+                // Read entire file into string to increase speed (serde-rs/json#160)
                 let mut buf = String::new();
                 ds.open(entry.path(), OpenOptions::reading())?.read_to_string(&mut buf)?;
                 let part: HashMap<RcString, String> = serde_json::from_str(&buf)?;

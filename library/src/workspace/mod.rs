@@ -16,6 +16,7 @@ use matryoshka::{DataSource, dir, zip};
 use crate::ffi;
 #[cfg(feature = "cpp")]
 use crate::ffi::TreeChangeSubscriber as CppTreeChangeSubscriber;
+use crate::gamedata::GameData;
 
 mod fstree;
 
@@ -74,6 +75,10 @@ impl Workspace {
         self.dispatcher().pre_insert(&vec![], self.roots.len(), self.roots.len());
         self.roots.push(root);
         self.dispatcher().post_insert(&vec![]);
+
+        let mut gd = GameData::new();
+        gd.collect_usages(self);
+
         Ok(())
     }
 
