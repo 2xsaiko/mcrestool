@@ -201,6 +201,17 @@ void MainWindow::add_res_dir() {
     }
 }
 
+void MainWindow::detach_selected() {
+    QModelIndexList indices = ui->res_tree_view->selectionModel()->selectedIndexes();
+
+    for (const auto& index: indices) {
+        FsTreeEntry entry = fstreeentry_from_ptr(index.internalId());
+        if (entry.is_root()) {
+            this->m_ws.detach(entry.root());
+        }
+    }
+}
+
 void MainWindow::sub_window_focus_change(QMdiSubWindow* window) {
     if (window) puts(window->widget()->objectName().toLocal8Bit());
 
@@ -214,11 +225,29 @@ void MainWindow::sub_window_focus_change(QMdiSubWindow* window) {
 }
 
 void MainWindow::show_restree_context_menu(const QPoint& pt) {
+    QModelIndexList indices = ui->res_tree_view->selectionModel()->selectedIndexes();
+
+    bool allTopLevel = false;
+
+    if (!indices.isEmpty()) {
+        allTopLevel = true;
+        for (const auto& index: indices) {
+            if (ui->res_tree_view->model()->parent(index) != QModelIndex()) {
+                allTopLevel = false;
+                break;
+            }
+        }
+    }
+
     const QPoint& gPt = ui->res_tree_view->mapToGlobal(pt);
 
     QMenu menu;
-    menu.addAction(tr("Add Directory"), this, SLOT(add_res_dir()));
-    menu.addAction(tr("Add ZIP File"), this, SLOT(add_res_file()));
+    menu.addAction(tr("&Add Directory"), this, SLOT(add_res_dir()))->setIcon(QIcon::fromTheme("document-import"));
+    menu.addAction(tr("Add &ZIP File"), this, SLOT(add_res_file()))->setIcon(QIcon::fromTheme("document-import"));
+    if (allTopLevel) {
+        menu.addSeparator();
+        menu.addAction(tr("&Detach"), this, SLOT(detach_selected()))->setIcon(QIcon::fromTheme("document-close"));
+    }
 
     menu.exec(gPt);
 }

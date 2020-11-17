@@ -48,6 +48,8 @@ private slots:
 
     void add_res_dir();
 
+    void detach_selected();
+
     void test_open_model_win();
 
     void show_resource_tree(bool shown);

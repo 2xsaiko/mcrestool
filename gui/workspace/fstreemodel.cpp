@@ -17,18 +17,18 @@ FsTreeModel::~FsTreeModel() = default;
 QModelIndex FsTreeModel::index(int row, int column, const QModelIndex& parent) const {
     if (!hasIndex(row, column, parent)) return QModelIndex();
 
-    void* data;
+    quintptr data;
 
     if (!parent.isValid()) {
         FsTreeEntry entry = this->ws.by_index(row).tree();
         assert(!entry.is_null1());
-        data = (void*) entry.to_ptr();
+        data = entry.to_ptr();
     } else {
-        FsTreeEntry entry = fstreeentry_from_ptr((size_t) parent.internalPointer());
+        FsTreeEntry entry = fstreeentry_from_ptr(parent.internalId());
         assert(!entry.is_null1());
         FsTreeEntry child = entry.by_index1(row);
         assert(!child.is_null1());
-        data = (void*) child.to_ptr();
+        data = child.to_ptr();
     }
 
     if (!data) {
@@ -41,7 +41,7 @@ QModelIndex FsTreeModel::index(int row, int column, const QModelIndex& parent) c
 QModelIndex FsTreeModel::parent(const QModelIndex& child) const {
     if (!child.isValid()) return QModelIndex();
 
-    FsTreeEntry entry = fstreeentry_from_ptr((size_t) child.internalPointer());
+    FsTreeEntry entry = fstreeentry_from_ptr(child.internalId());
     assert(!entry.is_null1());
     if (entry.is_root()) {
         return QModelIndex();
@@ -49,7 +49,7 @@ QModelIndex FsTreeModel::parent(const QModelIndex& child) const {
         FsTreeEntry parent = entry.parent();
         assert(!parent.is_null1());
 
-        return createIndex((int) parent.index_of(entry), 0, (void*) parent.to_ptr());
+        return createIndex((int) parent.index_of(entry), 0, parent.to_ptr());
     }
 }
 
@@ -57,7 +57,7 @@ QVariant FsTreeModel::data(const QModelIndex& index, int role) const {
     if (!index.isValid()) return QVariant();
     if (role != Qt::DisplayRole) return QVariant();
 
-    FsTreeEntry entry = fstreeentry_from_ptr((size_t) index.internalPointer());
+    FsTreeEntry entry = fstreeentry_from_ptr(index.internalId());
     assert(!entry.is_null1());
 
     return to_qstring(entry.name());
@@ -76,7 +76,7 @@ QVariant FsTreeModel::headerData(int section, Qt::Orientation orientation, int r
 int FsTreeModel::rowCount(const QModelIndex& parent) const {
     if (parent.column() > 0) return 0;
 
-    FsTreeEntry entry = fstreeentry_from_ptr((size_t) parent.internalPointer());
+    FsTreeEntry entry = fstreeentry_from_ptr(parent.internalId());
     if (entry.is_null1()) {
         return this->ws.root_count();
     } else {

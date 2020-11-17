@@ -125,10 +125,8 @@ impl LanguageTable {
         let mut dir = ds.list_dir(path)?;
 
         // move en_us to the beginning
-        let idx = dir.iter().enumerate()
-            .find(|(_, e)| e.info().is_file() && e.file_name() == OsStr::new("en_us.json"))
-            .map(|(idx, _)| idx)
-            .filter(|&idx| idx > 0);
+        let idx = dir.iter()
+            .position(|e| e.info().is_file() && e.file_name() == OsStr::new("en_us.json"));
 
         if let Some(idx) = idx {
             let en_us = dir.remove(idx);

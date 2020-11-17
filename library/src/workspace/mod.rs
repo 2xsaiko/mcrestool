@@ -115,6 +115,14 @@ impl Workspace {
         Ok(())
     }
 
+    pub fn detach(&mut self, root: &Rc<RefCell<WorkspaceRoot>>) {
+        if let Some(idx) = self.roots.iter().position(|r| r.as_ptr() == root.as_ptr()) {
+            self.dispatcher().pre_remove(&vec![], idx, idx);
+            self.roots.remove(idx);
+            self.dispatcher().post_remove(&vec![]);
+        }
+    }
+
     pub fn roots(&self) -> &[Rc<RefCell<WorkspaceRoot>>] { &self.roots }
 
     pub fn reset(&mut self) {
@@ -199,9 +207,7 @@ impl TreeChangeDispatcher {
     }
 
     pub fn unsubscribe(&mut self, ptr: &Rc<dyn TreeChangeSubscriber>) {
-        let idx = self.subscribers.iter().enumerate()
-            .find(|(_, el)| el.ptr_eq(&Rc::downgrade(ptr)))
-            .map(|(idx, _)| idx);
+        let idx = self.subscribers.iter().position(|el| el.ptr_eq(&Rc::downgrade(ptr)));
 
         if let Some(idx) = idx {
             self.subscribers.remove(idx);
@@ -219,9 +225,7 @@ impl TreeChangeDispatcher {
     pub fn cpp_unsubscribe(&mut self, ptr: *mut CppTreeChangeSubscriber) {
         if ptr.is_null() { return; }
 
-        let idx = self.cpp_subscribers.iter().enumerate()
-            .find(|(_, &el)| el == ptr)
-            .map(|(idx, _)| idx);
+        let idx = self.cpp_subscribers.iter().position(|&el| el == ptr);
 
         if let Some(idx) = idx {
             self.cpp_subscribers.remove(idx);

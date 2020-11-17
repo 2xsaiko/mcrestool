@@ -67,9 +67,7 @@ impl FsTreeEntry {
     pub fn children(&self) -> &[Rc<RefCell<FsTreeEntry>>] { &self.children }
 
     pub fn index_of(&self, child: &Rc<RefCell<FsTreeEntry>>) -> Option<usize> {
-        self.children.iter().enumerate()
-            .find(|(_, a)| a.as_ptr() == child.as_ptr())
-            .map(|(idx, _)| idx)
+        self.children.iter().position(|a| a.as_ptr() == child.as_ptr())
     }
 
     pub fn refresh(entry: &Rc<RefCell<Self>>) {

@@ -134,6 +134,8 @@ mod types {
 
         fn add_zip(self: &mut Workspace, path: &str) -> Result<()>;
 
+        fn detach(self: &mut Workspace, root: &WorkspaceRoot);
+
         fn root_count(self: &Workspace) -> usize;
 
         fn by_index(self: &Workspace, idx: usize) -> WorkspaceRoot;
@@ -278,6 +280,12 @@ impl types::Workspace {
 
     fn add_zip(&mut self, path: &str) -> zip::Result<()> {
         self.inner.add_zip(path)
+    }
+
+    fn detach(&mut self, root: &types::WorkspaceRoot) {
+        if let Some(root) = &*root.inner {
+            self.inner.detach(root)
+        }
     }
 
     fn root_count(&self) -> usize {
