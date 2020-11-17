@@ -64,6 +64,25 @@ impl Workspace {
         self.dispatcher().pre_insert(&vec![], self.roots.len(), self.roots.len());
         self.roots.push(root);
         self.dispatcher().post_insert(&vec![]);
+
+
+        let mut gd = GameData::new();
+        gd.collect_usages(&self.roots);
+        gd.create_dummies();
+
+        let mut blocks: Vec<_> = gd.blocks.keys().collect();
+        blocks.sort();
+        print!("Blocks: ");
+        blocks.iter().for_each(|id| print!("{} ", id));
+        println!();
+        println!();
+
+        let mut items: Vec<_> = gd.items.keys().collect();
+        items.sort();
+        print!("Items: ");
+        items.iter().for_each(|id| print!("{} ", id));
+        println!();
+
         Ok(())
     }
 
@@ -77,7 +96,21 @@ impl Workspace {
         self.dispatcher().post_insert(&vec![]);
 
         let mut gd = GameData::new();
-        gd.collect_usages(self);
+        gd.collect_usages(&self.roots);
+        gd.create_dummies();
+
+        let mut blocks: Vec<_> = gd.blocks.keys().collect();
+        blocks.sort();
+        print!("Blocks: ");
+        blocks.iter().for_each(|id| print!("{} ", id));
+        println!();
+
+        let mut items: Vec<_> = gd.items.keys().collect();
+        items.sort();
+        print!("Items: ");
+        items.iter().for_each(|id| print!("{} ", id));
+        println!();
+
 
         Ok(())
     }

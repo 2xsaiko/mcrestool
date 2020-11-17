@@ -11,9 +11,11 @@ use serde::export::Formatter;
 use matryoshka::{Error, OpenOptions};
 use matryoshka::resfile::ResFile;
 
-use crate::workspace::Workspace;
+use crate::workspace::{Workspace, WorkspaceRoot};
+use std::rc::Rc;
+use std::cell::RefCell;
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Identifier {
     namespace: String,
     path: String,
@@ -64,67 +66,54 @@ impl GameDataReferences {
 pub struct GameData {
     refs: GameDataReferences,
 
-    blocks: HashMap<Identifier, Block>,
-    items: HashMap<Identifier, Item>,
+    pub blocks: HashMap<Identifier, Block>,
+    pub items: HashMap<Identifier, Item>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum GameObjectStatus {
-    /// The game object was manually added by the user.
-    Manual,
-
-    /// The game object was added as a result of automatically detected
-    /// reference from another resource.
-    Auto,
-
-    /// The game object was both added by the user and automatically detected.
-    Both,
-
-    /// The game object was automatically added (see `Auto`) but was deleted by
-    /// the user.
-    AutoHidden,
+enum AutoStatus {
+    No,
+    Yes,
+    Deleted,
 }
 
 pub struct GameObjectBase {
-    status: GameObjectStatus,
+    manual: bool,
+    auto: AutoStatus,
     id: Identifier,
 }
 
 impl GameObjectBase {
     pub fn new(id: Identifier) -> Self {
         GameObjectBase {
-            status: GameObjectStatus::Manual,
+            manual: true,
+            auto: AutoStatus::No,
             id,
         }
     }
 
     pub fn auto(id: Identifier) -> Self {
         GameObjectBase {
-            status: GameObjectStatus::Auto,
+            manual: false,
+            auto: AutoStatus::Yes,
             id,
         }
     }
 
-    pub fn mark_manual(&mut self) {
-        self.status = match self.status {
-            GameObjectStatus::Manual => GameObjectStatus::Manual,
-            _ => GameObjectStatus::Both,
+    pub fn mark_manual(&mut self, flag: bool) {
+        self.manual = flag;
+    }
+
+    pub fn mark_auto(&mut self, flag: bool) {
+        if !flag && self.auto == AutoStatus::Yes {
+            self.auto = AutoStatus::No;
+        } else if flag && self.auto == AutoStatus::No {
+            self.auto = AutoStatus::Yes;
         }
     }
 
-    pub fn try_delete(&mut self) -> bool {
-        let new_status = match self.status {
-            GameObjectStatus::Manual => None,
-            _ => Some(GameObjectStatus::AutoHidden),
-        };
-
-        match new_status {
-            None => true,
-            Some(st) => {
-                self.status = st;
-                false
-            }
-        }
+    pub fn marked_for_deletion(&self) -> bool {
+        !self.manual && self.auto != AutoStatus::Yes
     }
 }
 
@@ -136,6 +125,12 @@ impl Block {
     pub fn new(base: GameObjectBase) -> Self {
         Block { base }
     }
+
+    pub fn mark_manual(&mut self, flag: bool) { self.base.mark_manual(flag); }
+
+    pub fn mark_auto(&mut self, flag: bool) { self.base.mark_auto(flag); }
+
+    pub fn marked_for_deletion(&self) -> bool { self.base.marked_for_deletion() }
 }
 
 pub struct Item {
@@ -146,6 +141,12 @@ impl Item {
     pub fn new(base: GameObjectBase) -> Self {
         Item { base }
     }
+
+    pub fn mark_manual(&mut self, flag: bool) { self.base.mark_manual(flag); }
+
+    pub fn mark_auto(&mut self, flag: bool) { self.base.mark_auto(flag); }
+
+    pub fn marked_for_deletion(&self) -> bool { self.base.marked_for_deletion() }
 }
 
 impl GameData {
@@ -157,10 +158,10 @@ impl GameData {
         }
     }
 
-    pub fn collect_usages(&mut self, ws: &Workspace) {
+    pub fn collect_usages(&mut self, roots: &[Rc<RefCell<WorkspaceRoot>>]) {
         self.refs.map.clear();
 
-        for x in ws.roots() {
+        for x in roots.iter() {
             let x = x.borrow();
             let ds = x.ds();
 
@@ -191,14 +192,16 @@ impl GameData {
                             };
 
                             for k in part.keys() {
-                                if k.starts_with("block.") {
-                                    if let Some(block_name) = k[6..].split_once('.') {
+                                if let Some(k) = k.strip_prefix("block.") {
+                                    let mut split = k.split('.');
+                                    if let Some(block_name) = split.next().and_then(|a| split.next().map(|b| (a, b))) {
                                         let id = Identifier::from(block_name.0, block_name.1);
 
                                         self.refs.insert(dl_source.clone(), DependencyLink::Block(id));
                                     }
-                                } else if k.starts_with("item.") {
-                                    if let Some(item_name) = k[6..].split_once('.') {
+                                } else if let Some(k) = k.strip_prefix("item.") {
+                                    let mut split = k.split('.');
+                                    if let Some(item_name) = split.next().and_then(|a| split.next().map(|b| (a, b))) {
                                         let id = Identifier::from(item_name.0, item_name.1);
 
                                         self.refs.insert(dl_source.clone(), DependencyLink::Item(id));
@@ -212,17 +215,24 @@ impl GameData {
         }
     }
 
-    fn create_dummies(&mut self) {
+    pub fn create_dummies(&mut self) {
         let vs: HashSet<_> = self.refs.map.values()
             .flat_map(|v| v.iter())
             .collect();
 
+        self.blocks.values_mut().for_each(|b| b.mark_auto(false));
+        self.items.values_mut().for_each(|i| i.mark_auto(false));
+
         for entry in vs {
             match entry {
                 DependencyLink::Block(id) => {
-                    self.blocks.entry(id.clone()).or_insert_with(|| Block::new())
+                    let b = self.blocks.entry(id.clone()).or_insert_with(|| Block::new(GameObjectBase::auto(id.clone())));
+                    b.mark_auto(true);
                 }
-                DependencyLink::Item(id) => {}
+                DependencyLink::Item(id) => {
+                    let i = self.items.entry(id.clone()).or_insert_with(|| Item::new(GameObjectBase::auto(id.clone())));
+                    i.mark_auto(true);
+                }
                 _ => {}
             }
         }
