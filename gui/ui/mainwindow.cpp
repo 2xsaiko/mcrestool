@@ -92,8 +92,13 @@ void MainWindow::open_workspace() {
     if (!filename.isEmpty()) {
         if (!this->close_workspace()) return;
         std::string s = filename.toStdString();
-        this->m_ws.from(s);
-        this->m_ws_path = filename;
+        try {
+            this->m_ws.from(s);
+            this->m_ws_path = filename;
+        } catch (const std::exception& e) {
+            QMessageBox::critical(this, tr("Failed to Load Workspace"), tr("Failed to load workspace: %0").arg(e.what()));
+            qDebug() << "failed to load workspace:" << e.what();
+        }
     }
 }
 
