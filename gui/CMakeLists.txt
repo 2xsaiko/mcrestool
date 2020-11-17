@@ -49,7 +49,7 @@ set_property(TARGET mcrestool PROPERTY CXX_STANDARD 20)
 target_link_libraries(mcrestool PUBLIC
         Qt5::Core
         Qt5::Widgets
-        mcrestool-library)
+        mcrtlib)
         
 
 install(TARGETS mcrestool DESTINATION bin)

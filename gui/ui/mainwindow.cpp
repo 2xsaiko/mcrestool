@@ -23,6 +23,7 @@ using mcrtlib::to_qstring;
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                                           ui(new Ui::MainWindow),
                                           m_ws(workspace_new()),
+                                          m_fstree_model(new FsTreeModel(this->m_ws, this)),
                                           m_ws_path(QString()) {
     ui->setupUi(this);
 
@@ -45,11 +46,19 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     connect(ui->game_objects, SIGNAL(visibilityChanged(bool)), this, SLOT(show_game_objects(bool)));
 
     connect(ui->mdi_area, SIGNAL(subWindowActivated(QMdiSubWindow * )), this, SLOT(sub_window_focus_change(QMdiSubWindow * )));
+    connect(ui->action_cascade, SIGNAL(triggered(bool)), this, SLOT(win_cascade()));
+    connect(ui->action_tile, SIGNAL(triggered(bool)), this, SLOT(win_tile()));
 
     connect(ui->res_tree_view, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(show_restree_context_menu(QPoint)));
     connect(ui->res_tree_view, SIGNAL(activated(const QModelIndex &)), this, SLOT(restree_open(const QModelIndex &)));
 
-    ui->res_tree_view->setModel(new FsTreeModel(this->m_ws, this));
+    ui->res_tree_view->setModel(this->m_fstree_model);
+
+    this->m_ws.subscribe(*this->m_fstree_model);
+}
+
+MainWindow::~MainWindow() {
+    this->m_ws.unsubscribe(*this->m_fstree_model);
 }
 
 void MainWindow::center() {
@@ -84,15 +93,10 @@ void MainWindow::save() {
 void MainWindow::open_workspace() {
     QString filename = QFileDialog::getOpenFileName(this, tr("Open Workspace"), QString(), "mcrestool Workspace(*.rtw)");
     if (!filename.isEmpty()) {
-        auto* model = qobject_cast<FsTreeModel*>(ui->res_tree_view->model());
-        model->beginResetModel1();
-
+        if (!this->close_workspace()) return;
         std::string s = filename.toStdString();
         this->m_ws.from(s);
         this->m_ws_path = filename;
-        // TODO update resource tree
-
-        model->endResetModel1();
     }
 }
 
@@ -114,14 +118,14 @@ void MainWindow::save_workspace_as() {
     }
 }
 
-void MainWindow::close_workspace() {
-    QList<QMdiSubWindow*> windows = this->ui->mdi_area->subWindowList();
+bool MainWindow::close_workspace() {
+    QList<QMdiSubWindow*> windows = ui->mdi_area->subWindowList();
 
     if (!windows.isEmpty()) {
         QMessageBox::StandardButton response = QMessageBox::question(
             this,
-            tr("Close all windows?"),
-            tr("Closing workspace. Do you want to also close all open windows?"),
+            tr("Close All Editors"),
+            tr("Closing workspace. Do you want to also close all open editors?"),
             QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
             QMessageBox::StandardButton::Cancel);
         qDebug() << response;
@@ -134,7 +138,7 @@ void MainWindow::close_workspace() {
                         window->close();
                     } else {
                         // user canceled editor window close operation
-                        return;
+                        return false;
                     }
                 }
                 break;
@@ -142,12 +146,13 @@ void MainWindow::close_workspace() {
                 break;
             case QMessageBox::StandardButton::Cancel:
             default:
-                return;
+                return false;
         }
 
-        this->m_ws.reset();
     }
 
+    this->m_ws.reset();
+    return true;
 }
 
 void MainWindow::show_resource_tree(bool shown) {
@@ -172,10 +177,6 @@ void MainWindow::add_res_file() {
     QStringList sources = QFileDialog::getOpenFileNames(this, tr("Add Resource Pack/Mod"), QString(), "Minecraft Content(*.zip *.jar);;All Files(*.*)");
     if (sources.isEmpty()) return;
 
-    auto* model = qobject_cast<FsTreeModel*>(ui->res_tree_view->model());
-    int count = model->rowCount(QModelIndex());
-    model->beginInsertRows1(QModelIndex(), count, count + sources.size() - 1);
-
     for (const auto& source: sources) {
         const std::string& path = source.toStdString();
         try {
@@ -184,17 +185,11 @@ void MainWindow::add_res_file() {
             qDebug() << "Failed to add path" << source << ":" << e.what();
         }
     }
-
-    model->endInsertRows1();
 }
 
 void MainWindow::add_res_dir() {
     QString source = QFileDialog::getExistingDirectory(this, tr("Add Resource Folder"));
     if (source.isEmpty()) return;
-
-    auto* model = qobject_cast<FsTreeModel*>(ui->res_tree_view->model());
-    int count = model->rowCount(QModelIndex());
-    model->beginInsertRows1(QModelIndex(), count, count);
 
     const std::string& path = source.toStdString();
     try {
@@ -202,8 +197,6 @@ void MainWindow::add_res_dir() {
     } catch (const std::exception& e) {
         qDebug() << "Failed to add path" << source << ":" << e.what();
     }
-
-    model->endInsertRows1();
 }
 
 void MainWindow::sub_window_focus_change(QMdiSubWindow* window) {
@@ -219,7 +212,7 @@ void MainWindow::sub_window_focus_change(QMdiSubWindow* window) {
 }
 
 void MainWindow::show_restree_context_menu(const QPoint& pt) {
-    const QPoint& gPt = this->ui->res_tree_view->mapToGlobal(pt);
+    const QPoint& gPt = ui->res_tree_view->mapToGlobal(pt);
 
     QMenu menu;
     menu.addAction(tr("Add Directory"), this, SLOT(add_res_dir()));
@@ -233,20 +226,29 @@ void MainWindow::restree_open(const QModelIndex& index) {
     if (!item.is_null1()) {
         switch (item.file_type()) {
             case FileType::FILETYPE_LANGUAGE_PART:
-            case FileType::FILETYPE_LANGUAGE:
+            case FileType::FILETYPE_LANGUAGE: {
                 auto* ltw = new LanguageTableWindow(new LanguageTableContainer(item.root().ds(), to_qstring(item.path()), this), this);
                 ltw->reload();
                 ui->mdi_area->addSubWindow(ltw);
                 ltw->show();
                 break;
+            }
+            default:
+                qDebug() << "warning: unhandled file type" << (uint8_t) item.file_type();
         }
     }
 }
 
 void MainWindow::test_open_model_win() {
     ModelEditWindow* win = new ModelEditWindow(this);
-    this->ui->mdi_area->addSubWindow(win);
+    ui->mdi_area->addSubWindow(win);
     win->show();
 }
 
-MainWindow::~MainWindow() = default;
+void MainWindow::win_cascade() {
+    ui->mdi_area->cascadeSubWindows();
+}
+
+void MainWindow::win_tile() {
+    ui->mdi_area->tileSubWindows();
+}

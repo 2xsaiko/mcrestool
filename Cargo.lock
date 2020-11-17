@@ -138,7 +138,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "mcrestool-library-rs"
+name = "mcrtlib-rs"
 version = "0.1.0"
 dependencies = [
  "bincode",

@@ -12,6 +12,8 @@ FsTreeModel::FsTreeModel(Workspace& ws, QObject* parent) :
     QAbstractItemModel(parent),
     ws(ws) {}
 
+FsTreeModel::~FsTreeModel() = default;
+
 QModelIndex FsTreeModel::index(int row, int column, const QModelIndex& parent) const {
     if (!hasIndex(row, column, parent)) return QModelIndex();
 
@@ -86,19 +88,33 @@ int FsTreeModel::columnCount(const QModelIndex& parent) const {
     return 1;
 }
 
-void FsTreeModel::beginInsertRows1(const QModelIndex& parent, int first, int last) {
-    QAbstractItemModel::beginInsertRows(parent, first, last);
+QModelIndex FsTreeModel::find_path(const rust::Vec<size_t>& path) {
+    QModelIndex model_index;
+
+    for (auto index: path) {
+        model_index = this->index(index, 0, model_index);
+
+        if (!model_index.isValid()) {
+            return QModelIndex();
+        }
+    }
+
+    return model_index;
 }
 
-void FsTreeModel::endInsertRows1() {
+void FsTreeModel::pre_insert(const rust::Vec<size_t>& path, size_t start, size_t end) {
+    QAbstractItemModel::beginInsertRows(find_path(path), (int) start, (int) end);
+}
+
+void FsTreeModel::post_insert(const rust::Vec<size_t>&) {
     QAbstractItemModel::endInsertRows();
 }
 
-void FsTreeModel::beginResetModel1() {
-    QAbstractItemModel::beginResetModel();
+void FsTreeModel::pre_remove(const rust::Vec<size_t>& path, size_t start, size_t end) {
+    QAbstractItemModel::beginRemoveRows(find_path(path), (int) start, (int) end);
 }
 
-void FsTreeModel::endResetModel1() {
-    QAbstractItemModel::endResetModel();
+void FsTreeModel::post_remove(const rust::Vec<size_t>&) {
+    QAbstractItemModel::endRemoveRows();
 }
 

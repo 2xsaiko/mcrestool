@@ -86,6 +86,9 @@ impl DataSource {
     }
 
     /// Returns a list of contents of the directory specified by `path`.
+    ///
+    /// As with [`std::fs::read_dir`], the order in which this iterator returns
+    /// entries is platform and filesystem dependent.
     pub fn list_dir<P: AsRef<Path>>(&self, path: P) -> Result<Vec<DirEntry>> {
         match self {
             DataSource::Dir(ds) => Ok(ds.list_dir(path)?),

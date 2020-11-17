@@ -14,7 +14,7 @@ public:
 
     void set_entry(QString language, QString key, QString value);
 
-    static LanguageTableModel* from_dir(const mcrtlib::ffi::DataSource& ds, QString path, QObject* parent);
+    static LanguageTableModel* from_dir(const mcrtlib::ffi::DataSource& ds, const QString& path, QObject* parent);
 
     [[nodiscard]] int rowCount(const QModelIndex& parent) const override;
 

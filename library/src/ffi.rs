@@ -5,12 +5,12 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::rc::Rc;
 
-use crate::{FileType, langtable, workspace};
 use matryoshka::{self, DataSource, dir, zip};
 use matryoshka::resfile::ResFile as ResFilePrivate;
-use crate::fstree::FsTreeEntry;
+
+use crate::{FileType, langtable, workspace};
 use crate::langtable::{LanguageTable as LanguageTablePrivate, LanguageTable};
-use crate::workspace::{Workspace as WorkspacePrivate, Workspace, WorkspaceRoot};
+use crate::workspace::{FsTreeEntry, Workspace as WorkspacePrivate, Workspace, WorkspaceRoot};
 
 type WorkspaceRootPrivate = Option<Rc<RefCell<WorkspaceRoot>>>;
 type FsTreeEntryPrivate = Option<Rc<RefCell<FsTreeEntry>>>;
@@ -68,13 +68,13 @@ mod types {
 
         type TreeChangeSubscriber;
 
-        fn tcs_pre_insert(s: &TreeChangeSubscriber);
+        pub fn tcs_pre_insert(s: &mut TreeChangeSubscriber, path: &Vec<usize>, start: usize, end: usize);
 
-        fn tcs_post_insert(s: &TreeChangeSubscriber);
+        pub fn tcs_post_insert(s: &mut TreeChangeSubscriber, path: &Vec<usize>);
 
-        fn tcs_pre_remove(s: &TreeChangeSubscriber);
+        pub fn tcs_pre_remove(s: &mut TreeChangeSubscriber, path: &Vec<usize>, start: usize, end: usize);
 
-        fn tcs_post_remove(s: &TreeChangeSubscriber);
+        pub fn tcs_post_remove(s: &mut TreeChangeSubscriber, path: &Vec<usize>);
     }
 
     extern "Rust" {
@@ -106,9 +106,9 @@ mod types {
 
         fn save(self: &Workspace, path: &str) -> Result<()>;
 
-        fn subscribe(self: &Workspace, subscriber: &TreeChangeSubscriber);
+        fn subscribe(self: &mut Workspace, subscriber: &mut TreeChangeSubscriber);
 
-        fn unsubscribe(self: &Workspace, subscriber: &TreeChangeSubscriber);
+        fn unsubscribe(self: &mut Workspace, subscriber: &mut TreeChangeSubscriber);
 
         // WorkspaceRoot
         fn tree(self: &WorkspaceRoot) -> FsTreeEntry;
@@ -200,6 +200,22 @@ mod types {
     }
 }
 
+pub fn tcs_pre_insert(s: *mut TreeChangeSubscriber, path: &Vec<usize>, start: usize, end: usize) {
+    unsafe { types::tcs_pre_insert(s.as_mut().unwrap(), path, start, end); }
+}
+
+pub fn tcs_post_insert(s: *mut TreeChangeSubscriber, path: &Vec<usize>) {
+    unsafe { types::tcs_post_insert(s.as_mut().unwrap(), path); }
+}
+
+pub fn tcs_pre_remove(s: *mut TreeChangeSubscriber, path: &Vec<usize>, start: usize, end: usize) {
+    unsafe { types::tcs_pre_remove(s.as_mut().unwrap(), path, start, end); }
+}
+
+pub fn tcs_post_remove(s: *mut TreeChangeSubscriber, path: &Vec<usize>) {
+    unsafe { types::tcs_post_remove(s.as_mut().unwrap(), path); }
+}
+
 fn get_file_type(ds: &types::DataSource, path: &str) -> types::FileType {
     crate::get_file_type(&ds.inner, path).into()
 }
@@ -214,12 +230,12 @@ fn workspace_from(path: &str) -> workspace::Result<types::Workspace> {
 
 impl types::Workspace {
     fn from(&mut self, path: &str) -> workspace::Result<()> {
-        *self = workspace_from(path)?;
+        self.inner.read_from_in_place(File::open(path)?)?;
         Ok(())
     }
 
     fn reset(&mut self) {
-        *self = workspace_new();
+        self.inner.reset();
     }
 
     fn add_dir(&mut self, path: &str) -> io::Result<()> {
@@ -246,12 +262,12 @@ impl types::Workspace {
         Ok(())
     }
 
-    fn subscribe(&self, subscriber: &types::TreeChangeSubscriber) {
-        unimplemented!()
+    fn subscribe(&mut self, subscriber: &mut types::TreeChangeSubscriber) {
+        self.inner.dispatcher_mut().cpp_subscribe(subscriber as *mut _);
     }
 
-    fn unsubscribe(&self, subscriber: &types::TreeChangeSubscriber) {
-        unimplemented!()
+    fn unsubscribe(&mut self, subscriber: &mut types::TreeChangeSubscriber) {
+        self.inner.dispatcher_mut().cpp_unsubscribe(subscriber as *mut _);
     }
 }
 

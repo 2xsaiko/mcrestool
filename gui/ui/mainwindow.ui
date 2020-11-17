@@ -73,18 +73,39 @@
      <addaction name="action_new_block_state"/>
      <addaction name="action_new_recipe"/>
      <addaction name="separator"/>
-     <addaction name="actionOther"/>
+     <addaction name="action_other"/>
+    </widget>
+    <widget class="QMenu" name="menu_recent_workspaces">
+     <property name="title">
+      <string>Recent Wo&amp;rkspaces</string>
+     </property>
+     <property name="icon">
+      <iconset theme="project-open-recent">
+       <normaloff>.</normaloff>.</iconset>
+     </property>
+    </widget>
+    <widget class="QMenu" name="menu_recent_files">
+     <property name="title">
+      <string>Recent &amp;Files</string>
+     </property>
+     <property name="icon">
+      <iconset theme="document-open-recent">
+       <normaloff>.</normaloff>.</iconset>
+     </property>
     </widget>
     <addaction name="menu_new"/>
     <addaction name="action_open"/>
     <addaction name="separator"/>
     <addaction name="action_save"/>
+    <addaction name="action_save_as"/>
     <addaction name="action_save_all"/>
     <addaction name="separator"/>
     <addaction name="action_open_workspace"/>
     <addaction name="action_save_workspace"/>
-    <addaction name="action_save_workspace_as"/>
     <addaction name="action_close_workspace"/>
+    <addaction name="separator"/>
+    <addaction name="menu_recent_files"/>
+    <addaction name="menu_recent_workspaces"/>
     <addaction name="separator"/>
     <addaction name="action_quit"/>
    </widget>
@@ -115,6 +136,8 @@
     </property>
     <addaction name="action_minimize"/>
     <addaction name="separator"/>
+    <addaction name="action_cascade"/>
+    <addaction name="action_tile"/>
    </widget>
    <addaction name="menu_file"/>
    <addaction name="menu_edit"/>
@@ -356,7 +379,7 @@
   </action>
   <action name="action_open_workspace">
    <property name="icon">
-    <iconset theme="document-open">
+    <iconset theme="project-open">
      <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
@@ -387,12 +410,34 @@
     <string>&amp;Recipe</string>
    </property>
   </action>
-  <action name="actionOther">
+  <action name="action_other">
    <property name="text">
     <string>&amp;Other…</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+N</string>
+   </property>
+  </action>
+  <action name="action_save_as">
+   <property name="icon">
+    <iconset theme="document-save-as">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>Save &amp;As…</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+S</string>
+   </property>
+  </action>
+  <action name="action_cascade">
+   <property name="text">
+    <string>&amp;Cascade</string>
+   </property>
+  </action>
+  <action name="action_tile">
+   <property name="text">
+    <string>&amp;Tile</string>
    </property>
   </action>
  </widget>

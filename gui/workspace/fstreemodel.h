@@ -2,13 +2,15 @@
 #define MCRESTOOL_FSTREEMODEL_H
 
 #include <QAbstractItemModel>
-#include <lib.rs.h>
+#include <mcrtlib.h>
 
-class FsTreeModel : public QAbstractItemModel {
+class FsTreeModel : public QAbstractItemModel, public mcrtlib::ffi::TreeChangeSubscriber {
     Q_OBJECT
 
 public:
     explicit FsTreeModel(mcrtlib::ffi::Workspace& ws, QObject* parent = nullptr);
+
+    ~FsTreeModel() override;
 
     [[nodiscard]] QModelIndex index(int row, int column, const QModelIndex& parent) const override;
 
@@ -24,18 +26,17 @@ public:
 
     [[nodiscard]] int columnCount(const QModelIndex& parent) const override;
 
-    void beginInsertRows1(const QModelIndex &parent, int first, int last);
+    void pre_insert(const rust::Vec<size_t>& path, size_t start, size_t end) override;
 
-    void endInsertRows1();
+    void post_insert(const rust::Vec<size_t>& path) override;
 
-    void beginResetModel1();
+    void pre_remove(const rust::Vec<size_t>& path, size_t start, size_t end) override;
 
-    void endResetModel1();
-
-
-public slots:
+    void post_remove(const rust::Vec<size_t>& path) override;
 
 private:
+    QModelIndex find_path(const rust::Vec<size_t>& path);
+
     mcrtlib::ffi::Workspace& ws;
 
 };

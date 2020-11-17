@@ -1,6 +1,8 @@
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell, RefMut};
 use std::io;
 use std::io::{Read, Write};
+#[cfg(not(feature = "cpp"))]
+use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 
@@ -8,17 +10,24 @@ use byteorder::{BE, LE, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub use fstree::FsTreeEntry;
 use matryoshka::{DataSource, dir, zip};
 
+use crate::ffi;
 #[cfg(feature = "cpp")]
 use crate::ffi::TreeChangeSubscriber as CppTreeChangeSubscriber;
-use crate::fstree::FsTreeEntry;
 
-const MAGIC: u32 = 0x90A7C0DE;
-const VERSION: u16 = 0;
+mod fstree;
+
+pub const MAGIC: u32 = 0x90A7C0DE;
+pub const VERSION: u16 = 0;
 
 pub struct Workspace {
     roots: Vec<Rc<RefCell<WorkspaceRoot>>>,
+    dispatcher: Rc<RefCell<TreeChangeDispatcher>>,
+}
+
+pub struct TreeChangeDispatcher {
     subscribers: Vec<Weak<dyn TreeChangeSubscriber>>,
 
     #[cfg(feature = "cpp")]
@@ -42,14 +51,57 @@ impl Workspace {
     pub fn new() -> Self {
         Workspace {
             roots: vec![],
-            subscribers: vec![],
-
-            #[cfg(feature = "cpp")]
-            cpp_subscribers: vec![],
+            dispatcher: Rc::new(RefCell::new(TreeChangeDispatcher::new())),
         }
     }
 
-    pub fn read_from<R: Read>(mut pipe: R) -> Result<Self> {
+    pub fn add_dir<P: Into<PathBuf>>(&mut self, path: P) -> io::Result<()> {
+        let path = path.into();
+        let name = path.file_name().unwrap().to_string_lossy().to_string(); // TODO give these a better default name
+        let ds = DataSource::Dir(dir::DataSource::new(path)?);
+        let root = WorkspaceRoot::new(name, ds);
+        self.dispatcher().pre_insert(&vec![], self.roots.len(), self.roots.len());
+        self.roots.push(root);
+        self.dispatcher().post_insert(&vec![]);
+        Ok(())
+    }
+
+    pub fn add_zip<P: Into<PathBuf>>(&mut self, path: P) -> zip::Result<()> {
+        let path = path.into();
+        let name = path.file_name().unwrap().to_string_lossy().to_string();
+        let ds = DataSource::Zip(zip::DataSource::new(path)?);
+        let root = WorkspaceRoot::new(name, ds);
+        self.dispatcher().pre_insert(&vec![], self.roots.len(), self.roots.len());
+        self.roots.push(root);
+        self.dispatcher().post_insert(&vec![]);
+        Ok(())
+    }
+
+    pub fn roots(&self) -> &[Rc<RefCell<WorkspaceRoot>>] { &self.roots }
+
+    pub fn reset(&mut self) {
+        self.dispatcher().pre_remove(&vec![], 0, self.roots.len());
+        self.roots.clear();
+        self.dispatcher().post_remove(&vec![]);
+    }
+
+    pub fn dispatcher(&self) -> Ref<TreeChangeDispatcher> {
+        self.dispatcher.borrow()
+    }
+
+    pub fn dispatcher_mut(&self) -> RefMut<TreeChangeDispatcher> {
+        self.dispatcher.borrow_mut()
+    }
+
+    pub fn read_from<R: Read>(pipe: R) -> Result<Self> {
+        let mut ws = Workspace::new();
+        ws.read_from_in_place(pipe)?;
+        Ok(ws)
+    }
+
+    pub fn read_from_in_place<R: Read>(&mut self, mut pipe: R) -> Result<()> {
+        self.reset();
+
         let magic = pipe.read_u32::<BE>()?;
         if magic != MAGIC {
             return Err(Error::MagicError(magic));
@@ -62,21 +114,19 @@ impl Workspace {
 
         let roots: Vec<Root> = bincode::deserialize_from(&mut pipe)?;
 
-        let mut ws = Workspace::new();
-
         for root in roots {
             if root.is_zip {
-                if let Err(e) = ws.add_zip(root.path) {
+                if let Err(e) = self.add_zip(root.path) {
                     eprintln!("{:?}", e);
                 }
             } else {
-                if let Err(e) = ws.add_dir(root.path) {
+                if let Err(e) = self.add_dir(root.path) {
                     eprintln!("{:?}", e);
                 }
             }
         }
 
-        Ok(ws)
+        Ok(())
     }
 
     pub fn write_into<W: Write>(&self, mut pipe: W) -> Result<()> {
@@ -94,26 +144,17 @@ impl Workspace {
 
         Ok(())
     }
+}
 
-    pub fn add_dir<P: Into<PathBuf>>(&mut self, path: P) -> io::Result<()> {
-        let path = path.into();
-        let name = path.file_name().unwrap().to_string_lossy().to_string(); // TODO give these a better default name
-        let ds = DataSource::Dir(dir::DataSource::new(path)?);
-        let root = WorkspaceRoot::new(name, ds);
-        self.roots.push(root);
-        Ok(())
+impl TreeChangeDispatcher {
+    pub fn new() -> Self {
+        TreeChangeDispatcher {
+            subscribers: vec![],
+
+            #[cfg(feature = "cpp")]
+            cpp_subscribers: vec![],
+        }
     }
-
-    pub fn add_zip<P: Into<PathBuf>>(&mut self, path: P) -> zip::Result<()> {
-        let path = path.into();
-        let name = path.file_name().unwrap().to_string_lossy().to_string();
-        let ds = DataSource::Zip(zip::DataSource::new(path)?);
-        let root = WorkspaceRoot::new(name, ds);
-        self.roots.push(root);
-        Ok(())
-    }
-
-    pub fn roots(&self) -> &[Rc<RefCell<WorkspaceRoot>>] { &self.roots }
 
     pub fn subscribe(&mut self, ptr: &Rc<dyn TreeChangeSubscriber>) {
         self.subscribers.push(Rc::downgrade(ptr));
@@ -149,40 +190,40 @@ impl Workspace {
         }
     }
 
-    pub fn dispatcher(&self) -> impl TreeChangeSubscriber {
-        struct Mux {
-            subscribers: Vec<Rc<dyn TreeChangeSubscriber>>,
+    fn pre_insert(&self, path: &Vec<usize>, start: usize, end: usize) {
+        self.subscribers.iter()
+            .filter_map(Weak::upgrade)
+            .for_each(|l| l.pre_insert(path, start, end));
 
-            #[cfg(feature = "cpp")]
-            cpp_subscribers: Vec<*mut CppTreeChangeSubscriber>,
-        }
+        #[cfg(feature = "cpp")]
+            self.cpp_subscribers.iter().for_each(|&l| ffi::tcs_pre_insert(l, path, start, end));
+    }
 
-        impl TreeChangeSubscriber for Mux {
-            fn pre_insert(&self) {
-                self.subscribers.iter().for_each(|l| l.pre_insert());
-            }
+    fn post_insert(&self, path: &Vec<usize>) {
+        self.subscribers.iter()
+            .filter_map(Weak::upgrade)
+            .for_each(|l| l.post_insert(path));
 
-            fn post_insert(&self) {
-                self.subscribers.iter().for_each(|l| l.post_insert());
-            }
+        #[cfg(feature = "cpp")]
+            self.cpp_subscribers.iter().for_each(|&l| ffi::tcs_post_insert(l, path));
+    }
 
-            fn pre_remove(&self) {
-                self.subscribers.iter().for_each(|l| l.pre_remove());
-            }
+    fn pre_remove(&self, path: &Vec<usize>, start: usize, end: usize) {
+        self.subscribers.iter()
+            .filter_map(Weak::upgrade)
+            .for_each(|l| l.pre_remove(path, start, end));
 
-            fn post_remove(&self) {
-                self.subscribers.iter().for_each(|l| l.post_remove());
-            }
-        }
+        #[cfg(feature = "cpp")]
+            self.cpp_subscribers.iter().for_each(|&l| ffi::tcs_pre_remove(l, path, start, end));
+    }
 
-        Mux {
-            subscribers: self.subscribers.iter()
-                .filter_map(|ptr| ptr.upgrade())
-                .collect(),
+    fn post_remove(&self, path: &Vec<usize>) {
+        self.subscribers.iter()
+            .filter_map(Weak::upgrade)
+            .for_each(|l| l.post_remove(path));
 
-            #[cfg(feature = "cpp")]
-            cpp_subscribers: Vec::new(),
-        }
+        #[cfg(feature = "cpp")]
+            self.cpp_subscribers.iter().for_each(|&l| ffi::tcs_post_remove(l, path));
     }
 }
 
@@ -209,13 +250,13 @@ impl WorkspaceRoot {
 }
 
 pub trait TreeChangeSubscriber {
-    fn pre_insert(&self);
+    fn pre_insert(&self, path: &Vec<usize>, start: usize, end: usize);
 
-    fn post_insert(&self);
+    fn post_insert(&self, path: &Vec<usize>);
 
-    fn pre_remove(&self);
+    fn pre_remove(&self, path: &Vec<usize>, start: usize, end: usize);
 
-    fn post_remove(&self);
+    fn post_remove(&self, path: &Vec<usize>);
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

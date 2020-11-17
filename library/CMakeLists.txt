@@ -1,9 +1,9 @@
-project(library) 
+project(mcrtlib)
 
-set(library_INCLUDES
+set(mcrtlib_INCLUDES
         src/)
 
-set(library_SRC
+set(mcrtlib_SRC
         src/library.cpp)
 
 corrosion_import_crate(MANIFEST_PATH Cargo.toml)
@@ -18,15 +18,15 @@ add_custom_command(
         COMMAND ${CXXBRIDGE} ${BRIDGE_IN} ${BRIDGE_ARGS} > ${BRIDGE_OUT}
         DEPENDS ${BRIDGE_IN})
 
-add_library(mcrestool-library STATIC ${library_SRC} ${BRIDGE_OUT})
+add_library(mcrtlib STATIC ${mcrtlib_SRC} ${BRIDGE_OUT})
 add_definitions(-DMCRTLIB_BUILD)
 
-target_include_directories(mcrestool-library
+target_include_directories(mcrtlib
         PUBLIC include/
-        PRIVATE ${library_INCLUDES})
+        PRIVATE ${mcrtlib_INCLUDES})
 
-target_link_libraries(mcrestool-library PUBLIC
+target_link_libraries(mcrtlib PUBLIC
         Qt5::Core
         pthread
         dl
-        mcrestool-library-rs)
+        mcrtlib-rs)

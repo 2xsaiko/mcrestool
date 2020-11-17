@@ -6,6 +6,7 @@
 #include <QMdiSubWindow>
 #include <languagetablemodel.h>
 #include <lib.rs.h>
+#include <fstreemodel.h>
 
 namespace Ui {
     class MainWindow;
@@ -41,7 +42,7 @@ private slots:
 
     void save_workspace_as();
 
-    void close_workspace();
+    bool close_workspace();
 
     void add_res_file();
 
@@ -59,9 +60,14 @@ private slots:
 
     void restree_open(const QModelIndex& index);
 
+    void win_cascade();
+
+    void win_tile();
+
 private:
     QScopedPointer<Ui::MainWindow> ui;
     mcrtlib::ffi::Workspace m_ws;
+    FsTreeModel* m_fstree_model;
     QString m_ws_path;
 
 };

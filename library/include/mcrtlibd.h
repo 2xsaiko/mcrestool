@@ -1,42 +1,45 @@
 #ifndef MCRESTOOL_MCRTLIBD_H
 #define MCRESTOOL_MCRTLIBD_H
 
-namespace mcrtlib::ffi {
-    class TreeChangeSubscriberPrivate;
+#include <cstddef>
 
+namespace rust {
+    inline namespace cxxbridge05 {
+        template<typename T>
+        class Vec;
+    }
+}
+
+namespace mcrtlib::ffi {
     class TreeChangeSubscriber {
 
     public:
-        virtual ~TreeChangeSubscriber() = 0;
+        virtual ~TreeChangeSubscriber() = default;
 
-        virtual void pre_insert() const = 0;
+        virtual void pre_insert(const rust::Vec<size_t>& path, size_t start, size_t end) = 0;
 
-        virtual void post_insert() const = 0;
+        virtual void post_insert(const rust::Vec<size_t>& path) = 0;
 
-        virtual void pre_remove() const = 0;
+        virtual void pre_remove(const rust::Vec<size_t>& path, size_t start, size_t end) = 0;
 
-        virtual void post_remove() const = 0;
+        virtual void post_remove(const rust::Vec<size_t>& path) = 0;
 
     };
 
-    inline void tcs_pre_insert(const TreeChangeSubscriber& s) {
-        s.pre_insert();
+    inline void tcs_pre_insert(TreeChangeSubscriber& s, const rust::Vec<size_t>& path, size_t start, size_t end) {
+        s.pre_insert(path, start, end);
     }
 
-    inline void tcs_post_insert(const TreeChangeSubscriber& s) {
-        s.post_insert();
+    inline void tcs_post_insert(TreeChangeSubscriber& s, const rust::Vec<size_t>& path) {
+        s.post_insert(path);
     }
 
-    inline void tcs_pre_remove(const TreeChangeSubscriber& s) {
-        s.pre_remove();
+    inline void tcs_pre_remove(TreeChangeSubscriber& s, const rust::Vec<size_t>& path, size_t start, size_t end) {
+        s.pre_remove(path, start, end);
     }
 
-    inline void tcs_post_remove(const TreeChangeSubscriber& s) {
-        s.post_remove();
-    }
-
-    inline void tcs_set_container(TreeChangeSubscriber& s) {
-
+    inline void tcs_post_remove(TreeChangeSubscriber& s, const rust::Vec<size_t>& path) {
+        s.post_remove(path);
     }
 }
 

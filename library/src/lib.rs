@@ -4,7 +4,6 @@ use std::path::Path;
 use matryoshka::DataSource;
 
 pub mod workspace;
-pub mod fstree;
 #[cfg(feature = "cpp")]
 mod ffi;
 pub mod langtable;

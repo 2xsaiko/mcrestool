@@ -6,7 +6,7 @@
 
 using std::optional;
 using mcrtlib::ffi::LanguageTable;
-using mcrtlib::ffi::languagetable_new;
+using mcrtlib::ffi::languagetable_load;
 using mcrtlib::to_qstring;
 
 LanguageTableModel::LanguageTableModel(LanguageTable lt, QObject* parent) : QAbstractTableModel(parent), m_lt(std::move(lt)) {}
@@ -19,8 +19,9 @@ void LanguageTableModel::set_entry(QString language, QString key, QString value)
     emit changed(language, key, value);
 }
 
-LanguageTableModel* LanguageTableModel::from_dir(const mcrtlib::ffi::DataSource& ds, QString path, QObject* parent) {
-    return new LanguageTableModel(languagetable_new(), parent);
+LanguageTableModel* LanguageTableModel::from_dir(const mcrtlib::ffi::DataSource& ds, const QString& path, QObject* parent) {
+    std::string string = path.toStdString();
+    return new LanguageTableModel(languagetable_load(ds, string), parent);
 }
 
 int LanguageTableModel::rowCount(const QModelIndex& parent) const {
