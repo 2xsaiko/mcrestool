@@ -1,4 +1,5 @@
 #include "fstreemodel.h"
+#include <QIcon>
 #include <mcrtlib.h>
 #include <mcrtutil.h>
 
@@ -7,6 +8,7 @@ using mcrtlib::ffi::WorkspaceRoot;
 using mcrtlib::ffi::FsTreeEntry;
 using mcrtlib::ffi::fstreeentry_from_ptr;
 using mcrtlib::to_qstring;
+using rust::Str;
 
 FsTreeModel::FsTreeModel(Workspace& ws, QObject* parent) :
     QAbstractItemModel(parent),
@@ -55,12 +57,39 @@ QModelIndex FsTreeModel::parent(const QModelIndex& child) const {
 
 QVariant FsTreeModel::data(const QModelIndex& index, int role) const {
     if (!index.isValid()) return QVariant();
-    if (role != Qt::DisplayRole) return QVariant();
 
     FsTreeEntry entry = fstreeentry_from_ptr(index.internalId());
     assert(!entry.is_null1());
 
-    return to_qstring(entry.name());
+    if (role == Qt::DisplayRole) {
+        return to_qstring(entry.name());
+    } else if (role == Qt::DecorationRole) {
+        if (entry.is_root()) {
+            if (entry.root().ds().is_container_zip()) {
+                return QIcon::fromTheme("application-zip");
+            } else {
+                return QIcon::fromTheme("folder-root");
+            }
+        }
+
+        switch (entry.file_type()) {
+            case mcrtlib::ffi::FileType::FILETYPE_LANGUAGE:
+                return QIcon::fromTheme("folder-magenta");
+            case mcrtlib::ffi::FileType::FILETYPE_LANGUAGE_PART:
+            case mcrtlib::ffi::FileType::FILETYPE_RECIPE:
+                return QIcon::fromTheme("application-json");
+            default: {
+                const rust::String& string = entry.path();
+                if (entry.root().ds().is_dir(Str(string.data(), string.length()))) {
+                    return QIcon::fromTheme("inode-directory");
+                } else {
+                    return QVariant();
+                }
+            }
+        }
+    }
+
+    return QVariant();
 }
 
 Qt::ItemFlags FsTreeModel::flags(const QModelIndex& index) const {
@@ -117,4 +146,3 @@ void FsTreeModel::pre_remove(const rust::Vec<size_t>& path, size_t start, size_t
 void FsTreeModel::post_remove(const rust::Vec<size_t>&) {
     QAbstractItemModel::endRemoveRows();
 }
-

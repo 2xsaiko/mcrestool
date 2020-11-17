@@ -206,6 +206,8 @@ mod types {
 
         fn is_dir(self: &DataSource, path: &str) -> bool;
 
+        fn is_container_zip(self: &DataSource) -> bool;
+
         // ResFile
         fn read(self: &mut ResFile, buf: &mut [u8]) -> Result<usize>;
 
@@ -495,6 +497,13 @@ impl types::DataSource {
 
     fn is_dir(&self, path: &str) -> bool {
         self.inner.is_dir(path)
+    }
+
+    fn is_container_zip(&self) -> bool {
+        match &**self.inner {
+            DataSource::Zip(_) => true,
+            _ => false,
+        }
     }
 }
 
