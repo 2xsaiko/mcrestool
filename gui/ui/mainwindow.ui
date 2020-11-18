@@ -190,6 +190,21 @@
    <widget class="QWidget" name="dock_widget_contents_2">
     <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
+      <widget class="QComboBox" name="namespace_box">
+       <property name="insertPolicy">
+        <enum>QComboBox::InsertAlphabetically</enum>
+       </property>
+       <property name="frame">
+        <bool>false</bool>
+       </property>
+       <item>
+        <property name="text">
+         <string>(All)</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item>
       <widget class="QTreeView" name="game_objects_view"/>
      </item>
     </layout>

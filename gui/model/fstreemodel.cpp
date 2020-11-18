@@ -11,7 +11,7 @@ using mcrtlib::to_qstring;
 using rust::Str;
 
 FsTreeModel::FsTreeModel(Workspace& ws, QObject* parent) :
-    QAbstractItemModel(parent),
+    RustItemModelBase(parent),
     ws(ws) {}
 
 FsTreeModel::~FsTreeModel() = default;
@@ -115,34 +115,4 @@ int FsTreeModel::rowCount(const QModelIndex& parent) const {
 
 int FsTreeModel::columnCount(const QModelIndex& parent) const {
     return 1;
-}
-
-QModelIndex FsTreeModel::find_path(const rust::Vec<size_t>& path) {
-    QModelIndex model_index;
-
-    for (auto index: path) {
-        model_index = this->index(index, 0, model_index);
-
-        if (!model_index.isValid()) {
-            return QModelIndex();
-        }
-    }
-
-    return model_index;
-}
-
-void FsTreeModel::pre_insert(const rust::Vec<size_t>& path, size_t start, size_t end) {
-    QAbstractItemModel::beginInsertRows(find_path(path), (int) start, (int) end);
-}
-
-void FsTreeModel::post_insert(const rust::Vec<size_t>&) {
-    QAbstractItemModel::endInsertRows();
-}
-
-void FsTreeModel::pre_remove(const rust::Vec<size_t>& path, size_t start, size_t end) {
-    QAbstractItemModel::beginRemoveRows(find_path(path), (int) start, (int) end);
-}
-
-void FsTreeModel::post_remove(const rust::Vec<size_t>&) {
-    QAbstractItemModel::endRemoveRows();
 }

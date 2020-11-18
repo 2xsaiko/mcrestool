@@ -345,6 +345,24 @@
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>canvas</tabstop>
+  <tabstop>grid_size_box</tabstop>
+  <tabstop>pos_x</tabstop>
+  <tabstop>pos_y</tabstop>
+  <tabstop>pos_z</tabstop>
+  <tabstop>size_width</tabstop>
+  <tabstop>size_height</tabstop>
+  <tabstop>size_depth</tabstop>
+  <tabstop>rot_pitch</tabstop>
+  <tabstop>rot_yaw</tabstop>
+  <tabstop>rot_roll</tabstop>
+  <tabstop>delete_button</tabstop>
+  <tabstop>clone_button</tabstop>
+  <tabstop>cube_button</tabstop>
+  <tabstop>wedge_button</tabstop>
+  <tabstop>pyramid_button</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

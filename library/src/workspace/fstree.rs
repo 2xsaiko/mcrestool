@@ -1,11 +1,76 @@
 use std::borrow::Cow;
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell, RefMut};
 use std::cmp::Ordering;
+use std::io;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 
+use matryoshka::{DataSource, dir, zip};
+
 use crate::{FileType, get_file_type};
-use crate::workspace::WorkspaceRoot;
+use crate::workspace::{TreeChangeDispatcher, WorkspaceRoot};
+
+pub struct FsTree {
+    roots: Vec<Rc<RefCell<WorkspaceRoot>>>,
+    dispatcher: Rc<RefCell<TreeChangeDispatcher>>,
+}
+
+impl FsTree {
+    pub fn new() -> Self {
+        FsTree {
+            roots: vec![],
+            dispatcher: Rc::new(RefCell::new(TreeChangeDispatcher::new())),
+        }
+    }
+
+    pub fn add_dir<P: Into<PathBuf>>(&mut self, path: P) -> io::Result<()> {
+        let path = path.into();
+        let name = path.file_name().unwrap().to_string_lossy().to_string(); // TODO give these a better default name
+        let ds = DataSource::Dir(dir::DataSource::new(path)?);
+        let root = WorkspaceRoot::new(name, ds);
+        self.dispatcher().pre_insert(&vec![], self.roots.len(), self.roots.len());
+        self.roots.push(root);
+        self.dispatcher().post_insert(&vec![]);
+
+        Ok(())
+    }
+
+    pub fn add_zip<P: Into<PathBuf>>(&mut self, path: P) -> zip::Result<()> {
+        let path = path.into();
+        let name = path.file_name().unwrap().to_string_lossy().to_string();
+        let ds = DataSource::Zip(zip::DataSource::new(path)?);
+        let root = WorkspaceRoot::new(name, ds);
+        self.dispatcher().pre_insert(&vec![], self.roots.len(), self.roots.len());
+        self.roots.push(root);
+        self.dispatcher().post_insert(&vec![]);
+
+        Ok(())
+    }
+
+    pub fn detach(&mut self, root: &Rc<RefCell<WorkspaceRoot>>) {
+        if let Some(idx) = self.roots.iter().position(|r| r.as_ptr() == root.as_ptr()) {
+            self.dispatcher().pre_remove(&vec![], idx, idx);
+            self.roots.remove(idx);
+            self.dispatcher().post_remove(&vec![]);
+        }
+    }
+
+    pub fn roots(&self) -> &[Rc<RefCell<WorkspaceRoot>>] { &self.roots }
+
+    pub fn reset(&mut self) {
+        self.dispatcher().pre_remove(&vec![], 0, self.roots.len());
+        self.roots.clear();
+        self.dispatcher().post_remove(&vec![]);
+    }
+
+    pub fn dispatcher(&self) -> Ref<TreeChangeDispatcher> {
+        self.dispatcher.borrow()
+    }
+
+    pub fn dispatcher_mut(&self) -> RefMut<TreeChangeDispatcher> {
+        self.dispatcher.borrow_mut()
+    }
+}
 
 #[derive(Debug)]
 pub struct FsTreeEntry {
@@ -13,7 +78,7 @@ pub struct FsTreeEntry {
     file_type: Option<FileType>,
     children: Vec<Rc<RefCell<FsTreeEntry>>>,
     parent: Option<Weak<RefCell<FsTreeEntry>>>,
-    pub(crate) root: Weak<RefCell<WorkspaceRoot>>,
+    pub(super) root: Weak<RefCell<WorkspaceRoot>>,
     is_top_level: bool,
 }
 

@@ -1,152 +1,26 @@
 use std::borrow::Cow;
+use std::cell::{Ref, RefCell, RefMut};
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fmt;
 use std::fmt::Display;
 use std::io::Read;
+use std::rc::Rc;
 use std::str::FromStr;
 
 use serde::export::Formatter;
 
-use matryoshka::{Error, OpenOptions};
-use matryoshka::resfile::ResFile;
+use matryoshka::OpenOptions;
 
-use crate::workspace::{Workspace, WorkspaceRoot};
-use std::rc::Rc;
-use std::cell::RefCell;
-
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct Identifier {
-    namespace: String,
-    path: String,
-}
-
-impl Identifier {
-    pub fn from<N: Into<String>, P: Into<String>>(namespace: N, path: P) -> Self {
-        Identifier {
-            namespace: namespace.into(),
-            path: path.into(),
-        }
-    }
-}
-
-impl FromStr for Identifier {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (namespace, path) = s.split_once(':').ok_or(())?;
-
-        Ok(Identifier::from(namespace, path))
-    }
-}
-
-impl Display for Identifier {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}:{}", self.namespace, self.path)
-    }
-}
-
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
-enum DependencyLink {
-    Language(String, String),
-    Block(Identifier),
-    Item(Identifier),
-}
-
-struct GameDataReferences {
-    map: HashMap<DependencyLink, HashSet<DependencyLink>>,
-}
-
-impl GameDataReferences {
-    pub fn insert(&mut self, key: DependencyLink, value: DependencyLink) {
-        self.map.entry(key).or_default().insert(value);
-    }
-}
+use crate::workspace::{TreeChangeDispatcher, Workspace, WorkspaceRoot};
 
 pub struct GameData {
     refs: GameDataReferences,
 
-    pub blocks: HashMap<Identifier, Block>,
-    pub items: HashMap<Identifier, Item>,
-}
+    blocks: HashMap<Identifier, Block>,
+    items: HashMap<Identifier, Item>,
 
-#[derive(Debug, Eq, PartialEq)]
-enum AutoStatus {
-    No,
-    Yes,
-    Deleted,
-}
-
-pub struct GameObjectBase {
-    manual: bool,
-    auto: AutoStatus,
-    id: Identifier,
-}
-
-impl GameObjectBase {
-    pub fn new(id: Identifier) -> Self {
-        GameObjectBase {
-            manual: true,
-            auto: AutoStatus::No,
-            id,
-        }
-    }
-
-    pub fn auto(id: Identifier) -> Self {
-        GameObjectBase {
-            manual: false,
-            auto: AutoStatus::Yes,
-            id,
-        }
-    }
-
-    pub fn mark_manual(&mut self, flag: bool) {
-        self.manual = flag;
-    }
-
-    pub fn mark_auto(&mut self, flag: bool) {
-        if !flag && self.auto == AutoStatus::Yes {
-            self.auto = AutoStatus::No;
-        } else if flag && self.auto == AutoStatus::No {
-            self.auto = AutoStatus::Yes;
-        }
-    }
-
-    pub fn marked_for_deletion(&self) -> bool {
-        !self.manual && self.auto != AutoStatus::Yes
-    }
-}
-
-pub struct Block {
-    base: GameObjectBase,
-}
-
-impl Block {
-    pub fn new(base: GameObjectBase) -> Self {
-        Block { base }
-    }
-
-    pub fn mark_manual(&mut self, flag: bool) { self.base.mark_manual(flag); }
-
-    pub fn mark_auto(&mut self, flag: bool) { self.base.mark_auto(flag); }
-
-    pub fn marked_for_deletion(&self) -> bool { self.base.marked_for_deletion() }
-}
-
-pub struct Item {
-    base: GameObjectBase,
-}
-
-impl Item {
-    pub fn new(base: GameObjectBase) -> Self {
-        Item { base }
-    }
-
-    pub fn mark_manual(&mut self, flag: bool) { self.base.mark_manual(flag); }
-
-    pub fn mark_auto(&mut self, flag: bool) { self.base.mark_auto(flag); }
-
-    pub fn marked_for_deletion(&self) -> bool { self.base.marked_for_deletion() }
+    dispatcher: Rc<RefCell<TreeChangeDispatcher>>,
 }
 
 impl GameData {
@@ -155,6 +29,7 @@ impl GameData {
             refs: GameDataReferences { map: Default::default() },
             blocks: Default::default(),
             items: Default::default(),
+            dispatcher: Rc::new(RefCell::new(TreeChangeDispatcher::new())),
         }
     }
 
@@ -236,5 +111,144 @@ impl GameData {
                 _ => {}
             }
         }
+    }
+
+    pub fn dispatcher(&self) -> Ref<TreeChangeDispatcher> {
+        self.dispatcher.borrow()
+    }
+
+    pub fn dispatcher_mut(&self) -> RefMut<TreeChangeDispatcher> {
+        self.dispatcher.borrow_mut()
+    }
+
+    pub fn blocks(&self) -> &HashMap<Identifier, Block> { &self.blocks }
+
+    pub fn items(&self) -> &HashMap<Identifier, Item> { &self.items }
+}
+
+struct GameDataReferences {
+    map: HashMap<DependencyLink, HashSet<DependencyLink>>,
+}
+
+impl GameDataReferences {
+    pub fn insert(&mut self, key: DependencyLink, value: DependencyLink) {
+        self.map.entry(key).or_default().insert(value);
+    }
+}
+
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+enum DependencyLink {
+    Language(String, String),
+    Block(Identifier),
+    Item(Identifier),
+}
+
+pub struct GameObjectBase {
+    manual: bool,
+    auto: AutoStatus,
+    id: Identifier,
+}
+
+impl GameObjectBase {
+    pub fn new(id: Identifier) -> Self {
+        GameObjectBase {
+            manual: true,
+            auto: AutoStatus::No,
+            id,
+        }
+    }
+
+    pub fn auto(id: Identifier) -> Self {
+        GameObjectBase {
+            manual: false,
+            auto: AutoStatus::Yes,
+            id,
+        }
+    }
+
+    pub fn mark_manual(&mut self, flag: bool) {
+        self.manual = flag;
+    }
+
+    pub fn mark_auto(&mut self, flag: bool) {
+        if !flag && self.auto == AutoStatus::Yes {
+            self.auto = AutoStatus::No;
+        } else if flag && self.auto == AutoStatus::No {
+            self.auto = AutoStatus::Yes;
+        }
+    }
+
+    pub fn marked_for_deletion(&self) -> bool {
+        !self.manual && self.auto != AutoStatus::Yes
+    }
+}
+
+pub struct Block {
+    base: GameObjectBase,
+}
+
+impl Block {
+    pub fn new(base: GameObjectBase) -> Self {
+        Block { base }
+    }
+
+    pub fn mark_manual(&mut self, flag: bool) { self.base.mark_manual(flag); }
+
+    pub fn mark_auto(&mut self, flag: bool) { self.base.mark_auto(flag); }
+
+    pub fn marked_for_deletion(&self) -> bool { self.base.marked_for_deletion() }
+}
+
+pub struct Item {
+    base: GameObjectBase,
+}
+
+impl Item {
+    pub fn new(base: GameObjectBase) -> Self {
+        Item { base }
+    }
+
+    pub fn mark_manual(&mut self, flag: bool) { self.base.mark_manual(flag); }
+
+    pub fn mark_auto(&mut self, flag: bool) { self.base.mark_auto(flag); }
+
+    pub fn marked_for_deletion(&self) -> bool { self.base.marked_for_deletion() }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+enum AutoStatus {
+    No,
+    Yes,
+    Deleted,
+}
+
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
+pub struct Identifier {
+    namespace: String,
+    path: String,
+}
+
+impl Identifier {
+    pub fn from<N: Into<String>, P: Into<String>>(namespace: N, path: P) -> Self {
+        Identifier {
+            namespace: namespace.into(),
+            path: path.into(),
+        }
+    }
+}
+
+impl FromStr for Identifier {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (namespace, path) = s.split_once(':').ok_or(())?;
+
+        Ok(Identifier::from(namespace, path))
+    }
+}
+
+impl Display for Identifier {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}:{}", self.namespace, self.path)
     }
 }

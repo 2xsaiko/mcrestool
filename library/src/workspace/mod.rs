@@ -17,6 +17,7 @@ use crate::ffi;
 #[cfg(feature = "cpp")]
 use crate::ffi::TreeChangeSubscriber as CppTreeChangeSubscriber;
 use crate::gamedata::GameData;
+use crate::workspace::fstree::FsTree;
 
 mod fstree;
 
@@ -24,22 +25,8 @@ pub const MAGIC: u16 = 0x3B1C;
 pub const VERSION: u16 = 0;
 
 pub struct Workspace {
-    roots: Vec<Rc<RefCell<WorkspaceRoot>>>,
-    dispatcher: Rc<RefCell<TreeChangeDispatcher>>,
-}
-
-pub struct TreeChangeDispatcher {
-    subscribers: Vec<Weak<dyn TreeChangeSubscriber>>,
-
-    #[cfg(feature = "cpp")]
-    cpp_subscribers: Vec<*mut CppTreeChangeSubscriber>,
-}
-
-#[derive(Debug)]
-pub struct WorkspaceRoot {
-    name: String,
-    ds: Rc<DataSource>,
-    root: Rc<RefCell<FsTreeEntry>>,
+    fst: FsTree,
+    gd: GameData,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -51,92 +38,70 @@ struct Root {
 impl Workspace {
     pub fn new() -> Self {
         Workspace {
-            roots: vec![],
-            dispatcher: Rc::new(RefCell::new(TreeChangeDispatcher::new())),
+            fst: FsTree::new(),
+            gd: GameData::new(),
         }
     }
 
     pub fn add_dir<P: Into<PathBuf>>(&mut self, path: P) -> io::Result<()> {
-        let path = path.into();
-        let name = path.file_name().unwrap().to_string_lossy().to_string(); // TODO give these a better default name
-        let ds = DataSource::Dir(dir::DataSource::new(path)?);
-        let root = WorkspaceRoot::new(name, ds);
-        self.dispatcher().pre_insert(&vec![], self.roots.len(), self.roots.len());
-        self.roots.push(root);
-        self.dispatcher().post_insert(&vec![]);
-
-
-        let mut gd = GameData::new();
-        gd.collect_usages(&self.roots);
-        gd.create_dummies();
-
-        let mut blocks: Vec<_> = gd.blocks.keys().collect();
-        blocks.sort();
-        print!("Blocks: ");
-        blocks.iter().for_each(|id| print!("{} ", id));
-        println!();
-        println!();
-
-        let mut items: Vec<_> = gd.items.keys().collect();
-        items.sort();
-        print!("Items: ");
-        items.iter().for_each(|id| print!("{} ", id));
-        println!();
-
+        self.fst.add_dir(path)?;
+        self.update_refs();
         Ok(())
     }
 
     pub fn add_zip<P: Into<PathBuf>>(&mut self, path: P) -> zip::Result<()> {
-        let path = path.into();
-        let name = path.file_name().unwrap().to_string_lossy().to_string();
-        let ds = DataSource::Zip(zip::DataSource::new(path)?);
-        let root = WorkspaceRoot::new(name, ds);
-        self.dispatcher().pre_insert(&vec![], self.roots.len(), self.roots.len());
-        self.roots.push(root);
-        self.dispatcher().post_insert(&vec![]);
+        self.fst.add_zip(path)?;
+        self.update_refs();
+        Ok(())
+    }
 
-        let mut gd = GameData::new();
-        gd.collect_usages(&self.roots);
-        gd.create_dummies();
+    pub fn update_refs(&mut self) {
+        self.gd.collect_usages(self.fst.roots());
+        self.gd.create_dummies();
 
-        let mut blocks: Vec<_> = gd.blocks.keys().collect();
+        let mut blocks: Vec<_> = self.gd.blocks().keys().collect();
         blocks.sort();
         print!("Blocks: ");
         blocks.iter().for_each(|id| print!("{} ", id));
         println!();
 
-        let mut items: Vec<_> = gd.items.keys().collect();
+        let mut items: Vec<_> = self.gd.items().keys().collect();
         items.sort();
         print!("Items: ");
         items.iter().for_each(|id| print!("{} ", id));
         println!();
-
-
-        Ok(())
     }
 
     pub fn detach(&mut self, root: &Rc<RefCell<WorkspaceRoot>>) {
-        if let Some(idx) = self.roots.iter().position(|r| r.as_ptr() == root.as_ptr()) {
-            self.dispatcher().pre_remove(&vec![], idx, idx);
-            self.roots.remove(idx);
-            self.dispatcher().post_remove(&vec![]);
-        }
+        self.fst.detach(root);
+        self.update_refs();
     }
 
-    pub fn roots(&self) -> &[Rc<RefCell<WorkspaceRoot>>] { &self.roots }
+    pub fn roots(&self) -> &[Rc<RefCell<WorkspaceRoot>>] { self.fst.roots() }
+
+    pub fn fs_tree(&self) -> &FsTree { &self.fst }
+
+    pub fn game_data(&self) -> &GameData { &self.gd }
+
+    pub fn fst_dispatcher(&self) -> Ref<TreeChangeDispatcher> {
+        self.fst.dispatcher()
+    }
+
+    pub fn fst_dispatcher_mut(&self) -> RefMut<TreeChangeDispatcher> {
+        self.fst.dispatcher_mut()
+    }
+
+    pub fn gd_dispatcher(&self) -> Ref<TreeChangeDispatcher> {
+        self.gd.dispatcher()
+    }
+
+    pub fn gd_dispatcher_mut(&self) -> RefMut<TreeChangeDispatcher> {
+        self.gd.dispatcher_mut()
+    }
 
     pub fn reset(&mut self) {
-        self.dispatcher().pre_remove(&vec![], 0, self.roots.len());
-        self.roots.clear();
-        self.dispatcher().post_remove(&vec![]);
-    }
-
-    pub fn dispatcher(&self) -> Ref<TreeChangeDispatcher> {
-        self.dispatcher.borrow()
-    }
-
-    pub fn dispatcher_mut(&self) -> RefMut<TreeChangeDispatcher> {
-        self.dispatcher.borrow_mut()
+        self.fst.reset();
+        self.update_refs();
     }
 
     pub fn read_from<R: Read>(pipe: R) -> Result<Self> {
@@ -146,7 +111,7 @@ impl Workspace {
     }
 
     pub fn read_from_in_place<R: Read>(&mut self, mut pipe: R) -> Result<()> {
-        self.reset();
+        self.fst.reset();
 
         let magic = pipe.read_u16::<BE>()?;
         if magic != MAGIC {
@@ -162,15 +127,17 @@ impl Workspace {
 
         for root in roots {
             if root.is_zip {
-                if let Err(e) = self.add_zip(root.path) {
+                if let Err(e) = self.fst.add_zip(root.path) {
                     eprintln!("{:?}", e);
                 }
             } else {
-                if let Err(e) = self.add_dir(root.path) {
+                if let Err(e) = self.fst.add_dir(root.path) {
                     eprintln!("{:?}", e);
                 }
             }
         }
+
+        self.update_refs();
 
         Ok(())
     }
@@ -179,7 +146,7 @@ impl Workspace {
         pipe.write_u16::<BE>(MAGIC)?;
         pipe.write_u16::<LE>(VERSION)?;
 
-        let roots: Vec<_> = self.roots.iter()
+        let roots: Vec<_> = self.roots().iter()
             .map(|r| match &*r.borrow().ds {
                 DataSource::Dir(ds) => Root { is_zip: false, path: ds.root().to_path_buf() },
                 DataSource::Zip(ds) => Root { is_zip: true, path: ds.zip_path().to_path_buf() },
@@ -190,6 +157,42 @@ impl Workspace {
 
         Ok(())
     }
+}
+
+#[derive(Debug)]
+pub struct WorkspaceRoot {
+    name: String,
+    ds: Rc<DataSource>,
+    root: Rc<RefCell<FsTreeEntry>>,
+}
+
+impl WorkspaceRoot {
+    pub fn new<S: Into<String>>(name: S, ds: DataSource) -> Rc<RefCell<Self>> {
+        let wsr = Rc::new(RefCell::new(WorkspaceRoot {
+            name: name.into(),
+            ds: Rc::new(ds),
+            root: Rc::new(RefCell::new(FsTreeEntry::new_top_level())),
+        }));
+
+        let copy = wsr.clone();
+        wsr.borrow_mut().root.borrow_mut().root = Rc::downgrade(&copy);
+        let fstree = wsr.borrow().root.clone();
+        FsTreeEntry::refresh(&fstree);
+        wsr
+    }
+
+    pub fn name(&self) -> &str { &self.name }
+
+    pub fn root(&self) -> &Rc<RefCell<FsTreeEntry>> { &self.root }
+
+    pub fn ds(&self) -> &Rc<DataSource> { &self.ds }
+}
+
+pub struct TreeChangeDispatcher {
+    subscribers: Vec<Weak<dyn TreeChangeSubscriber>>,
+
+    #[cfg(feature = "cpp")]
+    cpp_subscribers: Vec<*mut CppTreeChangeSubscriber>,
 }
 
 impl TreeChangeDispatcher {
@@ -267,28 +270,6 @@ impl TreeChangeDispatcher {
         #[cfg(feature = "cpp")]
             self.cpp_subscribers.iter().for_each(|&l| ffi::tcs_post_remove(l, path));
     }
-}
-
-impl WorkspaceRoot {
-    pub fn new<S: Into<String>>(name: S, ds: DataSource) -> Rc<RefCell<Self>> {
-        let wsr = Rc::new(RefCell::new(WorkspaceRoot {
-            name: name.into(),
-            ds: Rc::new(ds),
-            root: Rc::new(RefCell::new(FsTreeEntry::new_top_level())),
-        }));
-
-        let copy = wsr.clone();
-        wsr.borrow_mut().root.borrow_mut().root = Rc::downgrade(&copy);
-        let fstree = wsr.borrow().root.clone();
-        FsTreeEntry::refresh(&fstree);
-        wsr
-    }
-
-    pub fn name(&self) -> &str { &self.name }
-
-    pub fn root(&self) -> &Rc<RefCell<FsTreeEntry>> { &self.root }
-
-    pub fn ds(&self) -> &Rc<DataSource> { &self.ds }
 }
 
 pub trait TreeChangeSubscriber {

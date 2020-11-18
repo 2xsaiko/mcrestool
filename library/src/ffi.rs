@@ -307,11 +307,11 @@ impl types::Workspace {
     }
 
     fn subscribe(&mut self, subscriber: Pin<&mut types::TreeChangeSubscriber>) {
-        self.inner.dispatcher_mut().cpp_subscribe(unsafe { subscriber.get_unchecked_mut() } as *mut _);
+        self.inner.fst_dispatcher_mut().cpp_subscribe(unsafe { subscriber.get_unchecked_mut() } as *mut _);
     }
 
     fn unsubscribe(&mut self, subscriber: Pin<&mut types::TreeChangeSubscriber>) {
-        self.inner.dispatcher_mut().cpp_unsubscribe(unsafe { subscriber.get_unchecked_mut() } as *mut _);
+        self.inner.fst_dispatcher_mut().cpp_unsubscribe(unsafe { subscriber.get_unchecked_mut() } as *mut _);
     }
 }
 
