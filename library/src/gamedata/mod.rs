@@ -3,16 +3,18 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fmt;
-use std::fmt::Display;
+use std::fmt::{Display, Formatter};
 use std::io::Read;
 use std::rc::Rc;
 use std::str::FromStr;
 
-use serde::export::Formatter;
-
 use matryoshka::OpenOptions;
 
-use crate::workspace::{TreeChangeDispatcher, Workspace, WorkspaceRoot};
+use crate::workspace::{TreeChangeDispatcher, WorkspaceRoot};
+use std::ops::Deref;
+use crate::ident::Identifier;
+
+pub mod serde;
 
 pub struct GameData {
     refs: GameDataReferences,
@@ -70,14 +72,14 @@ impl GameData {
                                 if let Some(k) = k.strip_prefix("block.") {
                                     let mut split = k.split('.');
                                     if let Some(block_name) = split.next().and_then(|a| split.next().map(|b| (a, b))) {
-                                        let id = Identifier::from(block_name.0, block_name.1);
+                                        let id = Identifier::from_components(block_name.0, block_name.1);
 
                                         self.refs.insert(dl_source.clone(), DependencyLink::Block(id));
                                     }
                                 } else if let Some(k) = k.strip_prefix("item.") {
                                     let mut split = k.split('.');
                                     if let Some(item_name) = split.next().and_then(|a| split.next().map(|b| (a, b))) {
-                                        let id = Identifier::from(item_name.0, item_name.1);
+                                        let id = Identifier::from_components(item_name.0, item_name.1);
 
                                         self.refs.insert(dl_source.clone(), DependencyLink::Item(id));
                                     }
@@ -220,35 +222,4 @@ enum AutoStatus {
     No,
     Yes,
     Deleted,
-}
-
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Ord, PartialOrd)]
-pub struct Identifier {
-    namespace: String,
-    path: String,
-}
-
-impl Identifier {
-    pub fn from<N: Into<String>, P: Into<String>>(namespace: N, path: P) -> Self {
-        Identifier {
-            namespace: namespace.into(),
-            path: path.into(),
-        }
-    }
-}
-
-impl FromStr for Identifier {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (namespace, path) = s.split_once(':').ok_or(())?;
-
-        Ok(Identifier::from(namespace, path))
-    }
-}
-
-impl Display for Identifier {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{}:{}", self.namespace, self.path)
-    }
 }

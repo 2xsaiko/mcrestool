@@ -1,17 +1,14 @@
 use std::cell::{Ref, RefCell, RefMut};
 use std::io;
-use std::io::{Read, Write};
 #[cfg(not(feature = "cpp"))]
 use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 
-use byteorder::{BE, LE, ReadBytesExt, WriteBytesExt};
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub use fstree::FsTreeEntry;
-use matryoshka::{DataSource, dir, zip};
+use matryoshka::{DataSource, zip};
 
 use crate::ffi;
 #[cfg(feature = "cpp")]
@@ -20,19 +17,13 @@ use crate::gamedata::GameData;
 use crate::workspace::fstree::FsTree;
 
 mod fstree;
+pub mod serde;
 
-pub const MAGIC: u16 = 0x3B1C;
-pub const VERSION: u16 = 0;
+pub use self::serde::Result;
 
 pub struct Workspace {
     fst: FsTree,
     gd: GameData,
-}
-
-#[derive(Serialize, Deserialize)]
-struct Root {
-    is_zip: bool,
-    path: PathBuf,
 }
 
 impl Workspace {
@@ -103,60 +94,6 @@ impl Workspace {
         self.fst.reset();
         self.update_refs();
     }
-
-    pub fn read_from<R: Read>(pipe: R) -> Result<Self> {
-        let mut ws = Workspace::new();
-        ws.read_from_in_place(pipe)?;
-        Ok(ws)
-    }
-
-    pub fn read_from_in_place<R: Read>(&mut self, mut pipe: R) -> Result<()> {
-        self.fst.reset();
-
-        let magic = pipe.read_u16::<BE>()?;
-        if magic != MAGIC {
-            return Err(Error::MagicError(magic));
-        }
-
-        let version = pipe.read_u16::<LE>()?;
-        if version > VERSION {
-            return Err(Error::FileVersionError(version));
-        }
-
-        let roots: Vec<Root> = bincode::deserialize_from(&mut pipe)?;
-
-        for root in roots {
-            if root.is_zip {
-                if let Err(e) = self.fst.add_zip(root.path) {
-                    eprintln!("{:?}", e);
-                }
-            } else {
-                if let Err(e) = self.fst.add_dir(root.path) {
-                    eprintln!("{:?}", e);
-                }
-            }
-        }
-
-        self.update_refs();
-
-        Ok(())
-    }
-
-    pub fn write_into<W: Write>(&self, mut pipe: W) -> Result<()> {
-        pipe.write_u16::<BE>(MAGIC)?;
-        pipe.write_u16::<LE>(VERSION)?;
-
-        let roots: Vec<_> = self.roots().iter()
-            .map(|r| match &*r.borrow().ds {
-                DataSource::Dir(ds) => Root { is_zip: false, path: ds.root().to_path_buf() },
-                DataSource::Zip(ds) => Root { is_zip: true, path: ds.zip_path().to_path_buf() },
-            })
-            .collect();
-
-        bincode::serialize_into(&mut pipe, &roots)?;
-
-        Ok(())
-    }
 }
 
 #[derive(Debug)]
@@ -188,6 +125,7 @@ impl WorkspaceRoot {
     pub fn ds(&self) -> &Rc<DataSource> { &self.ds }
 }
 
+#[derive(Default)]
 pub struct TreeChangeDispatcher {
     subscribers: Vec<Weak<dyn TreeChangeSubscriber>>,
 
@@ -280,18 +218,4 @@ pub trait TreeChangeSubscriber {
     fn pre_remove(&self, path: &Vec<usize>, start: usize, end: usize);
 
     fn post_remove(&self, path: &Vec<usize>);
-}
-
-pub type Result<T, E = Error> = std::result::Result<T, E>;
-
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("invalid magic")]
-    MagicError(u16),
-    #[error("unimplemented file version")]
-    FileVersionError(u16),
-    #[error("I/O error")]
-    Io(#[from] io::Error),
-    #[error("serialization error")]
-    Serde(#[from] bincode::Error),
 }

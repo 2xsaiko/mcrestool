@@ -51,11 +51,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
 
     this->sub_window_focus_change(nullptr);
     ui->res_tree_view->setModel(this->m_fstree_model);
-    this->m_ws.subscribe(*this->m_fstree_model);
+    this->m_ws.fst_subscribe(*this->m_fstree_model);
+    // this->m_ws.gd_subscribe(*this->m_gameobject_model);
 }
 
 MainWindow::~MainWindow() {
-    this->m_ws.unsubscribe(*this->m_fstree_model);
+    this->m_ws.fst_unsubscribe(*this->m_fstree_model);
+    // this->m_ws.gd_unsubscribe(*this->m_gameobject_model);
 }
 
 void MainWindow::center() {

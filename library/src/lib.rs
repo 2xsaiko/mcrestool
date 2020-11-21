@@ -8,8 +8,11 @@ use matryoshka::DataSource;
 pub mod gamedata;
 pub mod langtable;
 pub mod workspace;
+pub mod ident;
 #[cfg(feature = "cpp")]
 mod ffi;
+
+mod binserde;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum FileType {

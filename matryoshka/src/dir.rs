@@ -83,11 +83,11 @@ impl From<fs::Metadata> for FileInfo {
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("root directory not found")]
+    #[error("root directory not found: {0}")]
     RootDirNotFound(io::Error),
-    #[error("invalid path")]
+    #[error("invalid path: {0}")]
     InvalidPath(PathBuf),
-    #[error("I/O error")]
+    #[error("I/O error: {0}")]
     Io(io::Error),
 }
 

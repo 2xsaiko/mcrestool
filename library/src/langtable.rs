@@ -176,11 +176,11 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("data source error")]
+    #[error("data source error: {0}")]
     DataSource(#[from] matryoshka::Error),
-    #[error("I/O error")]
+    #[error("I/O error: {0}")]
     Io(#[from] io::Error),
-    #[error("serialization error")]
+    #[error("serialization error: {0}")]
     Serde(#[from] serde_json::Error),
 }
 

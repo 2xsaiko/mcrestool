@@ -7,6 +7,7 @@
 #include <languagetablemodel.h>
 #include <lib.rs.h>
 #include <fstreemodel.h>
+#include <gobjtreemodel.h>
 
 namespace Ui {
     class MainWindow;
@@ -70,6 +71,7 @@ private:
     QScopedPointer<Ui::MainWindow> ui;
     mcrtlib::ffi::Workspace m_ws;
     FsTreeModel* m_fstree_model;
+    GameObjectTreeModel* m_gameobject_model;
     QString m_ws_path;
 
 };

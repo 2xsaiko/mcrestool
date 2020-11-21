@@ -142,9 +142,9 @@ mod types {
 
         fn save(self: &Workspace, path: &str) -> Result<()>;
 
-        fn subscribe(self: &mut Workspace, subscriber: Pin<&mut TreeChangeSubscriber>);
+        fn fst_subscribe(self: &mut Workspace, subscriber: Pin<&mut TreeChangeSubscriber>);
 
-        fn unsubscribe(self: &mut Workspace, subscriber: Pin<&mut TreeChangeSubscriber>);
+        fn fst_unsubscribe(self: &mut Workspace, subscriber: Pin<&mut TreeChangeSubscriber>);
 
         // WorkspaceRoot
         fn tree(self: &WorkspaceRoot) -> FsTreeEntry;
@@ -306,11 +306,11 @@ impl types::Workspace {
         Ok(())
     }
 
-    fn subscribe(&mut self, subscriber: Pin<&mut types::TreeChangeSubscriber>) {
+    fn fst_subscribe(&mut self, subscriber: Pin<&mut types::TreeChangeSubscriber>) {
         self.inner.fst_dispatcher_mut().cpp_subscribe(unsafe { subscriber.get_unchecked_mut() } as *mut _);
     }
 
-    fn unsubscribe(&mut self, subscriber: Pin<&mut types::TreeChangeSubscriber>) {
+    fn fst_unsubscribe(&mut self, subscriber: Pin<&mut types::TreeChangeSubscriber>) {
         self.inner.fst_dispatcher_mut().cpp_unsubscribe(unsafe { subscriber.get_unchecked_mut() } as *mut _);
     }
 }

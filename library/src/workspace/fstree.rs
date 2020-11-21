@@ -23,9 +23,21 @@ impl FsTree {
         }
     }
 
-    pub fn add_dir<P: Into<PathBuf>>(&mut self, path: P) -> io::Result<()> {
+    pub fn add_dir<P>(&mut self, path: P) -> io::Result<()>
+        where
+            P: Into<PathBuf>,
+    {
         let path = path.into();
         let name = path.file_name().unwrap().to_string_lossy().to_string(); // TODO give these a better default name
+        self.add_dir_with_name(path, name)
+    }
+
+    pub fn add_dir_with_name<P, S>(&mut self, path: P, name: S) -> io::Result<()>
+        where
+            P: Into<PathBuf>,
+            S: Into<String>
+    {
+        let path = path.into();
         let ds = DataSource::Dir(dir::DataSource::new(path)?);
         let root = WorkspaceRoot::new(name, ds);
         self.dispatcher().pre_insert(&vec![], self.roots.len(), self.roots.len());
@@ -35,9 +47,21 @@ impl FsTree {
         Ok(())
     }
 
-    pub fn add_zip<P: Into<PathBuf>>(&mut self, path: P) -> zip::Result<()> {
+    pub fn add_zip<P>(&mut self, path: P) -> zip::Result<()>
+        where
+            P: Into<PathBuf>,
+    {
         let path = path.into();
         let name = path.file_name().unwrap().to_string_lossy().to_string();
+        self.add_zip_with_name(path, name)
+    }
+
+    pub fn add_zip_with_name<P, S>(&mut self, path: P, name: S) -> zip::Result<()>
+        where
+            P: Into<PathBuf>,
+            S: Into<String>,
+    {
+        let path = path.into();
         let ds = DataSource::Zip(zip::DataSource::new(path)?);
         let root = WorkspaceRoot::new(name, ds);
         self.dispatcher().pre_insert(&vec![], self.roots.len(), self.roots.len());
