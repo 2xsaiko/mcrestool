@@ -35,6 +35,12 @@ impl GameData {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.refs.map.clear();
+        self.items.clear();
+        self.blocks.clear();
+    }
+
     pub fn collect_usages(&mut self, roots: &[Rc<RefCell<WorkspaceRoot>>]) {
         self.refs.map.clear();
 

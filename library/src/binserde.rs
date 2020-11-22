@@ -9,19 +9,29 @@ use thiserror::Error;
 
 use crate::ident::{Ident, Identifier};
 
-pub struct Context {
+pub struct WriteContext {
     strings: Vec<String>,
-    identifiers: Vec<Identifier>,
     content: Vec<u8>,
 }
 
-impl Context {
+impl WriteContext {
     pub fn new() -> Self {
-        Context {
+        WriteContext {
             strings: vec![],
-            identifiers: vec![],
             content: vec![],
         }
+    }
+
+    pub fn write_dedup_str(&mut self, s: &str) -> Result<()> {
+        let idx = self.put_string(s);
+        self.write_u32::<LE>(idx.try_into()?)?;
+        Ok(())
+    }
+
+    pub fn write_dedup_ident(&mut self, id: &Ident) -> Result<()> {
+        let idx = self.put_identifier(id);
+        self.write_u32::<LE>(idx.try_into()?)?;
+        Ok(())
     }
 
     pub fn put_string(&mut self, s: &str) -> usize {
@@ -34,17 +44,12 @@ impl Context {
         }
     }
 
-    pub fn put_identifier(&mut self, id: &Identifier) -> usize {
-        match self.identifiers.binary_search(id) {
-            Ok(idx) => idx,
-            Err(idx) => {
-                self.identifiers.insert(idx, id.clone());
-                idx
-            }
-        }
+    pub fn put_identifier(&mut self, id: &Ident) -> usize {
+        self.put_string(id.trim().as_str())
     }
 
     pub fn write_to<W: Write>(&self, mut pipe: W) -> Result<()> {
+        pipe.write_u16::<LE>(self.strings.len().try_into()?)?;
         for e in self.strings.iter() {
             write_str(&e, &mut pipe)?;
         }
@@ -53,7 +58,7 @@ impl Context {
     }
 }
 
-impl Write for Context {
+impl Write for WriteContext {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.content.extend_from_slice(buf);
         Ok(buf.len())
@@ -61,6 +66,41 @@ impl Write for Context {
 
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+}
+
+pub struct ReadContext<R> {
+    strings: Vec<String>,
+    pipe: R,
+}
+
+impl<R: Read> ReadContext<R> {
+    pub fn new(mut pipe: R) -> Result<Self> {
+        let len = pipe.read_u16::<LE>()?;
+        let mut strings = Vec::new();
+        for _ in 0..len {
+            strings.push(read_str(&mut pipe)?);
+        }
+        Ok(ReadContext {
+            strings,
+            pipe,
+        })
+    }
+
+    pub fn read_dedup_str(&mut self) -> Result<&str> {
+        let idx = self.read_u16::<LE>()?;
+        self.strings.get(idx as usize).map(|s| s.as_str())
+            .ok_or(Error::StrOutOfRange(idx as usize))
+    }
+
+    pub fn read_dedup_ident(&mut self) -> Result<&Ident> {
+        self.read_dedup_str().map(Ident::new)
+    }
+}
+
+impl<R: Read> Read for ReadContext<R> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.pipe.read(buf)
     }
 }
 
@@ -77,43 +117,6 @@ pub fn read_str<R: Read>(mut pipe: R) -> Result<String> {
     Ok(String::from_utf8(buf)?)
 }
 
-pub fn write_identifier<W: Write>(id: &Ident, mut pipe: W) -> Result<usize> {
-    let is_minecraft_namespace = id.namespace() == "minecraft";
-    let namespace_len = if is_minecraft_namespace {
-        u16::MAX
-    } else {
-        let namespace_len = id.namespace().len().try_into()?;
-        assert!(namespace_len < u16::MAX);
-        namespace_len
-    };
-    let path_len = id.path().len().try_into()?;
-    pipe.write_u16::<LE>(namespace_len)?;
-    pipe.write_u16::<LE>(path_len)?;
-    if !is_minecraft_namespace {
-        pipe.write(id.namespace().as_bytes())?;
-    }
-    pipe.write(id.path().as_bytes())?;
-    Ok(4 + if is_minecraft_namespace { 0 } else { id.namespace().len() } + id.path().len())
-}
-
-pub fn read_identifier<R: Read>(mut pipe: R) -> Result<Identifier> {
-    let namespace_len = pipe.read_u16::<LE>()?;
-    let path_len = pipe.read_u16::<LE>()?;
-    let namespace = if namespace_len == u16::MAX {
-        "minecraft".to_string()
-    } else {
-        let mut buf = vec![0; namespace_len as usize];
-        pipe.read_exact(&mut buf)?;
-        String::from_utf8(buf)?
-    };
-    let path = {
-        let mut buf = vec![0; path_len as usize];
-        pipe.read_exact(&mut buf)?;
-        String::from_utf8(buf)?
-    };
-    Ok(Identifier::from_components(&namespace, &path))
-}
-
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Error)]
@@ -124,4 +127,6 @@ pub enum Error {
     TryFromInt(#[from] TryFromIntError),
     #[error("invalid UTF-8 string")]
     InvalidUtf8(#[from] FromUtf8Error),
+    #[error("indexed string out of range: {0}")]
+    StrOutOfRange(usize),
 }

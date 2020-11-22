@@ -8,7 +8,7 @@ use byteorder::{BE, LE, ReadBytesExt, WriteBytesExt};
 
 use matryoshka::DataSource;
 
-use crate::binserde::{self, read_str, write_str};
+use crate::binserde::{self, read_str, ReadContext, write_str, WriteContext};
 use crate::workspace::{Error, Workspace};
 use crate::workspace::fstree::FsTree;
 
@@ -36,8 +36,10 @@ impl Workspace {
             return Err(Error::FileVersionError(version));
         }
 
-        self.fst.read_from_in_place(&mut pipe)?;
-        self.update_refs();
+        let mut ctx = ReadContext::new(pipe)?;
+
+        self.fst.read_from_in_place(&mut ctx)?;
+        self.gd.read_from_in_place(&mut ctx)?;
 
         Ok(())
     }
@@ -46,8 +48,12 @@ impl Workspace {
         pipe.write_u16::<BE>(MAGIC)?;
         pipe.write_u16::<LE>(VERSION)?;
 
-        self.fst.write_into(&mut pipe)?;
-        self.gd.write_into(&mut pipe)?;
+        let mut ctx = WriteContext::new();
+
+        self.fst.write_into(&mut ctx)?;
+        self.gd.write_into(&mut ctx)?;
+
+        ctx.write_to(pipe)?;
 
         Ok(())
     }
@@ -55,6 +61,8 @@ impl Workspace {
 
 impl FsTree {
     fn read_from_in_place<R: Read>(&mut self, mut pipe: R) -> Result<()> {
+        self.reset();
+
         for _ in 0..pipe.read_u16::<LE>()? {
             let is_dir = pipe.read_u8()? != 0;
 
@@ -62,12 +70,12 @@ impl FsTree {
             let name = read_str(&mut pipe)?;
 
             if is_dir {
-                if let Err(_) = self.add_dir_with_name(path, name) {
-                    eprintln!("Failed to add workspace root, skipping");
+                if let Err(e) = self.add_dir_with_name(path, name) {
+                    eprintln!("Failed to add workspace root, skipping: {}", e);
                 }
             } else {
-                if let Err(_) = self.add_zip_with_name(path, name) {
-                    eprintln!("Failed to add workspace root, skipping");
+                if let Err(e) = self.add_zip_with_name(path, name) {
+                    eprintln!("Failed to add workspace root, skipping: {}", e);
                 }
             }
         }
@@ -79,8 +87,8 @@ impl FsTree {
         for r in self.roots() {
             let r = r.borrow();
             let (is_dir, path) = match &*r.ds {
-                DataSource::Dir(ds) => (false, ds.root()),
-                DataSource::Zip(ds) => (true, ds.zip_path()),
+                DataSource::Dir(ds) => (true, ds.root()),
+                DataSource::Zip(ds) => (false, ds.zip_path()),
             };
 
             pipe.write_u8(if is_dir { 1 } else { 0 })?;
@@ -109,6 +117,8 @@ pub enum Error {
     InvalidString,
     #[error("invalid UTF-8 string")]
     InvalidUtf8(#[from] FromUtf8Error),
+    #[error("indexed string out of range: {0}")]
+    StrOutOfRange(usize),
 }
 
 impl From<binserde::Error> for Error {
@@ -117,6 +127,7 @@ impl From<binserde::Error> for Error {
             binserde::Error::Io(e) => Error::Io(e),
             binserde::Error::TryFromInt(e) => Error::TryFromInt(e),
             binserde::Error::InvalidUtf8(e) => Error::InvalidUtf8(e),
+            binserde::Error::StrOutOfRange(e) => Error::StrOutOfRange(e),
         }
     }
 }

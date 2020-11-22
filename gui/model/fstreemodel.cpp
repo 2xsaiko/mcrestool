@@ -83,7 +83,9 @@ QVariant FsTreeModel::data(const QModelIndex& index, int role) const {
                 if (entry.root().ds().is_dir(Str(string.data(), string.length()))) {
                     return QIcon::fromTheme("inode-directory");
                 } else {
-                    return QVariant();
+                    // TODO use a different icon because these files most likely
+                    //      aren't zero-size
+                    return QIcon::fromTheme("application-x-zerosize");
                 }
             }
         }
