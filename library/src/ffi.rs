@@ -3,9 +3,11 @@ use std::cell::RefCell;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::Path;
+use std::pin::Pin;
 use std::rc::Rc;
 
 use matryoshka::{self, DataSource, dir, zip};
+
 use matryoshka::resfile::ResFile as ResFilePrivate;
 
 use crate::{FileType, langtable, workspace};
@@ -20,6 +22,7 @@ pub type TreeChangeSubscriber = types::TreeChangeSubscriber;
 
 #[cxx::bridge(namespace = "mcrtlib::ffi")]
 mod types {
+
     pub struct Workspace {
         pub inner: Box<WorkspacePrivate>,
     }
@@ -63,18 +66,18 @@ mod types {
         FILETYPE_RECIPE,
     }
 
-    extern "C++" {
+    unsafe extern "C++" {
         include!("mcrtlibd.h");
 
         type TreeChangeSubscriber;
 
-        pub fn tcs_pre_insert(s: &mut TreeChangeSubscriber, path: &Vec<usize>, start: usize, end: usize);
+        pub fn tcs_pre_insert(s: Pin<&mut TreeChangeSubscriber>, path: &Vec<usize>, start: usize, end: usize);
 
-        pub fn tcs_post_insert(s: &mut TreeChangeSubscriber, path: &Vec<usize>);
+        pub fn tcs_post_insert(s: Pin<&mut TreeChangeSubscriber>, path: &Vec<usize>);
 
-        pub fn tcs_pre_remove(s: &mut TreeChangeSubscriber, path: &Vec<usize>, start: usize, end: usize);
+        pub fn tcs_pre_remove(s: Pin<&mut TreeChangeSubscriber>, path: &Vec<usize>, start: usize, end: usize);
 
-        pub fn tcs_post_remove(s: &mut TreeChangeSubscriber, path: &Vec<usize>);
+        pub fn tcs_post_remove(s: Pin<&mut TreeChangeSubscriber>, path: &Vec<usize>);
     }
 
     extern "Rust" {
@@ -106,9 +109,9 @@ mod types {
 
         fn save(self: &Workspace, path: &str) -> Result<()>;
 
-        fn subscribe(self: &mut Workspace, subscriber: &mut TreeChangeSubscriber);
+        fn subscribe(self: &mut Workspace, subscriber: Pin<&mut TreeChangeSubscriber>);
 
-        fn unsubscribe(self: &mut Workspace, subscriber: &mut TreeChangeSubscriber);
+        fn unsubscribe(self: &mut Workspace, subscriber: Pin<&mut TreeChangeSubscriber>);
 
         // WorkspaceRoot
         fn tree(self: &WorkspaceRoot) -> FsTreeEntry;
