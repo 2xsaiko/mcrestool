@@ -14,37 +14,41 @@ use crate::langtable::LanguageTable;
 use crate::workspace::{FsTreeEntry, Workspace, WorkspaceRoot};
 
 macro_rules! define_wrapper {
-    ($name:ident($inner:ty)) => {
-        pub struct $name(pub $inner);
+    ($($name:ident($inner:ty);)*) => {
+        $(
+            pub struct $name(pub $inner);
 
-        impl std::ops::Deref for $name {
-            type Target = $inner;
+            impl std::ops::Deref for $name {
+                type Target = $inner;
 
-            fn deref(&self) -> &Self::Target {
-                &self.0
+                fn deref(&self) -> &Self::Target {
+                    &self.0
+                }
             }
-        }
 
-        impl std::ops::DerefMut for $name {
-            fn deref_mut(&mut self) -> &mut Self::Target {
-                &mut self.0
+            impl std::ops::DerefMut for $name {
+                fn deref_mut(&mut self) -> &mut Self::Target {
+                    &mut self.0
+                }
             }
-        }
 
-        impl std::convert::From<$inner> for $name {
-            fn from(inner: $inner) -> Self {
-                $name(inner)
+            impl std::convert::From<$inner> for $name {
+                fn from(inner: $inner) -> Self {
+                    $name(inner)
+                }
             }
-        }
+        )*
     }
 }
 
-define_wrapper!(ResFilePrivate(ResFile));
-define_wrapper!(WorkspaceRootPrivate(Option<Rc<RefCell<WorkspaceRoot>>>));
-define_wrapper!(FsTreeEntryPrivate(Option<Rc<RefCell<FsTreeEntry>>>));
-define_wrapper!(DataSourcePrivate(Rc<DataSource>));
-define_wrapper!(LanguageTablePrivate(LanguageTable));
-define_wrapper!(WorkspacePrivate(Workspace));
+define_wrapper! {
+    ResFilePrivate(ResFile);
+    WorkspaceRootPrivate(Option<Rc<RefCell<WorkspaceRoot>>>);
+    FsTreeEntryPrivate(Option<Rc<RefCell<FsTreeEntry>>>);
+    DataSourcePrivate(Rc<DataSource>);
+    LanguageTablePrivate(LanguageTable);
+    WorkspacePrivate(Workspace);
+}
 
 pub type TreeChangeSubscriber = types::TreeChangeSubscriber;
 
