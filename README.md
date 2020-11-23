@@ -16,7 +16,7 @@ Then, run:
     $ mkdir build
     $ cd build
     $ cmake ..
-    $ make -j5
+    $ make
 
 That's it! The binary should be output at build/mcrestool.
 
