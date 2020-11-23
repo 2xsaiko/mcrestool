@@ -4,7 +4,7 @@
 #include <cstddef>
 
 namespace rust {
-    inline namespace cxxbridge05 {
+    inline namespace cxxbridge1 {
         template<typename T>
         class Vec;
     }
