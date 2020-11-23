@@ -7,22 +7,49 @@ use std::pin::Pin;
 use std::rc::Rc;
 
 use matryoshka::{self, DataSource, dir, zip};
-
-use matryoshka::resfile::ResFile as ResFilePrivate;
+use matryoshka::resfile::ResFile;
 
 use crate::{FileType, langtable, workspace};
-use crate::langtable::{LanguageTable as LanguageTablePrivate, LanguageTable};
-use crate::workspace::{FsTreeEntry, Workspace as WorkspacePrivate, Workspace, WorkspaceRoot};
+use crate::langtable::LanguageTable;
+use crate::workspace::{FsTreeEntry, Workspace, WorkspaceRoot};
 
-type WorkspaceRootPrivate = Option<Rc<RefCell<WorkspaceRoot>>>;
-type FsTreeEntryPrivate = Option<Rc<RefCell<FsTreeEntry>>>;
-type DataSourcePrivate = Rc<DataSource>;
+macro_rules! define_wrapper {
+    ($name:ident($inner:ty)) => {
+        pub struct $name(pub $inner);
+
+        impl std::ops::Deref for $name {
+            type Target = $inner;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl std::ops::DerefMut for $name {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.0
+            }
+        }
+
+        impl std::convert::From<$inner> for $name {
+            fn from(inner: $inner) -> Self {
+                $name(inner)
+            }
+        }
+    }
+}
+
+define_wrapper!(ResFilePrivate(ResFile));
+define_wrapper!(WorkspaceRootPrivate(Option<Rc<RefCell<WorkspaceRoot>>>));
+define_wrapper!(FsTreeEntryPrivate(Option<Rc<RefCell<FsTreeEntry>>>));
+define_wrapper!(DataSourcePrivate(Rc<DataSource>));
+define_wrapper!(LanguageTablePrivate(LanguageTable));
+define_wrapper!(WorkspacePrivate(Workspace));
 
 pub type TreeChangeSubscriber = types::TreeChangeSubscriber;
 
 #[cxx::bridge(namespace = "mcrtlib::ffi")]
 mod types {
-
     pub struct Workspace {
         pub inner: Box<WorkspacePrivate>,
     }
@@ -204,19 +231,19 @@ mod types {
 }
 
 pub fn tcs_pre_insert(s: *mut TreeChangeSubscriber, path: &Vec<usize>, start: usize, end: usize) {
-    unsafe { types::tcs_pre_insert(s.as_mut().unwrap(), path, start, end); }
+    unsafe { types::tcs_pre_insert(Pin::new_unchecked(s.as_mut().unwrap()), path, start, end); }
 }
 
 pub fn tcs_post_insert(s: *mut TreeChangeSubscriber, path: &Vec<usize>) {
-    unsafe { types::tcs_post_insert(s.as_mut().unwrap(), path); }
+    unsafe { types::tcs_post_insert(Pin::new_unchecked(s.as_mut().unwrap()), path); }
 }
 
 pub fn tcs_pre_remove(s: *mut TreeChangeSubscriber, path: &Vec<usize>, start: usize, end: usize) {
-    unsafe { types::tcs_pre_remove(s.as_mut().unwrap(), path, start, end); }
+    unsafe { types::tcs_pre_remove(Pin::new_unchecked(s.as_mut().unwrap()), path, start, end); }
 }
 
 pub fn tcs_post_remove(s: *mut TreeChangeSubscriber, path: &Vec<usize>) {
-    unsafe { types::tcs_post_remove(s.as_mut().unwrap(), path); }
+    unsafe { types::tcs_post_remove(Pin::new_unchecked(s.as_mut().unwrap()), path); }
 }
 
 fn get_file_type(ds: &types::DataSource, path: &str) -> types::FileType {
@@ -224,11 +251,11 @@ fn get_file_type(ds: &types::DataSource, path: &str) -> types::FileType {
 }
 
 fn workspace_new() -> types::Workspace {
-    types::Workspace { inner: Box::new(Workspace::new()) }
+    types::Workspace { inner: Box::new(Workspace::new().into()) }
 }
 
 fn workspace_from(path: &str) -> workspace::Result<types::Workspace> {
-    Ok(types::Workspace { inner: Box::new(Workspace::read_from(File::open(path)?)?) })
+    Ok(types::Workspace { inner: Box::new(Workspace::read_from(File::open(path)?)?.into()) })
 }
 
 impl types::Workspace {
@@ -250,13 +277,13 @@ impl types::Workspace {
     }
 
     fn root_count(&self) -> usize {
-        let inner: &Box<Workspace> = &self.inner;
+        let inner: &WorkspacePrivate = &self.inner;
         inner.roots().len()
     }
 
     fn by_index(&self, idx: usize) -> types::WorkspaceRoot {
-        let inner: &Box<Workspace> = &self.inner;
-        types::WorkspaceRoot { inner: Box::new(inner.roots().get(idx).cloned()) }
+        let inner: &WorkspacePrivate = &self.inner;
+        types::WorkspaceRoot { inner: Box::new(inner.roots().get(idx).cloned().into()) }
     }
 
     fn save(&self, path: &str) -> workspace::Result<()> {
@@ -265,24 +292,24 @@ impl types::Workspace {
         Ok(())
     }
 
-    fn subscribe(&mut self, subscriber: &mut types::TreeChangeSubscriber) {
-        self.inner.dispatcher_mut().cpp_subscribe(subscriber as *mut _);
+    fn subscribe(&mut self, subscriber: Pin<&mut types::TreeChangeSubscriber>) {
+        self.inner.dispatcher_mut().cpp_subscribe(unsafe { subscriber.get_unchecked_mut() } as *mut _);
     }
 
-    fn unsubscribe(&mut self, subscriber: &mut types::TreeChangeSubscriber) {
-        self.inner.dispatcher_mut().cpp_unsubscribe(subscriber as *mut _);
+    fn unsubscribe(&mut self, subscriber: Pin<&mut types::TreeChangeSubscriber>) {
+        self.inner.dispatcher_mut().cpp_unsubscribe(unsafe { subscriber.get_unchecked_mut() } as *mut _);
     }
 }
 
 impl types::WorkspaceRoot {
     fn null() -> Self {
-        types::WorkspaceRoot { inner: Box::new(None) }
+        types::WorkspaceRoot { inner: Box::new(None.into()) }
     }
 
     fn ds(&self) -> types::DataSource {
         let inner: &Box<WorkspaceRootPrivate> = &self.inner;
         let inner = (**inner).as_ref().expect("can't get DataSource from null WorkspaceRoot");
-        types::DataSource { inner: Box::new((**inner).borrow().ds().clone()) }
+        types::DataSource { inner: Box::new((**inner).borrow().ds().clone().into()) }
     }
 
     fn is_null(&self) -> bool {
@@ -291,7 +318,7 @@ impl types::WorkspaceRoot {
 
     fn tree(&self) -> types::FsTreeEntry {
         let inner: &Box<WorkspaceRootPrivate> = &self.inner;
-        types::FsTreeEntry { inner: Box::new((**inner).as_ref().map(|e| (**e).borrow().root().clone())) }
+        types::FsTreeEntry { inner: Box::new((**inner).as_ref().map(|e| (**e).borrow().root().clone()).into()) }
     }
 }
 
@@ -304,13 +331,13 @@ fn fstreeentry_from_ptr(ptr: usize) -> types::FsTreeEntry {
     } else {
         let rc = unsafe { Rc::from_raw(ptr) };
         mem::forget(rc.clone()); // bump ref counter by 1 since the pointer can be used multiple times
-        types::FsTreeEntry { inner: Box::new(Some(rc)) }
+        types::FsTreeEntry { inner: Box::new(Some(rc).into()) }
     }
 }
 
 impl types::FsTreeEntry {
     fn null() -> Self {
-        types::FsTreeEntry { inner: Box::new(None) }
+        types::FsTreeEntry { inner: Box::new(None.into()) }
     }
 
     fn name(&self) -> String {
@@ -336,7 +363,7 @@ impl types::FsTreeEntry {
         let inner: &Box<FsTreeEntryPrivate> = &self.inner;
         let content = (**inner).as_ref()
             .and_then(|a| (**a).borrow().children().get(idx).cloned());
-        types::FsTreeEntry { inner: Box::new(content) }
+        types::FsTreeEntry { inner: Box::new(content.into()) }
     }
 
     fn index_of(&self, child: &types::FsTreeEntry) -> isize {
@@ -353,7 +380,7 @@ impl types::FsTreeEntry {
         (**inner).as_ref()
             .and_then(|e| (**e).borrow().parent().clone())
             .and_then(|s| s.upgrade())
-            .map_or_else(|| types::FsTreeEntry::null(), |s| types::FsTreeEntry { inner: Box::new(Some(s)) })
+            .map_or_else(|| types::FsTreeEntry::null(), |s| types::FsTreeEntry { inner: Box::new(Some(s).into()) })
     }
 
     fn root(&self) -> types::WorkspaceRoot {
@@ -361,7 +388,7 @@ impl types::FsTreeEntry {
         (**inner).as_ref()
             .map(|e| (**e).borrow().root().clone())
             .and_then(|s| s.upgrade())
-            .map_or_else(|| types::WorkspaceRoot::null(), |s| types::WorkspaceRoot { inner: Box::new(Some(s)) })
+            .map_or_else(|| types::WorkspaceRoot::null(), |s| types::WorkspaceRoot { inner: Box::new(Some(s).into()) })
     }
 
     fn path(&self) -> String {
@@ -383,7 +410,7 @@ impl types::FsTreeEntry {
     // Returns usize because cxx doesn't support pointer types yet
     fn to_ptr(&self) -> usize {
         let inner: &Box<FsTreeEntryPrivate> = &self.inner;
-        match **inner {
+        match ***inner {
             Some(ref a) => (Rc::as_ptr(a)) as usize,
             None => 0
         }
@@ -398,11 +425,11 @@ impl types::DirEntry {
 }
 
 fn datasource_open(path: &str) -> Result<types::DataSource, io::Error> {
-    Ok(types::DataSource { inner: Box::new(Rc::new(DataSource::Dir(dir::DataSource::new(path)?))) })
+    Ok(types::DataSource { inner: Box::new(Rc::new(DataSource::Dir(dir::DataSource::new(path)?)).into()) })
 }
 
 fn datasource_open_zip(path: &str) -> Result<types::DataSource, zip::Error> {
-    Ok(types::DataSource { inner: Box::new(Rc::new(DataSource::Zip(zip::DataSource::new(path)?))) })
+    Ok(types::DataSource { inner: Box::new(Rc::new(DataSource::Zip(zip::DataSource::new(path)?)).into()) })
 }
 
 impl types::DataSource {
@@ -419,7 +446,7 @@ impl types::DataSource {
             }
         }
 
-        Ok(types::ResFile { inner: Box::new(self.inner.open(path, opts)?) })
+        Ok(types::ResFile { inner: Box::new(self.inner.open(path, opts)?.into()) })
     }
 
     fn create_dir(&self, path: &str) -> Result<(), matryoshka::Error> {
@@ -470,11 +497,11 @@ impl types::ResFile {
 }
 
 fn languagetable_new() -> types::LanguageTable {
-    types::LanguageTable { inner: Box::new(LanguageTable::new()) }
+    types::LanguageTable { inner: Box::new(LanguageTable::new().into()) }
 }
 
 fn languagetable_load(ds: &types::DataSource, path: &str) -> langtable::Result<types::LanguageTable> {
-    Ok(types::LanguageTable { inner: Box::new(LanguageTable::load(&ds.inner, path)?) })
+    Ok(types::LanguageTable { inner: Box::new(LanguageTable::load(&ds.inner, path)?.into()) })
 }
 
 impl types::LanguageTable {

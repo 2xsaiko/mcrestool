@@ -73,7 +73,7 @@ dependencies = [
 [[package]]
 name = "cxx"
 version = "1.0.1"
-source = "git+https://github.com/2xsaiko/cxx?branch=mutu8#aa5a517d3d3e6320ca6d1a66c60aab27d357a0c4"
+source = "git+https://github.com/2xsaiko/cxx?branch=mutu8#fbc4cd3049aceaa4a175c549e1748d6f36ba334c"
 dependencies = [
  "cc",
  "cxxbridge-flags",
@@ -84,12 +84,12 @@ dependencies = [
 [[package]]
 name = "cxxbridge-flags"
 version = "1.0.1"
-source = "git+https://github.com/2xsaiko/cxx?branch=mutu8#aa5a517d3d3e6320ca6d1a66c60aab27d357a0c4"
+source = "git+https://github.com/2xsaiko/cxx?branch=mutu8#fbc4cd3049aceaa4a175c549e1748d6f36ba334c"
 
 [[package]]
 name = "cxxbridge-macro"
 version = "1.0.1"
-source = "git+https://github.com/2xsaiko/cxx?branch=mutu8#aa5a517d3d3e6320ca6d1a66c60aab27d357a0c4"
+source = "git+https://github.com/2xsaiko/cxx?branch=mutu8#fbc4cd3049aceaa4a175c549e1748d6f36ba334c"
 dependencies = [
  "proc-macro2",
  "quote",

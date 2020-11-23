@@ -11,7 +11,7 @@ cpp = ["cxx"]
 default = ["cpp"]
 
 [dependencies]
-# cxx = "0.5"
+# cxx = "1.0"
 cxx = { git = "https://github.com/2xsaiko/cxx", branch = "mutu8", optional = true }
 zip = "0.5.8"
 serde = { version = "1.0.117", features = ["derive"] }
