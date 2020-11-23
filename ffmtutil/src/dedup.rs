@@ -1,13 +1,12 @@
 use std::convert::TryInto;
 use std::io::{Read, Write};
 use std::io;
-use std::num::TryFromIntError;
-use std::string::FromUtf8Error;
 
 use byteorder::{LE, ReadBytesExt, WriteBytesExt};
-use thiserror::Error;
 
-use crate::ident::{Ident, Identifier};
+use mcplatfm::Ident;
+
+use crate::{Error, ReadExt, Result, WriteExt};
 
 pub struct WriteContext {
     strings: Vec<String>,
@@ -51,7 +50,7 @@ impl WriteContext {
     pub fn write_to<W: Write>(&self, mut pipe: W) -> Result<()> {
         pipe.write_u16::<LE>(self.strings.len().try_into()?)?;
         for e in self.strings.iter() {
-            write_str(&e, &mut pipe)?;
+            pipe.write_str(&e)?;
         }
         pipe.write(&self.content)?;
         Ok(())
@@ -79,7 +78,7 @@ impl<R: Read> ReadContext<R> {
         let len = pipe.read_u16::<LE>()?;
         let mut strings = Vec::new();
         for _ in 0..len {
-            strings.push(read_str(&mut pipe)?);
+            strings.push(pipe.read_str()?);
         }
         Ok(ReadContext {
             strings,
@@ -102,31 +101,4 @@ impl<R: Read> Read for ReadContext<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.pipe.read(buf)
     }
-}
-
-pub fn write_str<W: Write>(s: &str, mut pipe: W) -> Result<usize> {
-    pipe.write_u16::<LE>(s.len().try_into()?)?;
-    pipe.write(s.as_bytes())?;
-    Ok(2 + s.len())
-}
-
-pub fn read_str<R: Read>(mut pipe: R) -> Result<String> {
-    let len = pipe.read_u16::<LE>()?;
-    let mut buf = vec![0; len as usize];
-    pipe.read_exact(&mut buf)?;
-    Ok(String::from_utf8(buf)?)
-}
-
-pub type Result<T, E = Error> = std::result::Result<T, E>;
-
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("I/O error: {0}")]
-    Io(#[from] io::Error),
-    #[error("string too long")]
-    TryFromInt(#[from] TryFromIntError),
-    #[error("invalid UTF-8 string")]
-    InvalidUtf8(#[from] FromUtf8Error),
-    #[error("indexed string out of range: {0}")]
-    StrOutOfRange(usize),
 }

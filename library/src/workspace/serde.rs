@@ -6,9 +6,9 @@ use std::string::FromUtf8Error;
 
 use byteorder::{BE, LE, ReadBytesExt, WriteBytesExt};
 
+use ffmtutil::{ReadContext, ReadExt, WriteContext, WriteExt};
 use matryoshka::DataSource;
 
-use crate::binserde::{self, read_str, ReadContext, write_str, WriteContext};
 use crate::workspace::{Error, Workspace};
 use crate::workspace::fstree::FsTree;
 
@@ -66,8 +66,8 @@ impl FsTree {
         for _ in 0..pipe.read_u16::<LE>()? {
             let is_dir = pipe.read_u8()? != 0;
 
-            let path = read_str(&mut pipe)?;
-            let name = read_str(&mut pipe)?;
+            let path = pipe.read_str()?;
+            let name = pipe.read_str()?;
 
             if is_dir {
                 if let Err(e) = self.add_dir_with_name(path, name) {
@@ -75,7 +75,7 @@ impl FsTree {
                 }
             } else {
                 if let Err(e) = self.add_zip_with_name(path, name) {
-                    eprintln!("Failed to add workspace root, skipping: {}", e);
+                    eprintln!("Failed to add workspace root, skipping: {:?}", e);
                 }
             }
         }
@@ -93,8 +93,8 @@ impl FsTree {
 
             pipe.write_u8(if is_dir { 1 } else { 0 })?;
             let path = path.to_str().ok_or(Error::InvalidString)?;
-            write_str(path, &mut pipe)?;
-            write_str(r.name(), &mut pipe)?;
+            pipe.write_str(path)?;
+            pipe.write_str(r.name())?;
         }
 
         Ok(())
@@ -115,19 +115,6 @@ pub enum Error {
     TryFromInt(#[from] TryFromIntError),
     #[error("invalid string")]
     InvalidString,
-    #[error("invalid UTF-8 string")]
-    InvalidUtf8(#[from] FromUtf8Error),
-    #[error("indexed string out of range: {0}")]
-    StrOutOfRange(usize),
-}
-
-impl From<binserde::Error> for Error {
-    fn from(e: binserde::Error) -> Self {
-        match e {
-            binserde::Error::Io(e) => Error::Io(e),
-            binserde::Error::TryFromInt(e) => Error::TryFromInt(e),
-            binserde::Error::InvalidUtf8(e) => Error::InvalidUtf8(e),
-            binserde::Error::StrOutOfRange(e) => Error::StrOutOfRange(e),
-        }
-    }
+    #[error("{0}")]
+    Ffmtutil(#[from] ffmtutil::Error),
 }

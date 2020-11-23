@@ -1,8 +1,11 @@
-use crate::binserde::{Result, WriteContext, ReadContext};
-use crate::gamedata::{GameData, DependencyLink, GameObjectBase, AutoStatus};
-use byteorder::{WriteBytesExt, LE, ReadBytesExt};
 use std::convert::TryInto;
 use std::io::Read;
+
+use byteorder::{LE, ReadBytesExt, WriteBytesExt};
+
+use ffmtutil::{ReadContext, Result, WriteContext};
+
+use crate::gamedata::{AutoStatus, DependencyLink, GameData, GameObjectBase};
 
 impl GameData {
     pub fn write_into(&self, ctx: &mut WriteContext) -> Result<()> {
@@ -30,9 +33,7 @@ impl GameData {
 
     pub fn read_from_in_place<R: Read>(&mut self, ctx: &mut ReadContext<R>) -> Result<()> {
         self.reset();
-        for _ in 0..ctx.read_u32::<LE>()? {
-
-        }
+        for _ in 0..ctx.read_u32::<LE>()? {}
 
         Ok(())
     }
