@@ -285,7 +285,7 @@ impl types::Workspace {
     }
 
     fn detach(&mut self, root: &types::WorkspaceRoot) {
-        if let Some(root) = &*root.inner {
+        if let Some(root) = &**root.inner {
             self.inner.detach(root)
         }
     }
@@ -500,7 +500,7 @@ impl types::DataSource {
     }
 
     fn is_container_zip(&self) -> bool {
-        match &**self.inner {
+        match &***self.inner {
             DataSource::Zip(_) => true,
             _ => false,
         }
