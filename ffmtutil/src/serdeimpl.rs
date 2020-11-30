@@ -1,11 +1,15 @@
+use std::collections::{HashMap, HashSet};
 use std::convert::{Infallible, TryInto};
+use std::hash::Hash;
 use std::io::{Read, Write};
+use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
 
 use crate::dedup::DedupContext;
 use crate::serde::{BinDeserialize, BinSerialize};
+use crate::try_iter::try_iter;
 use crate::{serde, ReadExt};
 use crate::{Result, WriteExt};
 
@@ -44,11 +48,27 @@ pub enum UsizeLen {
     Variable,
 }
 
+impl<T, M> BinSerialize for &T
+where
+    T: BinSerialize<Mode = M>,
+{
+    type Mode = M;
+
+    fn serialize<W: Write>(
+        &self,
+        mut pipe: W,
+        dedup: &mut DedupContext,
+        mode: &Self::Mode,
+    ) -> Result<()> {
+        (*self).serialize(pipe, dedup, mode)
+    }
+}
+
 impl<'de> BinDeserialize<'de> for usize {
     type Mode = Mode;
 
     fn deserialize<R: Read>(
-        pipe: &mut R,
+        mut pipe: R,
         _dedup: &'de DedupContext,
         mode: &Self::Mode,
     ) -> Result<Self> {
@@ -67,7 +87,7 @@ impl BinSerialize for usize {
 
     fn serialize<W: Write>(
         &self,
-        pipe: &mut W,
+        mut pipe: W,
         _dedup: &mut DedupContext,
         mode: &Self::Mode,
     ) -> Result<()> {
@@ -89,7 +109,7 @@ impl<'de> BinDeserialize<'de> for u8 {
     type Mode = Mode;
 
     fn deserialize<R: Read>(
-        pipe: &mut R,
+        mut pipe: R,
         dedup: &'de DedupContext,
         mode: &Self::Mode,
     ) -> Result<Self> {
@@ -102,7 +122,7 @@ impl BinSerialize for u8 {
 
     fn serialize<W: Write>(
         &self,
-        pipe: &mut W,
+        mut pipe: W,
         dedup: &mut DedupContext,
         mode: &Self::Mode,
     ) -> Result<()> {
@@ -116,7 +136,7 @@ macro_rules! impl_int {
             type Mode = Mode;
 
             fn deserialize<R: Read>(
-                pipe: &mut R,
+                mut pipe: R,
                 _dedup: &'de DedupContext,
                 mode: &Self::Mode,
             ) -> Result<Self> {
@@ -133,7 +153,7 @@ macro_rules! impl_int {
 
             fn serialize<W: Write>(
                 &self,
-                pipe: &mut W,
+                mut pipe: W,
                 _dedup: &mut DedupContext,
                 mode: &Self::Mode,
             ) -> Result<()> {
@@ -166,7 +186,7 @@ impl<'de> BinDeserialize<'de> for String {
     type Mode = Mode;
 
     fn deserialize<R: Read>(
-        pipe: &mut R,
+        mut pipe: R,
         dedup: &'de DedupContext,
         mode: &Self::Mode,
     ) -> Result<Self> {
@@ -179,7 +199,7 @@ impl BinSerialize for String {
 
     fn serialize<W: Write>(
         &self,
-        pipe: &mut W,
+        mut pipe: W,
         dedup: &mut DedupContext,
         mode: &Self::Mode,
     ) -> Result<()> {
@@ -192,7 +212,7 @@ impl BinSerialize for str {
 
     fn serialize<W: Write>(
         &self,
-        pipe: &mut W,
+        mut pipe: W,
         dedup: &mut DedupContext,
         mode: &Self::Mode,
     ) -> Result<()> {
@@ -205,26 +225,61 @@ impl BinSerialize for str {
     }
 }
 
+pub struct VecLikeIter<'de, R, T, M> {
+    pipe: R,
+    remaining: usize,
+    dedup: &'de DedupContext,
+    mode: M,
+    marker: PhantomData<T>,
+}
+
+impl<'de, R, T> VecLikeIter<'de, R, T, Mode>
+where
+    R: Read,
+    T: BinDeserialize<'de>,
+{
+    pub fn new(mut pipe: R, dedup: &'de DedupContext, mode: Mode) -> Result<Self> {
+        let len = usize::deserialize(&mut pipe, dedup, &mode)?;
+        Ok(VecLikeIter {
+            pipe,
+            remaining: len,
+            dedup,
+            mode,
+            marker: Default::default(),
+        })
+    }
+}
+
+impl<'de, R, T, M> Iterator for VecLikeIter<'de, R, T, M>
+where
+    R: Read,
+    T: BinDeserialize<'de, Mode = M>,
+{
+    type Item = Result<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.remaining > 0 {
+            self.remaining -= 1;
+            Some(T::deserialize(&mut self.pipe, self.dedup, &self.mode))
+        } else {
+            None
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.remaining, Some(self.remaining))
+    }
+}
+
 impl<'de, T> BinDeserialize<'de> for Vec<T>
 where
     T: BinDeserialize<'de, Mode = Mode>,
 {
     type Mode = Mode;
 
-    fn deserialize<R: Read>(
-        pipe: &mut R,
-        dedup: &'de DedupContext,
-        mode: &Self::Mode,
-    ) -> Result<Self> {
-        let len = usize::deserialize(pipe, dedup, mode)?;
-        let mut vec = Vec::with_capacity(len);
-
-        for _ in 0..len {
-            let el = T::deserialize(pipe, dedup, mode)?;
-            vec.push(el);
-        }
-
-        Ok(vec)
+    fn deserialize<R: Read>(pipe: R, dedup: &'de DedupContext, mode: &Self::Mode) -> Result<Self> {
+        let iter = VecLikeIter::new(pipe, dedup, *mode)?;
+        try_iter(iter, |iter| iter.collect())
     }
 }
 
@@ -236,7 +291,7 @@ where
 
     fn serialize<W: Write>(
         &self,
-        pipe: &mut W,
+        pipe: W,
         dedup: &mut DedupContext,
         mode: &Self::Mode,
     ) -> Result<()> {
@@ -252,21 +307,21 @@ where
 
     fn serialize<W: Write>(
         &self,
-        pipe: &mut W,
+        mut pipe: W,
         dedup: &mut DedupContext,
         mode: &Self::Mode,
     ) -> Result<()> {
-        self.len().serialize(pipe, dedup, mode)?;
+        self.len().serialize(&mut pipe, dedup, mode)?;
 
         for item in self.iter() {
-            item.serialize(pipe, dedup, mode)?;
+            item.serialize(&mut pipe, dedup, mode)?;
         }
 
         Ok(())
     }
 }
 
-impl<const LEN: usize, T, M> BinSerialize for [T; LEN]
+impl<T, M, const LEN: usize> BinSerialize for [T; LEN]
 where
     T: BinSerialize<Mode = M>,
 {
@@ -274,38 +329,166 @@ where
 
     fn serialize<W: Write>(
         &self,
-        pipe: &mut W,
+        mut pipe: W,
         dedup: &mut DedupContext,
         mode: &Self::Mode,
     ) -> Result<()> {
         for el in self.iter() {
-            el.serialize(pipe, dedup, mode)?;
+            el.serialize(&mut pipe, dedup, mode)?;
         }
 
         Ok(())
     }
 }
 
-// TODO: https://github.com/rust-lang/rust/issues/61956
+impl<'de, T, M, const LEN: usize> BinDeserialize<'de> for [T; LEN]
+where
+    T: BinDeserialize<'de, Mode = M> + Sized,
+{
+    type Mode = M;
 
-// impl<'de, const LEN: usize, T, M> BinDeserialize<'de> for [T; LEN]
-// where
-//     T: BinDeserialize<'de, Mode = M> + Sized,
-// {
-//     type Mode = M;
-//
-//     fn deserialize<R: Read>(
-//         pipe: &mut R,
-//         dedup: &'de DedupContext,
-//         mode: &Self::Mode,
-//     ) -> Result<Self> {
-//         let mut arr: [MaybeUninit<T>; LEN] =
-//             unsafe { std::mem::transmute(MaybeUninit::<T>::uninit()) };
-//
-//         for idx in 0..LEN {
-//             arr[idx] = MaybeUninit::new(T::deserialize(pipe, dedup, mode)?);
-//         }
-//
-//         Ok(unsafe { std::mem::transmute(arr) })
-//     }
-// }
+    fn deserialize<R: Read>(
+        mut pipe: R,
+        dedup: &'de DedupContext,
+        mode: &Self::Mode,
+    ) -> Result<Self> {
+        // this is safe since MaybeUninit<T>'s Drop is a no-op
+        // TODO: https://github.com/rust-lang/rust/issues/61956
+        let mut arr: [MaybeUninit<T>; LEN] =
+            unsafe { std::mem::transmute_copy(&MaybeUninit::<T>::uninit()) };
+
+        for idx in 0..LEN {
+            arr[idx] = MaybeUninit::new(T::deserialize(&mut pipe, dedup, mode)?);
+        }
+
+        // this is safe since [MaybeUninit<T>; LEN] doesn't do anything on drop,
+        // since MaybeUninit<T>'s Drop is a no-op
+        Ok(unsafe { std::mem::transmute_copy(&arr) })
+    }
+}
+
+impl<K, V> BinSerialize for HashMap<K, V>
+where
+    K: BinSerialize<Mode = Mode>,
+    V: BinSerialize<Mode = Mode>,
+{
+    type Mode = Mode;
+
+    fn serialize<W: Write>(
+        &self,
+        mut pipe: W,
+        dedup: &mut DedupContext,
+        mode: &Self::Mode,
+    ) -> Result<()> {
+        self.len().serialize(&mut pipe, dedup, mode)?;
+
+        for el in self.iter() {
+            el.serialize(&mut pipe, dedup, mode)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<'de, K, V> BinDeserialize<'de> for HashMap<K, V>
+where
+    K: BinDeserialize<'de, Mode = Mode> + Eq + Hash,
+    V: BinDeserialize<'de, Mode = Mode>,
+{
+    type Mode = Mode;
+
+    fn deserialize<R: Read>(
+        mut pipe: R,
+        dedup: &'de DedupContext,
+        mode: &Self::Mode,
+    ) -> Result<Self> {
+        let iter = VecLikeIter::new(pipe, dedup, *mode)?;
+        try_iter(iter, |iter| iter.collect())
+    }
+}
+
+impl<T> BinSerialize for HashSet<T>
+where
+    T: BinSerialize<Mode = Mode>,
+{
+    type Mode = Mode;
+
+    fn serialize<W: Write>(
+        &self,
+        mut pipe: W,
+        dedup: &mut DedupContext,
+        mode: &Self::Mode,
+    ) -> Result<()> {
+        self.len().serialize(&mut pipe, dedup, mode)?;
+
+        for el in self.iter() {
+            el.serialize(&mut pipe, dedup, mode)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<'de, T> BinDeserialize<'de> for HashSet<T>
+where
+    T: BinDeserialize<'de, Mode = Mode> + Hash + Eq,
+{
+    type Mode = Mode;
+
+    fn deserialize<R: Read>(pipe: R, dedup: &'de DedupContext, mode: &Self::Mode) -> Result<Self> {
+        let iter = VecLikeIter::new(pipe, dedup, *mode)?;
+        try_iter(iter, |iter| iter.collect())
+    }
+}
+
+macro_rules! impl_tuple {
+    ($($tp:ident)+) => {
+        impl<$($tp),+, Mode> BinSerialize for ($($tp),+)
+        where
+            $($tp: BinSerialize<Mode = Mode>),+
+        {
+            type Mode = Mode;
+
+            #[allow(non_snake_case)]
+            fn serialize<W: Write>(
+                &self,
+                mut pipe: W,
+                dedup: &mut DedupContext,
+                mode: &Self::Mode,
+            ) -> Result<()> {
+                let ($(ref $tp),+) = *self;
+                $($tp.serialize(&mut pipe, dedup, mode)?;)+
+                Ok(())
+            }
+        }
+
+        impl<'de, $($tp),+, Mode> BinDeserialize<'de> for ($($tp),+)
+        where
+            $($tp: BinDeserialize<'de, Mode = Mode>),+
+        {
+            type Mode = Mode;
+
+            fn deserialize<R: Read>(
+                mut pipe: R,
+                dedup: &'de DedupContext,
+                mode: &Self::Mode,
+            ) -> Result<Self> {
+                Ok((
+                    $($tp::deserialize(&mut pipe, dedup, mode)?),+
+                ))
+            }
+        }
+    }
+}
+
+impl_tuple! { A B }
+impl_tuple! { A B C }
+impl_tuple! { A B C D }
+impl_tuple! { A B C D E }
+impl_tuple! { A B C D E F }
+impl_tuple! { A B C D E F G }
+impl_tuple! { A B C D E F G H }
+impl_tuple! { A B C D E F G H I }
+impl_tuple! { A B C D E F G H I J }
+impl_tuple! { A B C D E F G H I J K }
+impl_tuple! { A B C D E F G H I J K L }

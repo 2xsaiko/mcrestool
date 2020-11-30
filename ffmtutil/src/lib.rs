@@ -1,80 +1,39 @@
+#![allow(incomplete_features)]
 #![feature(const_generics)]
 
-use std::convert::TryInto;
 use std::io;
 use std::io::{Read, Write};
 use std::num::TryFromIntError;
 use std::string::FromUtf8Error;
 
-use byteorder::{ReadBytesExt, LE};
 use thiserror::Error;
 
-use crate::varint::{decode_min, encode_min};
+use crate::dedup::DedupContext;
+use crate::serde::{BinDeserialize, BinSerialize};
 
 mod dedup;
 pub mod serde;
 mod serdeimpl;
+pub mod try_iter;
 mod varint;
+mod write_ext;
 
-pub trait WriteExt {
-    fn write_str(&mut self, s: &str) -> Result<usize>;
-
-    fn write_varuint(&mut self, i: u64) -> Result<usize>;
-
-    fn write_varint(&mut self, i: i64) -> Result<usize>;
-
-    fn write_varusize(&mut self, i: usize) -> Result<usize>;
+pub fn serialize<W, T, M>(pipe: W, value: &T, mode: &M) -> Result<()>
+where
+    W: Write,
+    T: BinSerialize<Mode = M>,
+{
+    // TODO write dedup context
+    value.serialize(pipe, &mut DedupContext::new(), mode)
 }
 
-impl<W: Write> WriteExt for W {
-    fn write_str(&mut self, s: &str) -> Result<usize, Error> {
-        self.write_varuint(s.len().try_into()?)?;
-        self.write(s.as_bytes())?;
-        Ok(2 + s.len())
-    }
-
-    fn write_varuint(&mut self, i: u64) -> Result<usize, Error> {
-        Ok(varint::varint_write(i, self)?)
-    }
-
-    fn write_varint(&mut self, i: i64) -> Result<usize, Error> {
-        self.write_varuint(encode_min(i))
-    }
-
-    fn write_varusize(&mut self, i: usize) -> Result<usize, Error> {
-        self.write_varuint(i as u64)
-    }
-}
-
-pub trait ReadExt {
-    fn read_str(&mut self) -> Result<String>;
-
-    fn read_varuint(&mut self) -> Result<u64>;
-
-    fn read_varint(&mut self) -> Result<i64>;
-
-    fn read_varusize(&mut self) -> Result<usize>;
-}
-
-impl<R: Read> ReadExt for R {
-    fn read_str(&mut self) -> Result<String> {
-        let len = self.read_u16::<LE>()?;
-        let mut buf = vec![0; len as usize];
-        self.read_exact(&mut buf)?;
-        Ok(String::from_utf8(buf)?)
-    }
-
-    fn read_varuint(&mut self) -> Result<u64, Error> {
-        Ok(varint::varint_read(self)?)
-    }
-
-    fn read_varint(&mut self) -> Result<i64, Error> {
-        Ok(decode_min(self.read_varuint()?))
-    }
-
-    fn read_varusize(&mut self) -> Result<usize, Error> {
-        Ok(self.read_varuint()?.try_into()?)
-    }
+pub fn deserialize<R, T, M>(pipe: R, mode: &M) -> Result<T>
+where
+    R: Read,
+    T: BinDeserialize<Mode = M>,
+{
+    // TODO read dedup context
+    T::deserialize(pipe, &DedupContext::new(), mode)
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

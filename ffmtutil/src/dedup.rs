@@ -3,6 +3,12 @@ pub struct DedupContext {
 }
 
 impl DedupContext {
+    pub fn new() -> Self {
+        DedupContext {
+            strings: Vec::new(),
+        }
+    }
+
     pub fn put_str(&mut self, s: &str) -> usize {
         match self.strings.binary_search_by(|el| (*el.0).cmp(s)) {
             Ok(idx) => self.strings[idx].1,

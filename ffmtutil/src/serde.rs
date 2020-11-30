@@ -11,7 +11,7 @@ pub trait BinSerialize {
 
     fn serialize<W: Write>(
         &self,
-        pipe: &mut W,
+        pipe: W,
         dedup: &mut DedupContext,
         mode: &Self::Mode,
     ) -> Result<()>;
@@ -21,7 +21,7 @@ pub trait BinDeserialize<'de>: Sized {
     type Mode;
 
     fn deserialize<R: Read>(
-        pipe: &mut R,
+        pipe: R,
         dedup: &'de DedupContext,
         mode: &Self::Mode,
     ) -> Result<Self>;
