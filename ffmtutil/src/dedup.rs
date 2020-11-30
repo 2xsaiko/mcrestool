@@ -1,104 +1,20 @@
-use std::convert::TryInto;
-use std::io::{Read, Write};
-use std::io;
-
-use byteorder::{LE, ReadBytesExt, WriteBytesExt};
-
-use mcplatfm::Ident;
-
-use crate::{Error, ReadExt, Result, WriteExt};
-
-pub struct WriteContext {
-    strings: Vec<String>,
-    content: Vec<u8>,
+pub struct DedupContext {
+    strings: Vec<(String, usize)>,
 }
 
-impl WriteContext {
-    pub fn new() -> Self {
-        WriteContext {
-            strings: vec![],
-            content: vec![],
-        }
-    }
-
-    pub fn write_dedup_str(&mut self, s: &str) -> Result<()> {
-        let idx = self.put_string(s);
-        self.write_u32::<LE>(idx.try_into()?)?;
-        Ok(())
-    }
-
-    pub fn write_dedup_ident(&mut self, id: &Ident) -> Result<()> {
-        let idx = self.put_identifier(id);
-        self.write_u32::<LE>(idx.try_into()?)?;
-        Ok(())
-    }
-
-    pub fn put_string(&mut self, s: &str) -> usize {
-        match self.strings.binary_search_by(|el| el.as_str().cmp(s)) {
-            Ok(idx) => idx,
+impl DedupContext {
+    pub fn put_str(&mut self, s: &str) -> usize {
+        match self.strings.binary_search_by(|el| (*el.0).cmp(s)) {
+            Ok(idx) => self.strings[idx].1,
             Err(idx) => {
-                self.strings.insert(idx, s.to_string());
-                idx
+                let l = self.strings.len();
+                self.strings.insert(idx, (s.to_string(), l));
+                l
             }
         }
     }
 
-    pub fn put_identifier(&mut self, id: &Ident) -> usize {
-        self.put_string(id.trim().as_str())
-    }
-
-    pub fn write_to<W: Write>(&self, mut pipe: W) -> Result<()> {
-        pipe.write_u16::<LE>(self.strings.len().try_into()?)?;
-        for e in self.strings.iter() {
-            pipe.write_str(&e)?;
-        }
-        pipe.write(&self.content)?;
-        Ok(())
-    }
-}
-
-impl Write for WriteContext {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.content.extend_from_slice(buf);
-        Ok(buf.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-pub struct ReadContext<R> {
-    strings: Vec<String>,
-    pipe: R,
-}
-
-impl<R: Read> ReadContext<R> {
-    pub fn new(mut pipe: R) -> Result<Self> {
-        let len = pipe.read_u16::<LE>()?;
-        let mut strings = Vec::new();
-        for _ in 0..len {
-            strings.push(pipe.read_str()?);
-        }
-        Ok(ReadContext {
-            strings,
-            pipe,
-        })
-    }
-
-    pub fn read_dedup_str(&mut self) -> Result<&str> {
-        let idx = self.read_u16::<LE>()?;
-        self.strings.get(idx as usize).map(|s| s.as_str())
-            .ok_or(Error::StrOutOfRange(idx as usize))
-    }
-
-    pub fn read_dedup_ident(&mut self) -> Result<&Ident> {
-        self.read_dedup_str().map(Ident::new)
-    }
-}
-
-impl<R: Read> Read for ReadContext<R> {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        self.pipe.read(buf)
+    pub fn get_str(&self, idx: usize) -> Option<&str> {
+        self.strings.get(idx).map(|el| &*el.0)
     }
 }

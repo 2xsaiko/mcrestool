@@ -24,8 +24,6 @@ impl Workspace {
     }
 
     pub fn read_from_in_place<R: Read>(&mut self, mut pipe: R) -> Result<()> {
-        self.fst.reset();
-
         let magic = pipe.read_u16::<BE>()?;
         if magic != MAGIC {
             return Err(Error::MagicError(magic));

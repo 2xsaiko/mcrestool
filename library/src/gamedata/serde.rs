@@ -1,11 +1,11 @@
 use std::convert::TryInto;
 use std::io::Read;
 
-use byteorder::{LE, ReadBytesExt, WriteBytesExt};
+use byteorder::{ReadBytesExt, WriteBytesExt, LE};
 
-use ffmtutil::{ReadContext, Result, WriteContext};
+use ffmtutil::{Error, ReadContext, Result, WriteContext};
 
-use crate::gamedata::{AutoStatus, DependencyLink, GameData, GameObjectBase};
+use crate::gamedata::*;
 
 impl GameData {
     pub fn write_into(&self, ctx: &mut WriteContext) -> Result<()> {
@@ -33,13 +33,54 @@ impl GameData {
 
     pub fn read_from_in_place<R: Read>(&mut self, ctx: &mut ReadContext<R>) -> Result<()> {
         self.reset();
-        for _ in 0..ctx.read_u32::<LE>()? {}
+
+        for _ in 0..ctx.read_u32::<LE>()? {
+            let source = DependencyLink::read_from(ctx)?;
+            let map = self.refs.map.entry(source).or_default();
+            for _ in 0..ctx.read_u32::<LE>()? {
+                let target = DependencyLink::read_from(ctx)?;
+                map.insert(target);
+            }
+        }
+
+        for _ in 0..ctx.read_u32::<LE>()? {
+            let base = GameObjectBase::read_from(ctx)?;
+            let block = Block::new(base);
+            self.blocks.insert(block.base.id.clone(), block);
+        }
+
+        for _ in 0..ctx.read_u32::<LE>()? {
+            let base = GameObjectBase::read_from(ctx)?;
+            let item = Item::new(base);
+            self.items.insert(item.base.id.clone(), item);
+        }
 
         Ok(())
     }
 }
 
 impl DependencyLink {
+    fn read_from<R: Read>(ctx: &mut ReadContext<R>) -> Result<DependencyLink> {
+        let typ = ctx.read_u8()?;
+        match typ {
+            0 => {
+                let namespace = ctx.read_dedup_str()?.to_string();
+                let lang_name = ctx.read_dedup_str()?.to_string();
+                Ok(DependencyLink::Language(namespace, lang_name))
+            }
+            1 => Ok(DependencyLink::Block(
+                ctx.read_dedup_ident()?.to_identifier(),
+            )),
+            2 => Ok(DependencyLink::Item(
+                ctx.read_dedup_ident()?.to_identifier(),
+            )),
+            _ => Err(Error::Other(format!(
+                "invalid dependency link type: {}",
+                typ
+            ))),
+        }
+    }
+
     fn write_into(&self, ctx: &mut WriteContext) -> Result<()> {
         match self {
             DependencyLink::Language(namespace, lang_name) => {
@@ -61,6 +102,23 @@ impl DependencyLink {
 }
 
 impl GameObjectBase {
+    fn read_from<R: Read>(ctx: &mut ReadContext<R>) -> Result<GameObjectBase> {
+        let id = ctx.read_dedup_ident()?.to_identifier();
+        let bits = ctx.read_u8()?;
+        let manual = bits & 1 != 0;
+        let auto = if bits & 2 != 0 {
+            if bits & 4 != 0 {
+                AutoStatus::Deleted
+            } else {
+                AutoStatus::Yes
+            }
+        } else {
+            AutoStatus::No
+        };
+
+        Ok(GameObjectBase { manual, auto, id })
+    }
+
     fn write_into(&self, ctx: &mut WriteContext) -> Result<()> {
         ctx.write_dedup_ident(&self.id)?;
         let mut bits = 0;

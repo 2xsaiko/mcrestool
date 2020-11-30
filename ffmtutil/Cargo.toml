@@ -9,4 +9,5 @@ edition = "2018"
 [dependencies]
 thiserror = "1.0.22"
 byteorder = "*"
+bincode = "*"
 mcplatfm = { path = "../mcplatfm" }
