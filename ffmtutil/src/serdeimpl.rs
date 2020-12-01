@@ -421,6 +421,22 @@ where
     }
 }
 
+impl BinSerialize for () {
+    fn serialize<W: Write>(&self, _pipe: W, _dedup: &mut DedupContext, _mode: &Mode) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
+impl<'de> BinDeserialize<'de> for () {
+    fn deserialize<R: Read>(_pipe: R, _dedup: &'de DedupContext, _mode: &Mode) -> Result<Self, Error> {
+        Ok(())
+    }
+
+    fn deserialize_in_place<R: Read>(&mut self, _pipe: R, _dedup: &'de DedupContext, _mode: &Mode) -> Result<(), Error> {
+        Ok(())
+    }
+}
+
 macro_rules! impl_tuple {
     ($($tp:ident)+) => {
         impl<$($tp),+> BinSerialize for ($($tp),+)
