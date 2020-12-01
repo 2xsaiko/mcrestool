@@ -1,5 +1,5 @@
 [workspace]
-members = ["library", "matryoshka", "ffmtutil", "mcplatfm"]
+members = ["library", "matryoshka", "ffmtutil", "mcplatfm", "ffmtutil/ffmtutil_derive"]
 
 [profile.release]
 lto = true

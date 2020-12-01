@@ -110,6 +110,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ffmtutil_derive"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "flate2"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
