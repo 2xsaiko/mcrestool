@@ -218,6 +218,13 @@ impl GameObjectBase {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
+enum AutoStatus {
+    No,
+    Yes,
+    Deleted,
+}
+
 pub struct Block {
     base: GameObjectBase,
 }
@@ -240,13 +247,12 @@ impl Block {
     }
 }
 
-pub struct Item {
-    base: GameObjectBase,
+ffmtutil::impl_serde_wrap! {
+    struct Block { base }
 }
 
-ffmtutil::impl_serde_wrap! {
-    struct Item { base }
-    struct Block { base }
+pub struct Item {
+    base: GameObjectBase,
 }
 
 impl Item {
@@ -267,9 +273,6 @@ impl Item {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
-enum AutoStatus {
-    No,
-    Yes,
-    Deleted,
+ffmtutil::impl_serde_wrap! {
+    struct Item { base }
 }

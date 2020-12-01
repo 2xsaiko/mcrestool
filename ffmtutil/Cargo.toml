@@ -10,3 +10,4 @@ edition = "2018"
 thiserror = "1.0.22"
 byteorder = "*"
 bincode = "*"
+ffmtutil_derive = { path = "ffmtutil_derive" }

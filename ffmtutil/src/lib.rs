@@ -1,6 +1,7 @@
 #![allow(incomplete_features)]
 #![feature(const_generics)]
 
+use std::fmt::Display;
 use std::io;
 use std::io::{Read, Write};
 use std::num::TryFromIntError;
@@ -9,17 +10,16 @@ use std::string::FromUtf8Error;
 use thiserror::Error;
 
 use dedup::DedupContext;
+pub use ffmtutil_derive::member_to_ident;
 use serde::{BinDeserializeOwned, BinSerialize, Mode};
-use std::borrow::Cow;
-use std::fmt::Display;
 
 pub mod dedup;
+mod mac;
 pub mod serde;
 mod serdeimpl;
 pub mod try_iter;
 mod varint;
 mod write_ext;
-mod mac;
 
 pub fn serialize<W, T>(pipe: W, value: &T, mode: &Mode) -> Result<()>
 where
@@ -41,9 +41,9 @@ where
 }
 
 pub fn deserialize_in_place<R, T>(target: &mut T, pipe: R, mode: &Mode) -> Result<()>
-    where
-        R: Read,
-        T: BinDeserializeOwned,
+where
+    R: Read,
+    T: BinDeserializeOwned,
 {
     // TODO read dedup context
     let context = DedupContext::new();
