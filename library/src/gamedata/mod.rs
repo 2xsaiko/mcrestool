@@ -24,7 +24,9 @@ pub struct GameData {
 impl GameData {
     pub fn new() -> Self {
         GameData {
-            refs: GameDataReferences { map: Default::default() },
+            refs: GameDataReferences {
+                map: Default::default(),
+            },
             blocks: Default::default(),
             items: Default::default(),
             dispatcher: Rc::new(RefCell::new(TreeChangeDispatcher::new())),
@@ -49,20 +51,28 @@ impl GameData {
                     let namespace = entry.file_name().to_str().unwrap();
 
                     for lang_file in ds.list_dir(entry.path().join("lang")).unwrap_or_default() {
-                        if lang_file.info().is_file() && lang_file.path().extension() == Some(OsStr::new("json")) {
+                        if lang_file.info().is_file()
+                            && lang_file.path().extension() == Some(OsStr::new("json"))
+                        {
                             let lang_name = lang_file.path().file_stem().unwrap().to_str().unwrap();
-                            let dl_source = DependencyLink::Language(namespace.to_string(), lang_name.to_string());
+                            let dl_source = DependencyLink::Language(
+                                namespace.to_string(),
+                                lang_name.to_string(),
+                            );
 
                             // Read entire file into string to increase speed (serde-rs/json#160)
                             let mut buf = String::new();
 
-                            let mut file = ds.open(lang_file.path(), OpenOptions::reading()).expect("could not open file");
+                            let mut file = ds
+                                .open(lang_file.path(), OpenOptions::reading())
+                                .expect("could not open file");
 
                             if file.read_to_string(&mut buf).is_err() {
                                 continue;
                             }
 
-                            let part: HashMap<Cow<str>, Cow<str>> = match serde_json::from_str(&buf) {
+                            let part: HashMap<Cow<str>, Cow<str>> = match serde_json::from_str(&buf)
+                            {
                                 Ok(v) => v,
                                 Err(e) => {
                                     eprintln!("warning: skipping invalid language file: {}", e);
@@ -73,17 +83,25 @@ impl GameData {
                             for k in part.keys() {
                                 if let Some(k) = k.strip_prefix("block.") {
                                     let mut split = k.split('.');
-                                    if let Some(block_name) = split.next().and_then(|a| split.next().map(|b| (a, b))) {
-                                        let id = Identifier::from_components(block_name.0, block_name.1);
+                                    if let Some(block_name) =
+                                        split.next().and_then(|a| split.next().map(|b| (a, b)))
+                                    {
+                                        let id =
+                                            Identifier::from_components(block_name.0, block_name.1);
 
-                                        self.refs.insert(dl_source.clone(), DependencyLink::Block(id));
+                                        self.refs
+                                            .insert(dl_source.clone(), DependencyLink::Block(id));
                                     }
                                 } else if let Some(k) = k.strip_prefix("item.") {
                                     let mut split = k.split('.');
-                                    if let Some(item_name) = split.next().and_then(|a| split.next().map(|b| (a, b))) {
-                                        let id = Identifier::from_components(item_name.0, item_name.1);
+                                    if let Some(item_name) =
+                                        split.next().and_then(|a| split.next().map(|b| (a, b)))
+                                    {
+                                        let id =
+                                            Identifier::from_components(item_name.0, item_name.1);
 
-                                        self.refs.insert(dl_source.clone(), DependencyLink::Item(id));
+                                        self.refs
+                                            .insert(dl_source.clone(), DependencyLink::Item(id));
                                     }
                                 }
                             }
@@ -95,9 +113,7 @@ impl GameData {
     }
 
     pub fn create_dummies(&mut self) {
-        let vs: HashSet<_> = self.refs.map.values()
-            .flat_map(|v| v.iter())
-            .collect();
+        let vs: HashSet<_> = self.refs.map.values().flat_map(|v| v.iter()).collect();
 
         self.blocks.values_mut().for_each(|b| b.mark_auto(false));
         self.items.values_mut().for_each(|i| i.mark_auto(false));
@@ -105,11 +121,17 @@ impl GameData {
         for entry in vs {
             match entry {
                 DependencyLink::Block(id) => {
-                    let b = self.blocks.entry(id.clone()).or_insert_with(|| Block::new(GameObjectBase::auto(id.clone())));
+                    let b = self
+                        .blocks
+                        .entry(id.clone())
+                        .or_insert_with(|| Block::new(GameObjectBase::auto(id.clone())));
                     b.mark_auto(true);
                 }
                 DependencyLink::Item(id) => {
-                    let i = self.items.entry(id.clone()).or_insert_with(|| Item::new(GameObjectBase::auto(id.clone())));
+                    let i = self
+                        .items
+                        .entry(id.clone())
+                        .or_insert_with(|| Item::new(GameObjectBase::auto(id.clone())));
                     i.mark_auto(true);
                 }
                 _ => {}
@@ -125,9 +147,13 @@ impl GameData {
         self.dispatcher.borrow_mut()
     }
 
-    pub fn blocks(&self) -> &HashMap<Identifier, Block> { &self.blocks }
+    pub fn blocks(&self) -> &HashMap<Identifier, Block> {
+        &self.blocks
+    }
 
-    pub fn items(&self) -> &HashMap<Identifier, Item> { &self.items }
+    pub fn items(&self) -> &HashMap<Identifier, Item> {
+        &self.items
+    }
 }
 
 struct GameDataReferences {
@@ -196,15 +222,26 @@ impl Block {
         Block { base }
     }
 
-    pub fn mark_manual(&mut self, flag: bool) { self.base.mark_manual(flag); }
+    pub fn mark_manual(&mut self, flag: bool) {
+        self.base.mark_manual(flag);
+    }
 
-    pub fn mark_auto(&mut self, flag: bool) { self.base.mark_auto(flag); }
+    pub fn mark_auto(&mut self, flag: bool) {
+        self.base.mark_auto(flag);
+    }
 
-    pub fn marked_for_deletion(&self) -> bool { self.base.marked_for_deletion() }
+    pub fn marked_for_deletion(&self) -> bool {
+        self.base.marked_for_deletion()
+    }
 }
 
 pub struct Item {
     base: GameObjectBase,
+}
+
+ffmtutil::impl_serde_wrap! {
+    struct Item { base }
+    struct Block { base }
 }
 
 impl Item {
@@ -212,11 +249,17 @@ impl Item {
         Item { base }
     }
 
-    pub fn mark_manual(&mut self, flag: bool) { self.base.mark_manual(flag); }
+    pub fn mark_manual(&mut self, flag: bool) {
+        self.base.mark_manual(flag);
+    }
 
-    pub fn mark_auto(&mut self, flag: bool) { self.base.mark_auto(flag); }
+    pub fn mark_auto(&mut self, flag: bool) {
+        self.base.mark_auto(flag);
+    }
 
-    pub fn marked_for_deletion(&self) -> bool { self.base.marked_for_deletion() }
+    pub fn marked_for_deletion(&self) -> bool {
+        self.base.marked_for_deletion()
+    }
 }
 
 #[derive(Debug, Eq, PartialEq)]

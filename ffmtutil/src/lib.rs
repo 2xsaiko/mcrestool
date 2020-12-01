@@ -8,32 +8,34 @@ use std::string::FromUtf8Error;
 
 use thiserror::Error;
 
-use crate::dedup::DedupContext;
-use crate::serde::{BinDeserialize, BinSerialize};
+use dedup::DedupContext;
+use serde::{BinDeserializeOwned, BinSerialize, Mode};
 
-mod dedup;
+pub mod dedup;
 pub mod serde;
 mod serdeimpl;
 pub mod try_iter;
 mod varint;
 mod write_ext;
+mod mac;
 
-pub fn serialize<W, T, M>(pipe: W, value: &T, mode: &M) -> Result<()>
+pub fn serialize<W, T>(pipe: W, value: &T, mode: &Mode) -> Result<()>
 where
     W: Write,
-    T: BinSerialize<Mode = M>,
+    T: BinSerialize,
 {
     // TODO write dedup context
     value.serialize(pipe, &mut DedupContext::new(), mode)
 }
 
-pub fn deserialize<R, T, M>(pipe: R, mode: &M) -> Result<T>
+pub fn deserialize<R, T>(pipe: R, mode: &Mode) -> Result<T>
 where
     R: Read,
-    T: BinDeserialize<Mode = M>,
+    T: BinDeserializeOwned,
 {
     // TODO read dedup context
-    T::deserialize(pipe, &DedupContext::new(), mode)
+    let context = DedupContext::new();
+    T::deserialize(pipe, &context, mode)
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

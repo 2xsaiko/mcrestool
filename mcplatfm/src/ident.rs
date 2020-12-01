@@ -1,9 +1,13 @@
 use std::borrow::Borrow;
 use std::cmp::Ordering;
-use std::fmt::{Display, Formatter};
 use std::fmt;
+use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
+use std::io::{Read, Write};
 use std::ops::Deref;
+
+use ffmtutil::serde::{BinDeserialize, BinSerialize, Mode};
+use ffmtutil::dedup::DedupContext;
 
 #[derive(Debug, Clone, Eq)]
 pub struct Identifier {
@@ -24,17 +28,15 @@ impl Identifier {
                     self.inner.drain(..=idx);
                 }
             }
-            Some(namespace) => {
-                match self.get_seperator() {
-                    None => {
-                        self.inner.insert(0, ':');
-                        self.inner.insert_str(0, namespace);
-                    }
-                    Some(idx) => {
-                        self.inner.replace_range(..idx, namespace);
-                    }
+            Some(namespace) => match self.get_seperator() {
+                None => {
+                    self.inner.insert(0, ':');
+                    self.inner.insert_str(0, namespace);
                 }
-            }
+                Some(idx) => {
+                    self.inner.replace_range(..idx, namespace);
+                }
+            },
         }
     }
 
@@ -50,9 +52,13 @@ impl Identifier {
         }
     }
 
-    pub fn into_inner(self) -> String { self.inner }
+    pub fn into_inner(self) -> String {
+        self.inner
+    }
 
-    pub fn as_ident(&self) -> &Ident { Ident::new(&self.inner) }
+    pub fn as_ident(&self) -> &Ident {
+        Ident::new(&self.inner)
+    }
 }
 
 impl From<String> for Identifier {
@@ -111,6 +117,27 @@ impl PartialOrd for Identifier {
     }
 }
 
+impl BinSerialize for Identifier {
+    fn serialize<W: Write>(
+        &self,
+        pipe: W,
+        dedup: &mut DedupContext,
+        mode: &Mode,
+    ) -> ffmtutil::Result<()> {
+        (**self).serialize(pipe, dedup, mode)
+    }
+}
+
+impl<'de> BinDeserialize<'de> for Identifier {
+    fn deserialize<R: Read>(
+        pipe: R,
+        dedup: &'de DedupContext,
+        mode: &Mode,
+    ) -> ffmtutil::Result<Self> {
+        Ok(String::deserialize(pipe, dedup, mode)?.into())
+    }
+}
+
 #[repr(transparent)]
 #[derive(Debug, Eq)]
 pub struct Ident {
@@ -137,7 +164,9 @@ impl Ident {
         &self.inner[self.get_seperator().map(|idx| idx + 1).unwrap_or(0)..]
     }
 
-    pub fn as_str(&self) -> &str { &self.inner }
+    pub fn as_str(&self) -> &str {
+        &self.inner
+    }
 
     pub fn trim(&self) -> &Ident {
         match self.namespace_raw() {
@@ -194,5 +223,16 @@ impl PartialOrd for Ident {
 impl Display for Ident {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{}:{}", self.namespace(), self.path())
+    }
+}
+
+impl BinSerialize for Ident {
+    fn serialize<W: Write>(
+        &self,
+        pipe: W,
+        dedup: &mut DedupContext,
+        mode: &Mode,
+    ) -> ffmtutil::Result<()> {
+        self.inner.serialize(pipe, dedup, mode)
     }
 }

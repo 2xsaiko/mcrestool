@@ -1,5 +1,5 @@
 use std::io;
-use std::io::{Cursor, Read, Write};
+use std::io::{Read, Write};
 
 use byteorder::ReadBytesExt;
 
@@ -12,7 +12,7 @@ pub fn decode_min(num: u64) -> i64 {
     (num >> 1) as i64 ^ ((num << 63) as i64) >> 63
 }
 
-pub fn varint_write<W: Write>(mut num: u64, mut pipe: W) -> io::Result<usize> {
+pub fn varint_write<W: Write>(num: u64, mut pipe: W) -> io::Result<usize> {
     let mut num_pos = 0;
     let mut idx = 0;
     let mut buf = [0; 9];
@@ -34,7 +34,7 @@ pub fn varint_write<W: Write>(mut num: u64, mut pipe: W) -> io::Result<usize> {
         }
     }
 
-    pipe.write(&buf[..idx]);
+    pipe.write(&buf[..idx])?;
 
     Ok(idx)
 }

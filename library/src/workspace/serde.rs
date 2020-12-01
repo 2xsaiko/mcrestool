@@ -1,16 +1,16 @@
 use std::convert::TryInto;
-use std::io::{Read, Write};
 use std::io;
+use std::io::{Read, Write};
 use std::num::TryFromIntError;
-use std::string::FromUtf8Error;
 
-use byteorder::{BE, LE, ReadBytesExt, WriteBytesExt};
+use byteorder::{ReadBytesExt, WriteBytesExt, BE, LE};
 
-use ffmtutil::{ReadContext, ReadExt, WriteContext, WriteExt};
+use ffmtutil::dedup::DedupContext;
+use ffmtutil::serde::{BinSerialize, Mode, BinDeserialize};
 use matryoshka::DataSource;
 
-use crate::workspace::{Error, Workspace};
 use crate::workspace::fstree::FsTree;
+use crate::workspace::{Error, Workspace, WorkspaceRoot};
 
 pub const MAGIC: u16 = 0x3B1C;
 pub const VERSION: u16 = 1;
@@ -59,10 +59,20 @@ impl Workspace {
 
 impl FsTree {
     fn read_from_in_place<R: Read>(&mut self, mut pipe: R) -> Result<()> {
+
+    }
+}
+
+impl<'de> BinDeserialize for FsTree {
+    fn deserialize<R: Read>(pipe: R, dedup: &'de DedupContext, mode: &Mode) -> Result<Self, Error> {
+        FsTree::new().deserialize_in_place(pipe, dedup, mode)
+    }
+
+    fn deserialize_in_place<R: Read>(&mut self, mut pipe: R, dedup: &'de DedupContext, mode: &Mode) -> Result<(), Error> {
         self.reset();
 
-        for _ in 0..pipe.read_u16::<LE>()? {
-            let is_dir = pipe.read_u8()? != 0;
+        for _ in 0..u16::deserialize(&mut pipe, dedup, mode)? {
+            let is_dir = bool::deserialize(&mut pipe, dedup, mode);
 
             let path = pipe.read_str()?;
             let name = pipe.read_str()?;
@@ -79,8 +89,15 @@ impl FsTree {
         }
         Ok(())
     }
+}
 
-    fn write_into<W: Write>(&self, mut pipe: W) -> Result<()> {
+impl BinSerialize for FsTree {
+    fn serialize<W: Write>(
+        &self,
+        mut pipe: W,
+        dedup: &mut DedupContext,
+        mode: &Mode,
+    ) -> Result<(), Error> {
         pipe.write_u16::<LE>(self.roots().len().try_into()?)?;
         for r in self.roots() {
             let r = r.borrow();
@@ -89,10 +106,13 @@ impl FsTree {
                 DataSource::Zip(ds) => (false, ds.zip_path()),
             };
 
-            pipe.write_u8(if is_dir { 1 } else { 0 })?;
+            is_dir.serialize(&mut pipe, dedup, mode)?;
             let path = path.to_str().ok_or(Error::InvalidString)?;
-            pipe.write_str(path)?;
-            pipe.write_str(r.name())?;
+            path.serialize(&mut pipe, dedup, mode)?;
+            r.name().serialize(&mut pipe, dedup, mode)?;
+
+            Ok(())
+
         }
 
         Ok(())

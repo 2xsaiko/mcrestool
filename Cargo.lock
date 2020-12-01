@@ -105,7 +105,6 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "byteorder",
- "mcplatfm",
  "thiserror",
 ]
 
@@ -161,6 +160,9 @@ dependencies = [
 [[package]]
 name = "mcplatfm"
 version = "0.1.0"
+dependencies = [
+ "ffmtutil",
+]
 
 [[package]]
 name = "mcrtlib-rs"
