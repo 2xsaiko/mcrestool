@@ -208,6 +208,13 @@ where
     }
 }
 
+impl<'de, R, T> ExactSizeIterator for VecLikeIter<'de, R, T>
+where
+    R: Read,
+    T: BinDeserialize<'de>,
+{
+}
+
 pub fn serialize_iter<I, W>(
     mut iter: I,
     mut pipe: W,
@@ -219,20 +226,24 @@ where
     I::Item: BinSerialize,
     W: Write,
 {
-    let (min, max) = iter.size_hint();
-    if Some(min) == max {
-        min.serialize(&mut pipe, dedup, mode)?;
+    match iter.size_hint() {
+        (min, Some(max)) if min == max => {
+            // we know the exact length of the iterator so we don't need to
+            // collect it first before writing to the stream
+            min.serialize(&mut pipe, dedup, mode)?;
 
-        for _ in 0..min {
-            iter.next()
-                .expect("iterator returned less elements than it said it would!")
-                .serialize(&mut pipe, dedup, mode)?;
+            for _ in 0..min {
+                iter.next()
+                    .expect("iterator returned less elements than it said it would!")
+                    .serialize(&mut pipe, dedup, mode)?;
+            }
+
+            Ok(())
         }
-
-        Ok(())
-    } else {
-        let items: Vec<_> = iter.collect();
-        items.serialize(pipe, dedup, mode)
+        _ => {
+            let items: Vec<_> = iter.collect();
+            items.serialize(pipe, dedup, mode)
+        }
     }
 }
 
@@ -270,19 +281,8 @@ impl<T> BinSerialize for [T]
 where
     T: BinSerialize,
 {
-    fn serialize<W: Write>(
-        &self,
-        mut pipe: W,
-        dedup: &mut DedupContext,
-        mode: &Mode,
-    ) -> Result<()> {
-        self.len().serialize(&mut pipe, dedup, mode)?;
-
-        for item in self.iter() {
-            item.serialize(&mut pipe, dedup, mode)?;
-        }
-
-        Ok(())
+    fn serialize<W: Write>(&self, pipe: W, dedup: &mut DedupContext, mode: &Mode) -> Result<()> {
+        serialize_iter(self.iter(), pipe, dedup, mode)
     }
 }
 
@@ -342,19 +342,8 @@ where
     K: BinSerialize,
     V: BinSerialize,
 {
-    fn serialize<W: Write>(
-        &self,
-        mut pipe: W,
-        dedup: &mut DedupContext,
-        mode: &Mode,
-    ) -> Result<()> {
-        self.len().serialize(&mut pipe, dedup, mode)?;
-
-        for el in self.iter() {
-            el.serialize(&mut pipe, dedup, mode)?;
-        }
-
-        Ok(())
+    fn serialize<W: Write>(&self, pipe: W, dedup: &mut DedupContext, mode: &Mode) -> Result<()> {
+        serialize_iter(self.iter(), pipe, dedup, mode)
     }
 }
 
@@ -384,19 +373,8 @@ impl<T> BinSerialize for HashSet<T>
 where
     T: BinSerialize,
 {
-    fn serialize<W: Write>(
-        &self,
-        mut pipe: W,
-        dedup: &mut DedupContext,
-        mode: &Mode,
-    ) -> Result<()> {
-        self.len().serialize(&mut pipe, dedup, mode)?;
-
-        for el in self.iter() {
-            el.serialize(&mut pipe, dedup, mode)?;
-        }
-
-        Ok(())
+    fn serialize<W: Write>(&self, pipe: W, dedup: &mut DedupContext, mode: &Mode) -> Result<()> {
+        serialize_iter(self.iter(), pipe, dedup, mode)
     }
 }
 
