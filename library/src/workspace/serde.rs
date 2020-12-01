@@ -34,10 +34,7 @@ impl Workspace {
             return Err(Error::FileVersionError(version));
         }
 
-        let mut ctx = ReadContext::new(pipe)?;
-
-        self.fst.read_from_in_place(&mut ctx)?;
-        self.gd.read_from_in_place(&mut ctx)?;
+        ffmtutil::deserialize_in_place(self, pipe, &Mode::default())?;
 
         Ok(())
     }
@@ -46,12 +43,7 @@ impl Workspace {
         pipe.write_u16::<BE>(MAGIC)?;
         pipe.write_u16::<LE>(VERSION)?;
 
-        let mut ctx = WriteContext::new();
-
-        self.fst.write_into(&mut ctx)?;
-        self.gd.write_into(&mut ctx)?;
-
-        ctx.write_to(pipe)?;
+        ffmtutil::serialize(pipe, self, &Mode::default())?;
 
         Ok(())
     }
@@ -107,12 +99,8 @@ impl BinSerialize for FsTree {
             };
 
             is_dir.serialize(&mut pipe, dedup, mode)?;
-            let path = path.to_str().ok_or(Error::InvalidString)?;
             path.serialize(&mut pipe, dedup, mode)?;
             r.name().serialize(&mut pipe, dedup, mode)?;
-
-            Ok(())
-
         }
 
         Ok(())

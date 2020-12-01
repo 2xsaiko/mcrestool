@@ -1,7 +1,7 @@
-use std::convert::TryInto;
+
 use std::io::{Read, Write};
 
-use byteorder::{ReadBytesExt, WriteBytesExt, LE};
+use byteorder::{ReadBytesExt, WriteBytesExt};
 
 use ffmtutil::serde::{BinDeserialize, BinSerialize, Mode};
 use ffmtutil::{Error,  Result};
@@ -24,7 +24,7 @@ impl <'de> BinDeserialize<'de> for DependencyLink {
             2 => Ok(DependencyLink::Item(
                 Identifier::deserialize(&mut pipe, dedup, mode)?,
             )),
-            _ => Err(Error::Other(format!(
+            _ => Err(Error::custom(format!(
                 "invalid dependency link type: {}",
                 typ
             ))),

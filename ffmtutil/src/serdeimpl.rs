@@ -4,6 +4,7 @@ use std::hash::Hash;
 use std::io::{Read, Write};
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
+use std::path::{Path, PathBuf};
 
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
 
@@ -11,7 +12,7 @@ use crate::dedup::DedupContext;
 use crate::serde::{BinDeserialize, BinSerialize, Mode, UsizeLen};
 use crate::try_iter::try_iter;
 use crate::write_ext::{ReadExt, WriteExt};
-use crate::Result;
+use crate::{Error, Result};
 
 impl<T> BinSerialize for &T
 where
@@ -467,3 +468,26 @@ impl_tuple! { A B C D E F G H I }
 impl_tuple! { A B C D E F G H I J }
 impl_tuple! { A B C D E F G H I J K }
 impl_tuple! { A B C D E F G H I J K L }
+
+impl BinSerialize for Path {
+    fn serialize<W: Write>(&self, pipe: W, dedup: &mut DedupContext, mode: &Mode) -> Result<()> {
+        match self.to_str() {
+            None => Err(Error::custom(
+                "invalid characters for UTF-8 conversion in string",
+            )),
+            Some(s) => s.serialize(pipe, dedup, mode),
+        }
+    }
+}
+
+impl BinSerialize for PathBuf {
+    fn serialize<W: Write>(&self, pipe: W, dedup: &mut DedupContext, mode: &Mode) -> Result<()> {
+        self.as_path().serialize(pipe, dedup, mode)
+    }
+}
+
+impl<'de> BinDeserialize<'de> for PathBuf {
+    fn deserialize<R: Read>(pipe: R, dedup: &'de DedupContext, mode: &Mode) -> Result<Self> {
+        Ok(PathBuf::from(String::deserialize(pipe, dedup, mode)?))
+    }
+}

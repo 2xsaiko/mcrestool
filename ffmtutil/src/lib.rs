@@ -10,6 +10,8 @@ use thiserror::Error;
 
 use dedup::DedupContext;
 use serde::{BinDeserializeOwned, BinSerialize, Mode};
+use std::borrow::Cow;
+use std::fmt::Display;
 
 pub mod dedup;
 pub mod serde;
@@ -38,6 +40,16 @@ where
     T::deserialize(pipe, &context, mode)
 }
 
+pub fn deserialize_in_place<R, T>(target: &mut T, pipe: R, mode: &Mode) -> Result<()>
+    where
+        R: Read,
+        T: BinDeserializeOwned,
+{
+    // TODO read dedup context
+    let context = DedupContext::new();
+    target.deserialize_in_place(pipe, &context, mode)
+}
+
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 #[derive(Debug, Error)]
@@ -51,5 +63,11 @@ pub enum Error {
     #[error("indexed string out of range: {0}")]
     StrOutOfRange(usize),
     #[error("{0}")]
-    Other(String),
+    Custom(String),
+}
+
+impl Error {
+    pub fn custom<S: Display>(s: S) -> Self {
+        Error::Custom(s.to_string())
+    }
 }

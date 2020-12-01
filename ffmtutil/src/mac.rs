@@ -10,13 +10,20 @@ macro_rules! impl_serde_wrap {
 macro_rules! impl_serialize_wrap {
     () => {};
 
-    (struct $target:ident { $($el:ident),* $(..$default:expr)? } $($more:tt)*) => {
-        $crate::do_impl_serialize_wrap!(struct $target, $($el),*);
+    (struct $target:ident { $($el:ident),* $(, ..$default:expr)? } $($more:tt)*) => {
+        $crate::do_impl_serialize_wrap!(struct $target, $($el,)*);
         $crate::impl_serialize_wrap!($($more)*);
     };
 
-    (struct $target:ident($($el:ident),* $(..$default:expr)?); $($more:tt)*) => {
-        $crate::do_impl_serialize_wrap!(tuplestruct $target, $($el),*);
+    (struct $target:ident($($el:ident),* $(, ..$default:expr)?); $($more:tt)*) => {
+        $crate::do_impl_serialize_wrap!(tuplestruct $target, $($el,)*);
+        $crate::impl_serialize_wrap!($($more)*);
+    };
+
+    (enum $target:ident {
+        $($variant:ident),*
+    }) => {
+        $crate::do_impl_serialize_wrap!(enum $target, $($variant),*);
         $crate::impl_serialize_wrap!($($more)*);
     };
 }
@@ -24,7 +31,7 @@ macro_rules! impl_serialize_wrap {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! do_impl_serialize_wrap {
-    (struct $target:ident, $($el:ident),+ $(..$default:expr)?) => {
+    (struct $target:ident, $($el:ident),+ $(, ..$default:expr)?) => {
         impl $crate::serde::BinSerialize for $target {
             fn serialize<W: std::io::Write>(
                 &self,
@@ -36,20 +43,28 @@ macro_rules! do_impl_serialize_wrap {
                 Ok(())
             }
         }
-    }
+    };
+
+    (tuplestruct $target:ident, $($el:ident),+ $(, ..$default:expr)?) => {
+
+    };
+
+    (enum $target:ident, $($el:ident),+ $(, ..$default:expr)?) => {
+
+    };
 }
 
 #[macro_export]
 macro_rules! impl_deserialize_wrap {
     () => {};
 
-    (struct $target:ident { $($el:ident),* $(..$default:expr)? } $($more:tt)*) => {
-        $crate::do_impl_deserialize_wrap!(struct $target, $($el),*);
+    (struct $target:ident { $($el:ident),* $(, ..$default:expr)? } $($more:tt)*) => {
+        $crate::do_impl_deserialize_wrap!(struct $target, $($el,)* $(..$default)?);
         $crate::impl_deserialize_wrap!($($more)*);
     };
 
-    (struct $target:ident($($el:ident),* $(..$default:expr)?); $($more:tt)*) => {
-        $crate::do_impl_deserialize_wrap!(tuplestruct $target, $($el),*);
+    (struct $target:ident($($el:ident),* $(, ..$default:expr)?); $($more:tt)*) => {
+        $crate::do_impl_deserialize_wrap!(tuplestruct $target, $($el,)* $(..$default)?);
         $crate::impl_deserialize_wrap!($($more)*);
     };
 }
@@ -57,7 +72,7 @@ macro_rules! impl_deserialize_wrap {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! do_impl_deserialize_wrap {
-    (struct $target:ident, $($el:ident),+ $(..$default:expr)?) => {
+    (struct $target:ident, $($el:ident),+ $(, ..$default:expr)?) => {
         impl<'de> $crate::serde::BinDeserialize<'de> for $target {
             fn deserialize<R: Read>(
                 mut pipe: R,
@@ -65,7 +80,7 @@ macro_rules! do_impl_deserialize_wrap {
                 mode: &$crate::serde::Mode,
             ) -> $crate::Result<Self> {
                 $(let $el = $crate::serde::BinDeserialize::deserialize(&mut pipe, dedup, mode)?;)*
-                Ok($target { $($el),* (..$default)? })
+                Ok($target { $($el,)* $(..$default)? })
             }
 
             fn deserialize_in_place<R: Read>(
@@ -74,7 +89,7 @@ macro_rules! do_impl_deserialize_wrap {
                 dedup: &'de $crate::dedup::DedupContext,
                 mode: &$crate::serde::Mode,
             ) -> $crate::Result<()> {
-                $(self.$el.deserialize_in_place(&mut pipe, dedup, mode)?;)*
+                $($crate::serde::BinDeserializer::deserialize_in_place(&mut self.$el, &mut pipe, dedup, mode)?;)*
                 Ok(())
             }
         }

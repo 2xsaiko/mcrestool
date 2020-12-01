@@ -167,7 +167,7 @@ impl GameDataReferences {
 }
 
 ffmtutil::impl_serde_wrap! {
-    struct GameData { refs, blocks, items }
+    struct GameData { refs, blocks, items, ..GameData::new() }
     struct GameDataReferences { map }
 }
 
