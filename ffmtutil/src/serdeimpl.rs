@@ -422,17 +422,31 @@ where
 }
 
 impl BinSerialize for () {
-    fn serialize<W: Write>(&self, _pipe: W, _dedup: &mut DedupContext, _mode: &Mode) -> Result<(), Error> {
+    fn serialize<W: Write>(
+        &self,
+        _pipe: W,
+        _dedup: &mut DedupContext,
+        _mode: &Mode,
+    ) -> Result<(), Error> {
         Ok(())
     }
 }
 
 impl<'de> BinDeserialize<'de> for () {
-    fn deserialize<R: Read>(_pipe: R, _dedup: &'de DedupContext, _mode: &Mode) -> Result<Self, Error> {
+    fn deserialize<R: Read>(
+        _pipe: R,
+        _dedup: &'de DedupContext,
+        _mode: &Mode,
+    ) -> Result<Self, Error> {
         Ok(())
     }
 
-    fn deserialize_in_place<R: Read>(&mut self, _pipe: R, _dedup: &'de DedupContext, _mode: &Mode) -> Result<(), Error> {
+    fn deserialize_in_place<R: Read>(
+        &mut self,
+        _pipe: R,
+        _dedup: &'de DedupContext,
+        _mode: &Mode,
+    ) -> Result<(), Error> {
         Ok(())
     }
 }
@@ -505,5 +519,78 @@ impl BinSerialize for PathBuf {
 impl<'de> BinDeserialize<'de> for PathBuf {
     fn deserialize<R: Read>(pipe: R, dedup: &'de DedupContext, mode: &Mode) -> Result<Self> {
         Ok(PathBuf::from(String::deserialize(pipe, dedup, mode)?))
+    }
+}
+
+impl<T> BinSerialize for Option<T>
+where
+    T: BinSerialize,
+{
+    fn serialize<W: Write>(
+        &self,
+        mut pipe: W,
+        dedup: &mut DedupContext,
+        mode: &Mode,
+    ) -> Result<()> {
+        match self {
+            None => 0u8.serialize(&mut pipe, dedup, mode),
+            Some(v) => {
+                1u8.serialize(&mut pipe, dedup, mode)?;
+                v.serialize(&mut pipe, dedup, mode)
+            }
+        }
+    }
+}
+
+impl<'de, T> BinDeserialize<'de> for Option<T>
+where
+    T: BinDeserialize<'de>,
+{
+    fn deserialize<R: Read>(mut pipe: R, dedup: &'de DedupContext, mode: &Mode) -> Result<Self> {
+        let variant = u8::deserialize(&mut pipe, dedup, mode)?;
+        Ok(match variant {
+            0 => None,
+            1 => Some(T::deserialize(pipe, dedup, mode)?),
+            x @ _ => Err(Error::custom(format!("invalid enum variant index {}", x)))?,
+        })
+    }
+}
+
+impl<T, R> BinSerialize for Result<T, R>
+where
+    T: BinSerialize,
+    R: BinSerialize,
+{
+    fn serialize<W: Write>(
+        &self,
+        mut pipe: W,
+        dedup: &mut DedupContext,
+        mode: &Mode,
+    ) -> Result<()> {
+        match self {
+            Ok(v) => {
+                0u8.serialize(&mut pipe, dedup, mode)?;
+                v.serialize(&mut pipe, dedup, mode)
+            }
+            Err(v) => {
+                1u8.serialize(&mut pipe, dedup, mode)?;
+                v.serialize(&mut pipe, dedup, mode)
+            }
+        }
+    }
+}
+
+impl<'de, T, R> BinDeserialize<'de> for Result<T, R>
+where
+    T: BinDeserialize<'de>,
+    R: BinDeserialize<'de>,
+{
+    fn deserialize<R1: Read>(mut pipe: R1, dedup: &'de DedupContext, mode: &Mode) -> Result<Self> {
+        let variant = u8::deserialize(&mut pipe, dedup, mode)?;
+        Ok(match variant {
+            0 => Ok(T::deserialize(pipe, dedup, mode)?),
+            1 => Err(R::deserialize(pipe, dedup, mode)?),
+            x @ _ => Err(Error::custom(format!("invalid enum variant index {}", x)))?,
+        })
     }
 }
