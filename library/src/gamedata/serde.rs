@@ -9,52 +9,6 @@ use ffmtutil::{Error,  Result};
 use crate::gamedata::*;
 use ffmtutil::dedup::DedupContext;
 
-impl GameData {
-    pub fn read_from_in_place<R: Read>(&mut self, ctx: &mut ReadContext<R>) -> Result<()> {
-        self.reset();
-
-        for _ in 0..ctx.read_u32::<LE>()? {
-            let source = DependencyLink::read_from(ctx)?;
-            let map = self.refs.map.entry(source).or_default();
-            for _ in 0..ctx.read_u32::<LE>()? {
-                let target = DependencyLink::read_from(ctx)?;
-                map.insert(target);
-            }
-        }
-
-        for _ in 0..ctx.read_u32::<LE>()? {
-            let base = GameObjectBase::read_from(ctx)?;
-            let block = Block::new(base);
-            self.blocks.insert(block.base.id.clone(), block);
-        }
-
-        for _ in 0..ctx.read_u32::<LE>()? {
-            let base = GameObjectBase::read_from(ctx)?;
-            let item = Item::new(base);
-            self.items.insert(item.base.id.clone(), item);
-        }
-
-        Ok(())
-    }
-}
-
-impl BinSerialize for GameData {
-    fn serialize<W: Write>(&self, mut pipe: W, dedup: &mut DedupContext, mode: &Mode) -> Result<(), Error> {
-        self.refs.map.serialize(&mut pipe, dedup, mode)?;
-        ctx.write_u32::<LE>(self.blocks.len().try_into()?)?;
-        for (_, block) in self.blocks.iter() {
-            block.base.write_into(ctx)?;
-        }
-
-        ctx.write_u32::<LE>(self.items.len().try_into()?)?;
-        for (_, items) in self.items.iter() {
-            items.base.write_into(ctx)?;
-        }
-
-        Ok(())
-    }
-}
-
 impl <'de> BinDeserialize<'de> for DependencyLink {
     fn deserialize<R: Read>(mut pipe: R, dedup: &'de DedupContext, mode: &Mode) -> Result<Self, Error> {
         let typ = u8::deserialize(&mut pipe, dedup, mode)?;

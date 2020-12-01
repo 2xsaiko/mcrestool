@@ -57,25 +57,25 @@ impl Workspace {
     }
 }
 
-impl FsTree {
-    fn read_from_in_place<R: Read>(&mut self, mut pipe: R) -> Result<()> {
-
-    }
+ffmtutil::impl_serde_wrap! {
+    struct Workspace { fst, gd }
 }
 
-impl<'de> BinDeserialize for FsTree {
-    fn deserialize<R: Read>(pipe: R, dedup: &'de DedupContext, mode: &Mode) -> Result<Self, Error> {
-        FsTree::new().deserialize_in_place(pipe, dedup, mode)
+impl<'de> BinDeserialize<'de> for FsTree {
+    fn deserialize<R: Read>(pipe: R, dedup: &'de DedupContext, mode: &Mode) -> ffmtutil::Result<Self> {
+        let mut tree = FsTree::new();
+        tree.deserialize_in_place(pipe, dedup, mode)?;
+        Ok(tree)
     }
 
-    fn deserialize_in_place<R: Read>(&mut self, mut pipe: R, dedup: &'de DedupContext, mode: &Mode) -> Result<(), Error> {
+    fn deserialize_in_place<R: Read>(&mut self, mut pipe: R, dedup: &'de DedupContext, mode: &Mode) -> ffmtutil::Result<()> {
         self.reset();
 
         for _ in 0..u16::deserialize(&mut pipe, dedup, mode)? {
-            let is_dir = bool::deserialize(&mut pipe, dedup, mode);
+            let is_dir = bool::deserialize(&mut pipe, dedup, mode)?;
 
-            let path = pipe.read_str()?;
-            let name = pipe.read_str()?;
+            let path = String::deserialize(&mut pipe, dedup, mode)?;
+            let name = String::deserialize(&mut pipe, dedup, mode)?;
 
             if is_dir {
                 if let Err(e) = self.add_dir_with_name(path, name) {
@@ -97,7 +97,7 @@ impl BinSerialize for FsTree {
         mut pipe: W,
         dedup: &mut DedupContext,
         mode: &Mode,
-    ) -> Result<(), Error> {
+    ) -> ffmtutil::Result<()> {
         pipe.write_u16::<LE>(self.roots().len().try_into()?)?;
         for r in self.roots() {
             let r = r.borrow();

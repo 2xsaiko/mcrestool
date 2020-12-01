@@ -166,6 +166,11 @@ impl GameDataReferences {
     }
 }
 
+ffmtutil::impl_serde_wrap! {
+    struct GameData { refs, blocks, items }
+    struct GameDataReferences { map }
+}
+
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 enum DependencyLink {
     Language(String, String),

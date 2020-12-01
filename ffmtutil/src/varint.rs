@@ -1,5 +1,5 @@
 use std::io;
-use std::io::{Read, Write};
+use std::io::{Read, Write, Cursor};
 
 use byteorder::ReadBytesExt;
 
