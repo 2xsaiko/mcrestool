@@ -1,18 +1,16 @@
 use std::collections::{HashMap, HashSet};
 use std::convert::{Infallible, TryInto};
 use std::hash::Hash;
-use std::io::Read;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::path::{Path, PathBuf};
 
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
 
-use crate::de::BinDeserializer;
-use crate::dedup::DedupContext;
-use crate::serde::{BinDeserialize, BinSerialize, BinSerializer, Mode, UsizeLen};
+use crate::serde::UsizeLen;
 use crate::try_iter::try_iter;
 use crate::write_ext::{ReadExt, WriteExt};
+use crate::{BinDeserialize, BinDeserializer, BinSerialize, BinSerializer};
 use crate::{Error, Result};
 
 impl<T> BinSerialize for &T
@@ -119,8 +117,19 @@ impl_int!(i32, read_i32, write_i32, read_varint, write_varint, i64);
 impl_int!(i64, read_i64, write_i64, read_varint, write_varint, i64);
 
 impl<'de> BinDeserialize<'de> for String {
-    fn deserialize<D: BinDeserializer<'de>>(deserializer: D) -> Result<Self> {
-        Ok(String::from_utf8(Vec::deserialize(deserializer)?)?)
+    fn deserialize<D: BinDeserializer<'de>>(mut deserializer: D) -> Result<Self> {
+        if deserializer.mode().use_dedup {
+            let idx = usize::deserialize(
+                (&mut deserializer).change_mode(|mode| mode.usize_len = mode.dedup_idx),
+            )?;
+            deserializer
+                .dedup()
+                .get_str(idx)
+                .map(|s| s.to_string())
+                .ok_or_else(|| Error::custom(format!("index {} not in string table", idx)))
+        } else {
+            Ok(String::from_utf8(Vec::deserialize(deserializer)?)?)
+        }
     }
 }
 

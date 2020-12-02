@@ -1,3 +1,4 @@
+use std::io;
 use std::io::Write;
 
 use crate::dedup::DedupContext;
@@ -110,5 +111,47 @@ where
 
     fn mode(&self) -> Mode {
         self.mode
+    }
+}
+
+pub struct PrescanSerializer {
+    pipe: NullWrite,
+    dedup: DedupContext,
+}
+
+impl PrescanSerializer {
+    pub fn new() -> Self {
+        PrescanSerializer {
+            pipe: NullWrite,
+            dedup: DedupContext::new(),
+        }
+    }
+}
+
+impl BinSerializer for PrescanSerializer {
+    type Pipe = NullWrite;
+
+    fn pipe(&mut self) -> &mut Self::Pipe {
+        &mut self.pipe
+    }
+
+    fn dedup(&mut self) -> &mut DedupContext {
+        &mut self.dedup
+    }
+
+    fn mode(&self) -> Mode {
+        Mode::default()
+    }
+}
+
+pub struct NullWrite;
+
+impl Write for NullWrite {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
     }
 }

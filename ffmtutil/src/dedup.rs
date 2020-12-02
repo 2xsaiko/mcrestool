@@ -1,9 +1,10 @@
 use std::io::{Read, Write};
 
 use crate::de::{BinDeserializer, BinDeserializerBase};
-use crate::serde::{BinDeserialize, BinSerializer, BinSerializerBase, Mode, UsizeLen};
+use crate::serde::UsizeLen;
 use crate::serdeimpl::serialize_iter;
 use crate::Result;
+use crate::{BinDeserialize, BinSerializer, BinSerializerBase, Mode};
 
 const DEDUP_MODE: Mode = Mode {
     usize_len: UsizeLen::Variable,
@@ -14,12 +15,14 @@ const DEDUP_MODE: Mode = Mode {
 
 pub struct DedupContext {
     strings: Vec<(String, usize)>,
+    by_index: Vec<usize>,
 }
 
 impl DedupContext {
     pub fn new() -> Self {
         DedupContext {
             strings: Vec::new(),
+            by_index: Vec::new(),
         }
     }
 
@@ -35,7 +38,7 @@ impl DedupContext {
     }
 
     pub fn get_str(&self, idx: usize) -> Option<&str> {
-        self.strings.get(idx).map(|el| &*el.0)
+        self.by_index.get(idx).map(|el| &*self.strings[*el].0)
     }
 
     pub fn write_to<W: Write>(&self, pipe: W) -> Result<()> {
@@ -59,6 +62,10 @@ impl DedupContext {
             .map(|(idx, s)| (s, idx))
             .collect();
         strings.sort_unstable_by(|a, b| a.0.cmp(&b.0));
-        Ok(DedupContext { strings })
+        let mut by_index = vec![0; strings.len()];
+        for (idx, el) in strings.iter().enumerate() {
+            by_index[el.1] = idx;
+        }
+        Ok(DedupContext { strings, by_index })
     }
 }

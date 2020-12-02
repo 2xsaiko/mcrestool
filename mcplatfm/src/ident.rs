@@ -3,11 +3,9 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
-use std::io::{Read, Write};
 use std::ops::Deref;
 
-use ffmtutil::dedup::DedupContext;
-use ffmtutil::serde::{BinDeserialize, BinSerialize, BinSerializer, Mode};
+use ffmtutil::{BinSerialize, BinSerializer};
 
 #[derive(Debug, Clone, Eq)]
 pub struct Identifier {

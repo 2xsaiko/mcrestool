@@ -5,13 +5,12 @@ use std::num::TryFromIntError;
 
 use byteorder::{ReadBytesExt, WriteBytesExt, BE, LE};
 
-use ffmtutil::dedup::DedupContext;
-use ffmtutil::serde::{BinDeserialize, BinSerialize, BinSerializer, Mode};
+use ffmtutil::de::BinDeserializer;
+use ffmtutil::{BinDeserialize, BinSerialize, BinSerializer, Mode};
 use matryoshka::DataSource;
 
 use crate::workspace::fstree::FsTree;
 use crate::workspace::{Error, Workspace};
-use ffmtutil::de::BinDeserializer;
 
 pub const MAGIC: u16 = 0x3B1C;
 pub const VERSION: u16 = 1;
@@ -35,7 +34,10 @@ impl Workspace {
             return Err(Error::FileVersionError(version));
         }
 
-        ffmtutil::deserialize_in_place(self, pipe, &Mode::default())?;
+        self.gd.reset();
+        self.fst.reset();
+
+        ffmtutil::deserialize_in_place(self, pipe, Mode::default())?;
 
         Ok(())
     }
@@ -44,7 +46,7 @@ impl Workspace {
         pipe.write_u16::<BE>(MAGIC)?;
         pipe.write_u16::<LE>(VERSION)?;
 
-        ffmtutil::serialize(pipe, self, &Mode::default())?;
+        ffmtutil::serialize_into(pipe, self)?;
 
         Ok(())
     }
@@ -55,9 +57,7 @@ ffmtutil::impl_serde_wrap! {
 }
 
 impl<'de> BinDeserialize<'de> for FsTree {
-    fn deserialize<D: BinDeserializer<'de>>(
-        deserializer: D
-    ) -> ffmtutil::Result<Self> {
+    fn deserialize<D: BinDeserializer<'de>>(deserializer: D) -> ffmtutil::Result<Self> {
         let mut tree = FsTree::new();
         tree.deserialize_in_place(deserializer)?;
         Ok(tree)
@@ -65,7 +65,7 @@ impl<'de> BinDeserialize<'de> for FsTree {
 
     fn deserialize_in_place<D: BinDeserializer<'de>>(
         &mut self,
-        mut deserializer: D
+        mut deserializer: D,
     ) -> ffmtutil::Result<()> {
         self.reset();
 

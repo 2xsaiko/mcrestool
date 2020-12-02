@@ -1,15 +1,10 @@
-use std::io::{Read, Write};
-
-pub use crate::de::BinDeserialize;
-use crate::dedup::DedupContext;
-pub use crate::ser::{BinSerialize, BinSerializer, BinSerializerBase};
-use crate::Result;
-
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]
 pub struct Mode {
     pub usize_len: UsizeLen,
     pub dedup_idx: UsizeLen,
     pub fixed_size_use_varint: bool,
+
+    // Do not flip this on if it's off
     pub use_dedup: bool,
 }
 

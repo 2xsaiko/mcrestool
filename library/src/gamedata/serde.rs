@@ -1,10 +1,7 @@
-use std::io::Read;
-
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
 use ffmtutil::de::BinDeserializer;
-use ffmtutil::dedup::DedupContext;
-use ffmtutil::serde::{BinDeserialize, BinSerialize, BinSerializer, Mode};
+use ffmtutil::{BinDeserialize, BinSerialize, BinSerializer};
 use ffmtutil::{Error, Result};
 
 use crate::gamedata::*;
