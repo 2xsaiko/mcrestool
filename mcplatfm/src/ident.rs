@@ -6,8 +6,8 @@ use std::hash::{Hash, Hasher};
 use std::io::{Read, Write};
 use std::ops::Deref;
 
-use ffmtutil::serde::{BinDeserialize, BinSerialize, Mode};
 use ffmtutil::dedup::DedupContext;
+use ffmtutil::serde::{BinDeserialize, BinSerialize, BinSerializer, Mode};
 
 #[derive(Debug, Clone, Eq)]
 pub struct Identifier {
@@ -118,24 +118,13 @@ impl PartialOrd for Identifier {
 }
 
 impl BinSerialize for Identifier {
-    fn serialize<W: Write>(
-        &self,
-        pipe: W,
-        dedup: &mut DedupContext,
-        mode: &Mode,
-    ) -> ffmtutil::Result<()> {
-        (**self).serialize(pipe, dedup, mode)
+    fn serialize<S: BinSerializer>(&self, serializer: S) -> ffmtutil::Result<()> {
+        (**self).serialize(serializer)
     }
 }
 
-impl<'de> BinDeserialize<'de> for Identifier {
-    fn deserialize<R: Read>(
-        pipe: R,
-        dedup: &'de DedupContext,
-        mode: &Mode,
-    ) -> ffmtutil::Result<Self> {
-        Ok(String::deserialize(pipe, dedup, mode)?.into())
-    }
+ffmtutil::impl_deserialize_wrap! {
+    struct Identifier { inner }
 }
 
 #[repr(transparent)]
@@ -226,13 +215,6 @@ impl Display for Ident {
     }
 }
 
-impl BinSerialize for Ident {
-    fn serialize<W: Write>(
-        &self,
-        pipe: W,
-        dedup: &mut DedupContext,
-        mode: &Mode,
-    ) -> ffmtutil::Result<()> {
-        self.inner.serialize(pipe, dedup, mode)
-    }
+ffmtutil::impl_serialize_wrap! {
+    struct Ident { inner }
 }

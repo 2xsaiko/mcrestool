@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::convert::{Infallible, TryInto};
 use std::hash::Hash;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::path::{Path, PathBuf};
@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
 
 use crate::dedup::DedupContext;
-use crate::serde::{BinDeserialize, BinSerialize, Mode, UsizeLen};
+use crate::serde::{BinDeserialize, BinSerialize, BinSerializer, Mode, UsizeLen};
 use crate::try_iter::try_iter;
 use crate::write_ext::{ReadExt, WriteExt};
 use crate::{Error, Result};
@@ -18,8 +18,8 @@ impl<T> BinSerialize for &T
 where
     T: BinSerialize,
 {
-    fn serialize<W: Write>(&self, pipe: W, dedup: &mut DedupContext, mode: &Mode) -> Result<()> {
-        (*self).serialize(pipe, dedup, mode)
+    fn serialize<S: BinSerializer>(&self, serializer: S) -> Result<()> {
+        (*self).serialize(serializer)
     }
 }
 
@@ -31,13 +31,10 @@ impl<'de> BinDeserialize<'de> for bool {
 }
 
 impl BinSerialize for bool {
-    fn serialize<W: Write>(
-        &self,
-        mut pipe: W,
-        _dedup: &mut DedupContext,
-        _mode: &Mode,
-    ) -> Result<()> {
-        Ok(pipe.write_u8(if *self { u8::MAX } else { u8::MIN })?)
+    fn serialize<S: BinSerializer>(&self, mut serializer: S) -> Result<()> {
+        Ok(serializer
+            .pipe()
+            .write_u8(if *self { u8::MAX } else { u8::MIN })?)
     }
 }
 
@@ -54,19 +51,14 @@ impl<'de> BinDeserialize<'de> for usize {
 }
 
 impl BinSerialize for usize {
-    fn serialize<W: Write>(
-        &self,
-        mut pipe: W,
-        _dedup: &mut DedupContext,
-        mode: &Mode,
-    ) -> Result<()> {
-        match mode.usize_len {
-            UsizeLen::U8 => pipe.write_u8((*self).try_into()?)?,
-            UsizeLen::U16 => pipe.write_u8((*self).try_into()?)?,
-            UsizeLen::U32 => pipe.write_u8((*self).try_into()?)?,
-            UsizeLen::U64 => pipe.write_u8((*self).try_into()?)?,
+    fn serialize<S: BinSerializer>(&self, mut serializer: S) -> Result<()> {
+        match serializer.mode().usize_len {
+            UsizeLen::U8 => serializer.pipe().write_u8((*self).try_into()?)?,
+            UsizeLen::U16 => serializer.pipe().write_u8((*self).try_into()?)?,
+            UsizeLen::U32 => serializer.pipe().write_u8((*self).try_into()?)?,
+            UsizeLen::U64 => serializer.pipe().write_u8((*self).try_into()?)?,
             UsizeLen::Variable => {
-                pipe.write_varusize(*self)?;
+                serializer.pipe().write_varusize(*self)?;
             }
         };
 
@@ -81,13 +73,8 @@ impl<'de> BinDeserialize<'de> for u8 {
 }
 
 impl BinSerialize for u8 {
-    fn serialize<W: Write>(
-        &self,
-        mut pipe: W,
-        _dedup: &mut DedupContext,
-        _mode: &Mode,
-    ) -> Result<()> {
-        Ok(pipe.write_u8(*self)?)
+    fn serialize<S: BinSerializer>(&self, mut serializer: S) -> Result<()> {
+        Ok(serializer.pipe().write_u8(*self)?)
     }
 }
 
@@ -108,16 +95,11 @@ macro_rules! impl_int {
         }
 
         impl BinSerialize for $type {
-            fn serialize<W: Write>(
-                &self,
-                mut pipe: W,
-                _dedup: &mut DedupContext,
-                mode: &Mode,
-            ) -> Result<()> {
-                if mode.fixed_size_use_varint {
-                    pipe.$wvm(*self as $varint_type)?;
+            fn serialize<S: BinSerializer>(&self, mut serializer: S) -> Result<()> {
+                if serializer.mode().fixed_size_use_varint {
+                    serializer.pipe().$wvm(*self as $varint_type)?;
                 } else {
-                    pipe.$wm::<LE>(*self)?;
+                    serializer.pipe().$wm::<LE>(*self)?;
                 }
 
                 Ok(())
@@ -146,18 +128,18 @@ impl<'de> BinDeserialize<'de> for String {
 }
 
 impl BinSerialize for String {
-    fn serialize<W: Write>(&self, pipe: W, dedup: &mut DedupContext, mode: &Mode) -> Result<()> {
-        (**self).serialize(pipe, dedup, mode)
+    fn serialize<S: BinSerializer>(&self, serializer: S) -> Result<()> {
+        (**self).serialize(serializer)
     }
 }
 
 impl BinSerialize for str {
-    fn serialize<W: Write>(&self, pipe: W, dedup: &mut DedupContext, mode: &Mode) -> Result<()> {
-        if mode.use_dedup {
-            let pos = dedup.put_str(self);
-            pos.serialize(pipe, dedup, &mode.with_usize_len(mode.dedup_idx))
+    fn serialize<S: BinSerializer>(&self, mut serializer: S) -> Result<()> {
+        if serializer.mode().use_dedup {
+            let pos = serializer.dedup().put_str(self);
+            pos.serialize(serializer.change_mode(|mode| mode.usize_len = mode.dedup_idx))
         } else {
-            self.as_bytes().serialize(pipe, dedup, mode)
+            self.as_bytes().serialize(serializer)
         }
     }
 }
@@ -215,34 +197,35 @@ where
 {
 }
 
-pub fn serialize_iter<I, W>(
-    mut iter: I,
-    mut pipe: W,
-    dedup: &mut DedupContext,
-    mode: &Mode,
-) -> Result<()>
+pub fn serialize_iter<I, S>(mut iter: I, mut serializer: S) -> Result<()>
 where
     I: Iterator,
     I::Item: BinSerialize,
-    W: Write,
+    S: BinSerializer,
 {
     match iter.size_hint() {
         (min, Some(max)) if min == max => {
             // we know the exact length of the iterator so we don't need to
             // collect it first before writing to the stream
-            min.serialize(&mut pipe, dedup, mode)?;
+            min.serialize(&mut serializer)?;
 
             for _ in 0..min {
                 iter.next()
                     .expect("iterator returned less elements than it said it would!")
-                    .serialize(&mut pipe, dedup, mode)?;
+                    .serialize(&mut serializer)?;
             }
 
             Ok(())
         }
         _ => {
             let items: Vec<_> = iter.collect();
-            items.serialize(pipe, dedup, mode)
+            items.len().serialize(&mut serializer)?;
+
+            for item in items {
+                item.serialize(&mut serializer)?;
+            }
+
+            Ok(())
         }
     }
 }
@@ -272,8 +255,8 @@ impl<T> BinSerialize for Vec<T>
 where
     T: BinSerialize,
 {
-    fn serialize<W: Write>(&self, pipe: W, dedup: &mut DedupContext, mode: &Mode) -> Result<()> {
-        (**self).serialize(pipe, dedup, mode)
+    fn serialize<S: BinSerializer>(&self, serializer: S) -> Result<()> {
+        (**self).serialize(serializer)
     }
 }
 
@@ -281,8 +264,8 @@ impl<T> BinSerialize for [T]
 where
     T: BinSerialize,
 {
-    fn serialize<W: Write>(&self, pipe: W, dedup: &mut DedupContext, mode: &Mode) -> Result<()> {
-        serialize_iter(self.iter(), pipe, dedup, mode)
+    fn serialize<S: BinSerializer>(&self, serializer: S) -> Result<()> {
+        serialize_iter(self.iter(), serializer)
     }
 }
 
@@ -290,14 +273,9 @@ impl<T, const LEN: usize> BinSerialize for [T; LEN]
 where
     T: BinSerialize,
 {
-    fn serialize<W: Write>(
-        &self,
-        mut pipe: W,
-        dedup: &mut DedupContext,
-        mode: &Mode,
-    ) -> Result<()> {
+    fn serialize<S: BinSerializer>(&self, mut serializer: S) -> Result<()> {
         for el in self.iter() {
-            el.serialize(&mut pipe, dedup, mode)?;
+            el.serialize(&mut serializer)?;
         }
 
         Ok(())
@@ -342,8 +320,8 @@ where
     K: BinSerialize,
     V: BinSerialize,
 {
-    fn serialize<W: Write>(&self, pipe: W, dedup: &mut DedupContext, mode: &Mode) -> Result<()> {
-        serialize_iter(self.iter(), pipe, dedup, mode)
+    fn serialize<S: BinSerializer>(&self, serializer: S) -> Result<()> {
+        serialize_iter(self.iter(), serializer)
     }
 }
 
@@ -373,8 +351,8 @@ impl<T> BinSerialize for HashSet<T>
 where
     T: BinSerialize,
 {
-    fn serialize<W: Write>(&self, pipe: W, dedup: &mut DedupContext, mode: &Mode) -> Result<()> {
-        serialize_iter(self.iter(), pipe, dedup, mode)
+    fn serialize<S: BinSerializer>(&self, serializer: S) -> Result<()> {
+        serialize_iter(self.iter(), serializer)
     }
 }
 
@@ -400,12 +378,7 @@ where
 }
 
 impl BinSerialize for () {
-    fn serialize<W: Write>(
-        &self,
-        _pipe: W,
-        _dedup: &mut DedupContext,
-        _mode: &Mode,
-    ) -> Result<(), Error> {
+    fn serialize<S: BinSerializer>(&self, _serializer: S) -> Result<(), Error> {
         Ok(())
     }
 }
@@ -436,14 +409,9 @@ macro_rules! impl_tuple {
             $($tp: BinSerialize),+
         {
             #[allow(non_snake_case)]
-            fn serialize<W: Write>(
-                &self,
-                mut pipe: W,
-                dedup: &mut DedupContext,
-                mode: &Mode,
-            ) -> Result<()> {
+            fn serialize<S: BinSerializer>(&self, mut serializer: S) -> Result<()> {
                 let ($(ref $tp),+) = *self;
-                $($tp.serialize(&mut pipe, dedup, mode)?;)+
+                $($tp.serialize(&mut serializer)?;)+
                 Ok(())
             }
         }
@@ -478,19 +446,19 @@ impl_tuple! { A B C D E F G H I J K }
 impl_tuple! { A B C D E F G H I J K L }
 
 impl BinSerialize for Path {
-    fn serialize<W: Write>(&self, pipe: W, dedup: &mut DedupContext, mode: &Mode) -> Result<()> {
+    fn serialize<S: BinSerializer>(&self, serializer: S) -> Result<()> {
         match self.to_str() {
             None => Err(Error::custom(
                 "invalid characters for UTF-8 conversion in string",
             )),
-            Some(s) => s.serialize(pipe, dedup, mode),
+            Some(s) => s.serialize(serializer),
         }
     }
 }
 
 impl BinSerialize for PathBuf {
-    fn serialize<W: Write>(&self, pipe: W, dedup: &mut DedupContext, mode: &Mode) -> Result<()> {
-        self.as_path().serialize(pipe, dedup, mode)
+    fn serialize<S: BinSerializer>(&self, serializer: S) -> Result<()> {
+        self.as_path().serialize(serializer)
     }
 }
 
@@ -504,17 +472,12 @@ impl<T> BinSerialize for Option<T>
 where
     T: BinSerialize,
 {
-    fn serialize<W: Write>(
-        &self,
-        mut pipe: W,
-        dedup: &mut DedupContext,
-        mode: &Mode,
-    ) -> Result<()> {
+    fn serialize<S: BinSerializer>(&self, mut serializer: S) -> Result<()> {
         match self {
-            None => 0u8.serialize(&mut pipe, dedup, mode),
+            None => 0u8.serialize(&mut serializer),
             Some(v) => {
-                1u8.serialize(&mut pipe, dedup, mode)?;
-                v.serialize(&mut pipe, dedup, mode)
+                1u8.serialize(&mut serializer)?;
+                v.serialize(&mut serializer)
             }
         }
     }
@@ -539,20 +502,15 @@ where
     T: BinSerialize,
     R: BinSerialize,
 {
-    fn serialize<W: Write>(
-        &self,
-        mut pipe: W,
-        dedup: &mut DedupContext,
-        mode: &Mode,
-    ) -> Result<()> {
+    fn serialize<S: BinSerializer>(&self, mut serializer: S) -> Result<()> {
         match self {
             Ok(v) => {
-                0u8.serialize(&mut pipe, dedup, mode)?;
-                v.serialize(&mut pipe, dedup, mode)
+                0u8.serialize(&mut serializer)?;
+                v.serialize(&mut serializer)
             }
             Err(v) => {
-                1u8.serialize(&mut pipe, dedup, mode)?;
-                v.serialize(&mut pipe, dedup, mode)
+                1u8.serialize(&mut serializer)?;
+                v.serialize(&mut serializer)
             }
         }
     }

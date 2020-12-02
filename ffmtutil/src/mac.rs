@@ -26,13 +26,11 @@ macro_rules! impl_serialize_wrap {
 macro_rules! do_impl_serialize_wrap {
     (struct $target:ident $($el:tt)*) => {
         impl $crate::serde::BinSerialize for $target {
-            fn serialize<W: std::io::Write>(
+            fn serialize<S: $crate::serde::BinSerializer>(
                 &self,
-                mut pipe: W,
-                dedup: &mut $crate::dedup::DedupContext,
-                mode: &$crate::serde::Mode,
+                mut serializer: S
             ) -> $crate::Result<()> {
-                $(self.$el.serialize(&mut pipe, dedup, mode)?;)+
+                $(self.$el.serialize(&mut serializer)?;)+
                 Ok(())
             }
         }

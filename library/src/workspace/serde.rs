@@ -6,11 +6,11 @@ use std::num::TryFromIntError;
 use byteorder::{ReadBytesExt, WriteBytesExt, BE, LE};
 
 use ffmtutil::dedup::DedupContext;
-use ffmtutil::serde::{BinSerialize, Mode, BinDeserialize};
+use ffmtutil::serde::{BinDeserialize, BinSerialize, BinSerializer, Mode};
 use matryoshka::DataSource;
 
 use crate::workspace::fstree::FsTree;
-use crate::workspace::{Error, Workspace, WorkspaceRoot};
+use crate::workspace::{Error, Workspace};
 
 pub const MAGIC: u16 = 0x3B1C;
 pub const VERSION: u16 = 1;
@@ -54,13 +54,22 @@ ffmtutil::impl_serde_wrap! {
 }
 
 impl<'de> BinDeserialize<'de> for FsTree {
-    fn deserialize<R: Read>(pipe: R, dedup: &'de DedupContext, mode: &Mode) -> ffmtutil::Result<Self> {
+    fn deserialize<R: Read>(
+        pipe: R,
+        dedup: &'de DedupContext,
+        mode: &Mode,
+    ) -> ffmtutil::Result<Self> {
         let mut tree = FsTree::new();
         tree.deserialize_in_place(pipe, dedup, mode)?;
         Ok(tree)
     }
 
-    fn deserialize_in_place<R: Read>(&mut self, mut pipe: R, dedup: &'de DedupContext, mode: &Mode) -> ffmtutil::Result<()> {
+    fn deserialize_in_place<R: Read>(
+        &mut self,
+        mut pipe: R,
+        dedup: &'de DedupContext,
+        mode: &Mode,
+    ) -> ffmtutil::Result<()> {
         self.reset();
 
         for _ in 0..u16::deserialize(&mut pipe, dedup, mode)? {
@@ -84,13 +93,10 @@ impl<'de> BinDeserialize<'de> for FsTree {
 }
 
 impl BinSerialize for FsTree {
-    fn serialize<W: Write>(
-        &self,
-        mut pipe: W,
-        dedup: &mut DedupContext,
-        mode: &Mode,
-    ) -> ffmtutil::Result<()> {
-        pipe.write_u16::<LE>(self.roots().len().try_into()?)?;
+    fn serialize<S: BinSerializer>(&self, mut serializer: S) -> ffmtutil::Result<()> {
+        serializer
+            .pipe()
+            .write_u16::<LE>(self.roots().len().try_into()?)?;
         for r in self.roots() {
             let r = r.borrow();
             let (is_dir, path) = match &*r.ds {
@@ -98,9 +104,9 @@ impl BinSerialize for FsTree {
                 DataSource::Zip(ds) => (false, ds.zip_path()),
             };
 
-            is_dir.serialize(&mut pipe, dedup, mode)?;
-            path.serialize(&mut pipe, dedup, mode)?;
-            r.name().serialize(&mut pipe, dedup, mode)?;
+            is_dir.serialize(&mut serializer)?;
+            path.serialize(&mut serializer)?;
+            r.name().serialize(&mut serializer)?;
         }
 
         Ok(())

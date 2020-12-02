@@ -1,3 +1,16 @@
+use std::io::{Read, Write};
+
+use crate::serde::{BinDeserialize, BinSerializer, BinSerializerBase, Mode, UsizeLen};
+use crate::serdeimpl::serialize_iter;
+use crate::Result;
+
+const DEDUP_MODE: Mode = Mode {
+    usize_len: UsizeLen::Variable,
+    dedup_idx: UsizeLen::Variable,
+    fixed_size_use_varint: false,
+    use_dedup: false,
+};
+
 pub struct DedupContext {
     strings: Vec<(String, usize)>,
 }
@@ -22,5 +35,28 @@ impl DedupContext {
 
     pub fn get_str(&self, idx: usize) -> Option<&str> {
         self.strings.get(idx).map(|el| &*el.0)
+    }
+
+    pub fn write_to<W: Write>(&self, pipe: W) -> Result<()> {
+        let mut ser = BinSerializerBase::new(pipe).with_mode(DEDUP_MODE);
+
+        let mut by_index: Vec<_> = self.strings.iter().collect();
+        by_index.sort_unstable_by_key(|el| el.1);
+        serialize_iter(by_index.into_iter().map(|el| &el.0), &mut ser)?;
+
+        Ok(())
+    }
+
+    pub fn read_from<R: Read>(pipe: R) -> Result<Self> {
+        let empty = DedupContext::new();
+
+        let by_index: Vec<String> = Vec::deserialize(pipe, &empty, &DEDUP_MODE)?;
+        let mut strings: Vec<_> = by_index
+            .into_iter()
+            .enumerate()
+            .map(|(idx, s)| (s, idx))
+            .collect();
+        strings.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+        Ok(DedupContext { strings })
     }
 }

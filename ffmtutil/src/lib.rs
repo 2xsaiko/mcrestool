@@ -3,7 +3,7 @@
 
 use std::fmt::Display;
 use std::io;
-use std::io::{Read, Write};
+use std::io::{Read, Write, Cursor};
 use std::num::TryFromIntError;
 use std::string::FromUtf8Error;
 
@@ -12,6 +12,7 @@ use thiserror::Error;
 use dedup::DedupContext;
 pub use ffmtutil_derive::member_to_ident;
 use serde::{BinDeserializeOwned, BinSerialize, Mode};
+use crate::serde::{BinSerializerBase, BinSerializer};
 
 pub mod dedup;
 mod mac;
@@ -21,33 +22,35 @@ pub mod try_iter;
 mod varint;
 mod write_ext;
 
-pub fn serialize<W, T>(pipe: W, value: &T, mode: &Mode) -> Result<()>
+pub fn serialize<W, T>(mut pipe: W, value: &T, mode: &Mode) -> Result<()>
 where
     W: Write,
     T: BinSerialize,
 {
-    // TODO write dedup context
-    value.serialize(pipe, &mut DedupContext::new(), mode)
+    let mut buf = Cursor::new(Vec::new());
+    let mut serializer = BinSerializerBase::new(&mut buf);
+    value.serialize(&mut serializer)?;
+    serializer.dedup().write_to(&mut pipe)?;
+    pipe.write_all(buf.get_ref())?;
+    Ok(())
 }
 
-pub fn deserialize<R, T>(pipe: R, mode: &Mode) -> Result<T>
+pub fn deserialize<R, T>(mut pipe: R, mode: &Mode) -> Result<T>
 where
     R: Read,
     T: BinDeserializeOwned,
 {
-    // TODO read dedup context
-    let context = DedupContext::new();
-    T::deserialize(pipe, &context, mode)
+    let context = DedupContext::read_from(&mut pipe)?;
+    T::deserialize(&mut pipe, &context, mode)
 }
 
-pub fn deserialize_in_place<R, T>(target: &mut T, pipe: R, mode: &Mode) -> Result<()>
+pub fn deserialize_in_place<R, T>(target: &mut T, mut pipe: R, mode: &Mode) -> Result<()>
 where
     R: Read,
     T: BinDeserializeOwned,
 {
-    // TODO read dedup context
-    let context = DedupContext::new();
-    target.deserialize_in_place(pipe, &context, mode)
+    let context = DedupContext::read_from(&mut pipe)?;
+    target.deserialize_in_place(&mut pipe, &context, mode)
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

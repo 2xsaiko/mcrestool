@@ -1,16 +1,19 @@
-
-use std::io::{Read, Write};
+use std::io::Read;
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use ffmtutil::serde::{BinDeserialize, BinSerialize, Mode};
-use ffmtutil::{Error,  Result};
+use ffmtutil::dedup::DedupContext;
+use ffmtutil::serde::{BinDeserialize, BinSerialize, BinSerializer, Mode};
+use ffmtutil::{Error, Result};
 
 use crate::gamedata::*;
-use ffmtutil::dedup::DedupContext;
 
-impl <'de> BinDeserialize<'de> for DependencyLink {
-    fn deserialize<R: Read>(mut pipe: R, dedup: &'de DedupContext, mode: &Mode) -> Result<Self, Error> {
+impl<'de> BinDeserialize<'de> for DependencyLink {
+    fn deserialize<R: Read>(
+        mut pipe: R,
+        dedup: &'de DedupContext,
+        mode: &Mode,
+    ) -> Result<Self, Error> {
         let typ = u8::deserialize(&mut pipe, dedup, mode)?;
         match typ {
             0 => {
@@ -18,12 +21,12 @@ impl <'de> BinDeserialize<'de> for DependencyLink {
                 let lang_name = String::deserialize(&mut pipe, dedup, mode)?;
                 Ok(DependencyLink::Language(namespace, lang_name))
             }
-            1 => Ok(DependencyLink::Block(
-                Identifier::deserialize(&mut pipe, dedup, mode)?,
-            )),
-            2 => Ok(DependencyLink::Item(
-                Identifier::deserialize(&mut pipe, dedup, mode)?,
-            )),
+            1 => Ok(DependencyLink::Block(Identifier::deserialize(
+                &mut pipe, dedup, mode,
+            )?)),
+            2 => Ok(DependencyLink::Item(Identifier::deserialize(
+                &mut pipe, dedup, mode,
+            )?)),
             _ => Err(Error::custom(format!(
                 "invalid dependency link type: {}",
                 typ
@@ -33,25 +36,20 @@ impl <'de> BinDeserialize<'de> for DependencyLink {
 }
 
 impl BinSerialize for DependencyLink {
-    fn serialize<W: Write>(
-        &self,
-        mut pipe: W,
-        dedup: &mut DedupContext,
-        mode: &Mode,
-    ) -> Result<(), Error> {
+    fn serialize<S: BinSerializer>(&self, mut serializer: S) -> Result<(), Error> {
         match self {
             DependencyLink::Language(namespace, lang_name) => {
-                0u8.serialize(&mut pipe, dedup, mode)?;
-                namespace.serialize(&mut pipe, dedup, mode)?;
-                lang_name.serialize(&mut pipe, dedup, mode)?;
+                0u8.serialize(&mut serializer)?;
+                namespace.serialize(&mut serializer)?;
+                lang_name.serialize(&mut serializer)?;
             }
             DependencyLink::Block(id) => {
-                1u8.serialize(&mut pipe, dedup, mode)?;
-                id.serialize(&mut pipe, dedup, mode)?;
+                1u8.serialize(&mut serializer)?;
+                id.serialize(&mut serializer)?;
             }
             DependencyLink::Item(id) => {
-                2u8.serialize(&mut pipe, dedup, mode)?;
-                id.serialize(&mut pipe, dedup, mode)?;
+                2u8.serialize(&mut serializer)?;
+                id.serialize(&mut serializer)?;
             }
         }
         Ok(())
@@ -82,13 +80,8 @@ impl<'de> BinDeserialize<'de> for GameObjectBase {
 }
 
 impl BinSerialize for GameObjectBase {
-    fn serialize<W: Write>(
-        &self,
-        mut pipe: W,
-        dedup: &mut DedupContext,
-        mode: &Mode,
-    ) -> Result<()> {
-        self.id.serialize(&mut pipe, dedup, mode)?;
+    fn serialize<S: BinSerializer>(&self, mut serializer: S) -> Result<()> {
+        self.id.serialize(&mut serializer)?;
         let mut bits = 0;
 
         if self.manual {
@@ -101,7 +94,7 @@ impl BinSerialize for GameObjectBase {
             AutoStatus::Deleted => 5,
         };
 
-        pipe.write_u8(bits)?;
+        serializer.pipe().write_u8(bits)?;
         Ok(())
     }
 }
