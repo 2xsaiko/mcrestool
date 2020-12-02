@@ -1,7 +1,7 @@
 use std::{io, mem};
 use std::cell::RefCell;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::{Read, Write, BufReader, BufWriter};
 use std::path::Path;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -263,12 +263,12 @@ fn workspace_new() -> types::Workspace {
 }
 
 fn workspace_from(path: &str) -> workspace::Result<types::Workspace> {
-    Ok(types::Workspace { inner: Box::new(Workspace::read_from(File::open(path)?)?.into()) })
+    Ok(types::Workspace { inner: Box::new(Workspace::read_from(BufReader::new(File::open(path)?))?.into()) })
 }
 
 impl types::Workspace {
     fn from(&mut self, path: &str) -> workspace::Result<()> {
-        self.inner.read_from_in_place(File::open(path)?)?;
+        self.inner.read_from_in_place(BufReader::new(File::open(path)?))?;
         Ok(())
     }
 
@@ -301,7 +301,7 @@ impl types::Workspace {
     }
 
     fn save(&self, path: &str) -> workspace::Result<()> {
-        self.inner.write_into(File::create(path)?)?;
+        self.inner.write_into(BufWriter::new(File::create(path)?))?;
 
         Ok(())
     }
