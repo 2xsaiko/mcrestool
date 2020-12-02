@@ -5,6 +5,8 @@ use std::path::Path;
 
 use matryoshka::DataSource;
 
+use ffmtutil::{BinSerialize, BinDeserialize};
+
 pub mod gamedata;
 pub mod langtable;
 pub mod workspace;
@@ -36,4 +38,19 @@ fn has_extension<P: AsRef<Path>, S: AsRef<OsStr>>(path: P, ext: S) -> bool {
 
 fn has_file_name<P: AsRef<Path>, S: AsRef<OsStr>>(path: P, name: S) -> bool {
     path.as_ref().file_name().map_or(false, |s| s == name.as_ref())
+}
+
+#[derive(BinSerialize)]
+struct S {
+    inner: String,
+    inner1: String,
+}
+
+#[derive(BinSerialize)]
+struct S1(String);
+
+#[derive(BinSerialize)]
+enum E {
+    None,
+    Some(String),
 }

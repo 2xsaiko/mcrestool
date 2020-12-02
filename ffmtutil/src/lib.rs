@@ -14,7 +14,7 @@ use thiserror::Error;
 use de::BinDeserializeOwned;
 pub use de::{BinDeserialize, BinDeserializer};
 use dedup::DedupContext;
-pub use ffmtutil_derive::member_to_ident;
+pub use ffmtutil_derive::{member_to_ident, BinSerialize};
 pub use ser::{BinSerialize, BinSerializer};
 pub use serde::Mode;
 
