@@ -21,9 +21,7 @@ set(mcrestool_HEADERS
         ui/shapedcraftingwidget.h
         ui/smeltingwidget.h
         identifier.h
-        mcrtutil.h
-        result.h
-        table.h)
+        mcrtutil.h)
 
 set(mcrestool_SRC
         model/fstreemodel.cpp
