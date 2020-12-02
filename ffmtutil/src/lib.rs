@@ -116,7 +116,7 @@ where
     } else {
         DedupContext::new()
     };
-    let deserializer = BinDeserializerBase::new(pipe, &context);
+    let deserializer = BinDeserializerBase::new(pipe, &context).with_mode(mode);
     target.deserialize_in_place(deserializer)
 }
 
