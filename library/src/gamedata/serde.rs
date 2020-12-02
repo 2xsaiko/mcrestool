@@ -2,6 +2,7 @@ use std::io::Read;
 
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
+use ffmtutil::de::BinDeserializer;
 use ffmtutil::dedup::DedupContext;
 use ffmtutil::serde::{BinDeserialize, BinSerialize, BinSerializer, Mode};
 use ffmtutil::{Error, Result};
@@ -9,23 +10,19 @@ use ffmtutil::{Error, Result};
 use crate::gamedata::*;
 
 impl<'de> BinDeserialize<'de> for DependencyLink {
-    fn deserialize<R: Read>(
-        mut pipe: R,
-        dedup: &'de DedupContext,
-        mode: &Mode,
-    ) -> Result<Self, Error> {
-        let typ = u8::deserialize(&mut pipe, dedup, mode)?;
+    fn deserialize<D: BinDeserializer<'de>>(mut deserializer: D) -> Result<Self, Error> {
+        let typ = u8::deserialize(&mut deserializer)?;
         match typ {
             0 => {
-                let namespace = String::deserialize(&mut pipe, dedup, mode)?;
-                let lang_name = String::deserialize(&mut pipe, dedup, mode)?;
+                let namespace = String::deserialize(&mut deserializer)?;
+                let lang_name = String::deserialize(&mut deserializer)?;
                 Ok(DependencyLink::Language(namespace, lang_name))
             }
             1 => Ok(DependencyLink::Block(Identifier::deserialize(
-                &mut pipe, dedup, mode,
+                &mut deserializer,
             )?)),
             2 => Ok(DependencyLink::Item(Identifier::deserialize(
-                &mut pipe, dedup, mode,
+                &mut deserializer,
             )?)),
             _ => Err(Error::custom(format!(
                 "invalid dependency link type: {}",
@@ -57,13 +54,9 @@ impl BinSerialize for DependencyLink {
 }
 
 impl<'de> BinDeserialize<'de> for GameObjectBase {
-    fn deserialize<R: Read>(
-        mut pipe: R,
-        dedup: &'de DedupContext,
-        mode: &Mode,
-    ) -> Result<Self, Error> {
-        let id = Identifier::deserialize(&mut pipe, dedup, mode)?;
-        let bits = pipe.read_u8()?;
+    fn deserialize<D: BinDeserializer<'de>>(mut deserializer: D) -> Result<Self, Error> {
+        let id = Identifier::deserialize(&mut deserializer)?;
+        let bits = deserializer.pipe().read_u8()?;
         let manual = bits & 1 != 0;
         let auto = if bits & 2 != 0 {
             if bits & 4 != 0 {

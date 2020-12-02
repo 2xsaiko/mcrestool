@@ -3,19 +3,25 @@
 
 use std::fmt::Display;
 use std::io;
-use std::io::{Read, Write, Cursor};
+use std::io::{Cursor, Read, Write};
 use std::num::TryFromIntError;
 use std::string::FromUtf8Error;
 
 use thiserror::Error;
 
+use de::BinDeserializeOwned;
 use dedup::DedupContext;
 pub use ffmtutil_derive::member_to_ident;
-use serde::{BinDeserializeOwned, BinSerialize, Mode};
-use crate::serde::{BinSerializerBase, BinSerializer};
+use ser::BinSerialize;
+use serde::Mode;
 
+use crate::serde::{BinSerializer, BinSerializerBase};
+use crate::de::BinDeserializerBase;
+
+pub mod de;
 pub mod dedup;
 mod mac;
+pub mod ser;
 pub mod serde;
 mod serdeimpl;
 pub mod try_iter;
@@ -41,7 +47,8 @@ where
     T: BinDeserializeOwned,
 {
     let context = DedupContext::read_from(&mut pipe)?;
-    T::deserialize(&mut pipe, &context, mode)
+    let mut deserializer = BinDeserializerBase::new(pipe, &context);
+    T::deserialize(deserializer)
 }
 
 pub fn deserialize_in_place<R, T>(target: &mut T, mut pipe: R, mode: &Mode) -> Result<()>
@@ -50,7 +57,8 @@ where
     T: BinDeserializeOwned,
 {
     let context = DedupContext::read_from(&mut pipe)?;
-    target.deserialize_in_place(&mut pipe, &context, mode)
+    let mut deserializer = BinDeserializerBase::new(pipe, &context);
+    target.deserialize_in_place(deserializer)
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;

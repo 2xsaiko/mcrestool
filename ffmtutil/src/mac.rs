@@ -57,22 +57,16 @@ macro_rules! impl_deserialize_wrap {
 macro_rules! do_impl_deserialize_wrap {
     (struct $target:ident $($el:ident)* $((default $default:expr))?) => {
         impl<'de> $crate::serde::BinDeserialize<'de> for $target {
-            fn deserialize<R: Read>(
-                mut pipe: R,
-                dedup: &'de $crate::dedup::DedupContext,
-                mode: &$crate::serde::Mode,
-            ) -> $crate::Result<Self> {
-                $(let $el = $crate::serde::BinDeserialize::deserialize(&mut pipe, dedup, mode)?;)*
+            fn deserialize<D: $crate::de::BinDeserializer<'de>>(mut deserializer: D) -> $crate::Result<Self> {
+                $(let $el = $crate::serde::BinDeserialize::deserialize(&mut deserializer)?;)*
                 Ok($target { $($el,)* $(..$default)? })
             }
 
-            fn deserialize_in_place<R: Read>(
+            fn deserialize_in_place<D: $crate::de::BinDeserializer<'de>>(
                 &mut self,
-                mut pipe: R,
-                dedup: &'de $crate::dedup::DedupContext,
-                mode: &$crate::serde::Mode,
+                mut deserializer: D
             ) -> $crate::Result<()> {
-                $($crate::serde::BinDeserialize::deserialize_in_place(&mut self.$el, &mut pipe, dedup, mode)?;)*
+                $($crate::serde::BinDeserialize::deserialize_in_place(&mut self.$el, &mut deserializer)?;)*
                 Ok(())
             }
         }
@@ -80,22 +74,16 @@ macro_rules! do_impl_deserialize_wrap {
 
     (tuplestruct $target:ident $($el:tt)*) => {
         impl<'de> $crate::serde::BinDeserialize<'de> for $target {
-            fn deserialize<R: Read>(
-                mut pipe: R,
-                dedup: &'de $crate::dedup::DedupContext,
-                mode: &$crate::serde::Mode,
-            ) -> $crate::Result<Self> {
-                $(let $crate::member_to_ident!($el) = $crate::serde::BinDeserialize::deserialize(&mut pipe, dedup, mode)?;)*
+            fn deserialize<D: $crate::de::BinDeserializer<'de>>(mut deserializer: D) -> $crate::Result<Self> {
+                $(let $crate::member_to_ident!($el) = $crate::serde::BinDeserialize::deserialize(&mut deserializer)?;)*
                 Ok($target($($crate::member_to_ident!($el),)*))
             }
 
-            fn deserialize_in_place<R: Read>(
+            fn deserialize_in_place<D: $crate::de::BinDeserializer<'de>>(
                 &mut self,
-                mut pipe: R,
-                dedup: &'de $crate::dedup::DedupContext,
-                mode: &$crate::serde::Mode,
+                mut deserializer: D
             ) -> $crate::Result<()> {
-                $($crate::serde::BinDeserialize::deserialize_in_place(&mut self.$el, &mut pipe, dedup, mode)?;)*
+                $($crate::serde::BinDeserialize::deserialize_in_place(&mut self.$el, &mut deserializer)?;)*
                 Ok(())
             }
         }

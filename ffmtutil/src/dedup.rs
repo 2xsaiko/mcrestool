@@ -1,5 +1,6 @@
 use std::io::{Read, Write};
 
+use crate::de::{BinDeserializer, BinDeserializerBase};
 use crate::serde::{BinDeserialize, BinSerializer, BinSerializerBase, Mode, UsizeLen};
 use crate::serdeimpl::serialize_iter;
 use crate::Result;
@@ -38,19 +39,20 @@ impl DedupContext {
     }
 
     pub fn write_to<W: Write>(&self, pipe: W) -> Result<()> {
-        let mut ser = BinSerializerBase::new(pipe).with_mode(DEDUP_MODE);
+        let ser = BinSerializerBase::new(pipe).with_mode(DEDUP_MODE);
 
         let mut by_index: Vec<_> = self.strings.iter().collect();
         by_index.sort_unstable_by_key(|el| el.1);
-        serialize_iter(by_index.into_iter().map(|el| &el.0), &mut ser)?;
+        serialize_iter(by_index.into_iter().map(|el| &el.0), ser)?;
 
         Ok(())
     }
 
     pub fn read_from<R: Read>(pipe: R) -> Result<Self> {
         let empty = DedupContext::new();
+        let de = BinDeserializerBase::new(pipe, &empty).with_mode(DEDUP_MODE);
 
-        let by_index: Vec<String> = Vec::deserialize(pipe, &empty, &DEDUP_MODE)?;
+        let by_index: Vec<String> = Vec::deserialize(de)?;
         let mut strings: Vec<_> = by_index
             .into_iter()
             .enumerate()

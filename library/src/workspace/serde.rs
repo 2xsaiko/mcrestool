@@ -11,6 +11,7 @@ use matryoshka::DataSource;
 
 use crate::workspace::fstree::FsTree;
 use crate::workspace::{Error, Workspace};
+use ffmtutil::de::BinDeserializer;
 
 pub const MAGIC: u16 = 0x3B1C;
 pub const VERSION: u16 = 1;
@@ -54,29 +55,25 @@ ffmtutil::impl_serde_wrap! {
 }
 
 impl<'de> BinDeserialize<'de> for FsTree {
-    fn deserialize<R: Read>(
-        pipe: R,
-        dedup: &'de DedupContext,
-        mode: &Mode,
+    fn deserialize<D: BinDeserializer<'de>>(
+        deserializer: D
     ) -> ffmtutil::Result<Self> {
         let mut tree = FsTree::new();
-        tree.deserialize_in_place(pipe, dedup, mode)?;
+        tree.deserialize_in_place(deserializer)?;
         Ok(tree)
     }
 
-    fn deserialize_in_place<R: Read>(
+    fn deserialize_in_place<D: BinDeserializer<'de>>(
         &mut self,
-        mut pipe: R,
-        dedup: &'de DedupContext,
-        mode: &Mode,
+        mut deserializer: D
     ) -> ffmtutil::Result<()> {
         self.reset();
 
-        for _ in 0..u16::deserialize(&mut pipe, dedup, mode)? {
-            let is_dir = bool::deserialize(&mut pipe, dedup, mode)?;
+        for _ in 0..u16::deserialize(&mut deserializer)? {
+            let is_dir = bool::deserialize(&mut deserializer)?;
 
-            let path = String::deserialize(&mut pipe, dedup, mode)?;
-            let name = String::deserialize(&mut pipe, dedup, mode)?;
+            let path = String::deserialize(&mut deserializer)?;
+            let name = String::deserialize(&mut deserializer)?;
 
             if is_dir {
                 if let Err(e) = self.add_dir_with_name(path, name) {
