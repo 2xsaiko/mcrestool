@@ -14,12 +14,19 @@ impl Default for Mode {
             usize_len: UsizeLen::Variable,
             dedup_idx: UsizeLen::Variable,
             fixed_size_use_varint: false,
-            use_dedup: true,
+            use_dedup: false,
         }
     }
 }
 
 impl Mode {
+    pub fn dedup() -> Self {
+        Mode {
+            use_dedup: true,
+            ..Default::default()
+        }
+    }
+
     pub fn with_usize_len(mut self, usize_len: UsizeLen) -> Self {
         self.usize_len = usize_len;
         self

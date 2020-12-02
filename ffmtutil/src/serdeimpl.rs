@@ -15,7 +15,7 @@ use crate::{Error, Result};
 
 impl<T> BinSerialize for &T
 where
-    T: BinSerialize,
+    T: BinSerialize + ?Sized,
 {
     fn serialize<S: BinSerializer>(&self, serializer: S) -> Result<()> {
         (*self).serialize(serializer)

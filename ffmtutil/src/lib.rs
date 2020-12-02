@@ -18,7 +18,6 @@ pub use serde::Mode;
 
 use crate::de::BinDeserializerBase;
 use crate::ser::{BinSerializerBase, PrescanSerializer};
-use std::any::Any;
 
 pub mod de;
 pub mod dedup;
@@ -32,7 +31,7 @@ mod write_ext;
 
 pub fn serialize<T>(value: &T) -> Result<Vec<u8>>
 where
-    T: BinSerialize,
+    T: BinSerialize + ?Sized,
 {
     serialize_with(value, Mode::default())
 }
@@ -40,14 +39,14 @@ where
 pub fn serialize_into<W, T>(pipe: W, value: &T) -> Result<()>
 where
     W: Write,
-    T: BinSerialize,
+    T: BinSerialize + ?Sized,
 {
     serialize_with_into(pipe, value, Mode::default())
 }
 
 pub fn serialize_with<T>(value: &T, mode: Mode) -> Result<Vec<u8>>
 where
-    T: BinSerialize,
+    T: BinSerialize + ?Sized,
 {
     let mut buf = Cursor::new(Vec::new());
     serialize_with_into(&mut buf, value, mode)?;
@@ -57,7 +56,7 @@ where
 pub fn serialize_with_into<W, T>(mut pipe: W, value: &T, mode: Mode) -> Result<()>
 where
     W: Write,
-    T: BinSerialize,
+    T: BinSerialize + ?Sized,
 {
     if mode.use_dedup {
         let mut ps = PrescanSerializer::new().with_mode(mode);
@@ -83,7 +82,7 @@ where
     deserialize_with_from(Cursor::new(buf), mode)
 }
 
-pub fn deserialize_from<R, T>(mut pipe: R) -> Result<T>
+pub fn deserialize_from<R, T>(pipe: R) -> Result<T>
 where
     R: Read,
     T: BinDeserializeOwned,
@@ -168,17 +167,7 @@ fn serialize_inline_test() {
     };
 
     {
-        let buf = serialize(&s).expect("failed to serialize");
-        println!("{:02X?}", buf);
-
-        let s1: Test = deserialize(&buf).expect("failed to deserialize");
-
-        assert_eq!(s, s1);
-    }
-
-    {
-        let mut mode = Mode::default();
-        mode.use_dedup = false;
+        let mode = Mode::dedup();
 
         let buf = serialize_with(&s, mode).expect("failed to serialize");
         println!("{:02X?}", buf);
@@ -187,4 +176,21 @@ fn serialize_inline_test() {
 
         assert_eq!(s, s1);
     }
+
+    {
+        let buf = serialize(&s).expect("failed to serialize");
+        println!("{:02X?}", buf);
+
+        let s1: Test = deserialize(&buf).expect("failed to deserialize");
+
+        assert_eq!(s, s1);
+    }
+}
+
+#[test]
+fn serialize_constant_output() {
+    assert_eq!(&[3, 97, 98, 99], &*serialize(&"abc").unwrap());
+
+    assert_eq!(&[0xFF], &*serialize(&true).unwrap());
+    assert_eq!(&[0x00], &*serialize(&false).unwrap());
 }

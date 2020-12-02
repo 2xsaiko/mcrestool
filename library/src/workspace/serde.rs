@@ -37,7 +37,7 @@ impl Workspace {
         self.gd.reset();
         self.fst.reset();
 
-        ffmtutil::deserialize_in_place(self, pipe, Mode::default())?;
+        ffmtutil::deserialize_in_place(self, pipe, Mode::dedup())?;
 
         Ok(())
     }
@@ -46,14 +46,14 @@ impl Workspace {
         pipe.write_u16::<BE>(MAGIC)?;
         pipe.write_u16::<LE>(VERSION)?;
 
-        ffmtutil::serialize_into(pipe, self)?;
+        ffmtutil::serialize_with_into(pipe, self, Mode::dedup())?;
 
         Ok(())
     }
 }
 
 ffmtutil::impl_serde_wrap! {
-    struct Workspace { fst, gd }
+    struct Workspace { #[no_dedup] fst, gd }
 }
 
 impl<'de> BinDeserialize<'de> for FsTree {
@@ -94,6 +94,7 @@ impl BinSerialize for FsTree {
         serializer
             .pipe()
             .write_u16::<LE>(self.roots().len().try_into()?)?;
+
         for r in self.roots() {
             let r = r.borrow();
             let (is_dir, path) = match &*r.ds {

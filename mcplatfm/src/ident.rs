@@ -213,6 +213,8 @@ impl Display for Ident {
     }
 }
 
-ffmtutil::impl_serialize_wrap! {
-    struct Ident { inner }
+impl BinSerialize for Ident {
+    fn serialize<S: BinSerializer>(&self, serializer: S) -> ffmtutil::Result<()> {
+        self.trim().as_str().serialize(serializer)
+    }
 }

@@ -10,7 +10,7 @@ macro_rules! impl_serde_wrap {
 macro_rules! impl_serialize_wrap {
     () => {};
 
-    (struct $target:ident { $($el:ident),* $(, $(..$default:expr)?)? } $($more:tt)*) => {
+    (struct $target:ident { $($(#[$meta:meta])* $el:ident),* $(, $(..$default:expr)?)? } $($more:tt)*) => {
         $crate::do_impl_serialize_wrap!(struct $target $($el)*);
         $crate::impl_serialize_wrap!($($more)*);
     };
@@ -35,6 +35,12 @@ macro_rules! do_impl_serialize_wrap {
             }
         }
     };
+}
+
+#[macro_export]
+#[doc(hidden)]
+macro_rules! parse_attr {
+    () => {}
 }
 
 #[macro_export]
