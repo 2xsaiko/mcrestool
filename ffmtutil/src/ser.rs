@@ -33,6 +33,10 @@ pub trait BinSerializer: Sized {
         op(&mut new_mode);
         self.with_mode(new_mode)
     }
+
+    fn disable_dedup(self) -> WithMode<Self> {
+        self.change_mode(|mode| mode.use_dedup = false)
+    }
 }
 
 impl<T> BinSerializer for &mut T

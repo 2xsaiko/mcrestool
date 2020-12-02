@@ -1,6 +1,8 @@
 #![allow(incomplete_features)]
 #![feature(const_generics)]
+#![feature(trace_macros)]
 
+use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::io;
 use std::io::{Cursor, Read, Write};
@@ -145,13 +147,14 @@ fn serialize_inline_test() {
     #[derive(Debug, PartialEq, Eq)]
     struct Test {
         vec: Vec<Test1>,
+        map_set: HashMap<String, HashSet<String>>,
     }
 
     #[derive(Debug, PartialEq, Eq)]
     struct Test1(String, i32);
 
     impl_serde_wrap! {
-        struct Test { vec }
+        struct Test { vec, map_set }
         struct Test1(0, 1);
     }
 
@@ -164,6 +167,15 @@ fn serialize_inline_test() {
             Test1("abc".to_string(), 4),
             Test1("abcd".to_string(), 4),
         ],
+        map_set: vec![("a", vec!["a", "b", "c"]), ("a1", vec!["a1", "b1", "c1"])]
+            .into_iter()
+            .map(|el| {
+                (
+                    el.0.to_string(),
+                    el.1.into_iter().map(|el| el.to_string()).collect(),
+                )
+            })
+            .collect(),
     };
 
     {

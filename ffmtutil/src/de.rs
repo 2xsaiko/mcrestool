@@ -40,6 +40,10 @@ pub trait BinDeserializer<'de>: Sized {
         op(&mut new_mode);
         self.with_mode(new_mode)
     }
+
+    fn disable_dedup(self) -> WithMode<Self> {
+        self.change_mode(|mode| mode.use_dedup = false)
+    }
 }
 
 impl<'de, T> BinDeserializer<'de> for &mut T
