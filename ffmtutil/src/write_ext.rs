@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 
 use byteorder::{ReadBytesExt, LE};
 
-use crate::varint::{decode_min, encode_min, varint_write, varint_read};
+use crate::varint::{decode_min, encode_min, varint_read, varint_write};
 use crate::Result;
 
 pub trait WriteExt {

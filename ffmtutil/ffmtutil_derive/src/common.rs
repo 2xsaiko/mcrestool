@@ -50,7 +50,10 @@ impl ToTokens for StructField<'_> {
 }
 
 pub fn to_struct_fields(fields: &Fields<BinSerdeField>, skip: bool) -> Vec<StructField> {
-    let iter = fields.iter().enumerate().filter(|(_, el)| !skip || !el.skip);
+    let iter = fields
+        .iter()
+        .enumerate()
+        .filter(|(_, el)| !skip || !el.skip);
 
     match fields.style {
         Style::Tuple => iter
@@ -64,7 +67,10 @@ pub fn to_struct_fields(fields: &Fields<BinSerdeField>, skip: bool) -> Vec<Struc
 }
 
 pub fn to_idents(fields: &Fields<BinSerdeField>, skip: bool) -> Vec<Cow<Ident>> {
-    let iter = fields.iter().enumerate().filter(|(_, el)| !skip || !el.skip);
+    let iter = fields
+        .iter()
+        .enumerate()
+        .filter(|(_, el)| !skip || !el.skip);
 
     match fields.style {
         Style::Tuple => iter

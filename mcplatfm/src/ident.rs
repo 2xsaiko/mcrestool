@@ -7,8 +7,7 @@ use std::ops::Deref;
 
 use ffmtutil::{BinDeserialize, BinSerialize, BinSerializer};
 
-#[derive(Debug, Clone, Eq)]
-#[derive(BinDeserialize)]
+#[derive(Debug, Clone, Eq, BinDeserialize)]
 pub struct Identifier {
     inner: String,
 }

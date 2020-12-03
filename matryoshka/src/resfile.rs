@@ -1,6 +1,6 @@
 use std::fs::File;
-use std::io::{Cursor, ErrorKind, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
 use std::io;
+use std::io::{Cursor, ErrorKind, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
 
 #[derive(Debug)]
 pub enum ResFile {
@@ -45,7 +45,6 @@ impl Write for ResFile {
             ResFile::ZipEntry(_) => Err(io::Error::new(ErrorKind::Other, "unsupported write")),
         }
     }
-
 
     fn flush(&mut self) -> io::Result<()> {
         match self {

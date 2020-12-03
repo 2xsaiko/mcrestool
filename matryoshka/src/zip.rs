@@ -8,7 +8,7 @@ use std::path::{Component, Path, PathBuf};
 use thiserror::Error;
 use zip::ZipArchive;
 
-use crate::{DirEntry, FileInfo, normalize_path};
+use crate::{normalize_path, DirEntry, FileInfo};
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -46,7 +46,10 @@ impl DataSource {
         let tree = tree.as_ref().unwrap();
 
         match tree.navigate(resolve_path_for_archive(path)?) {
-            None => Err(Error::Io(io::Error::new(io::ErrorKind::NotFound, "directory not found"))),
+            None => Err(Error::Io(io::Error::new(
+                io::ErrorKind::NotFound,
+                "directory not found",
+            ))),
             Some(t) => {
                 let mut vec = Vec::new();
 
@@ -96,17 +99,46 @@ impl DataSource {
             match path.parent() {
                 None => Err(Error::InvalidPath(path.to_path_buf())),
                 Some(parent) => {
-                    let file_name = path.file_name().ok_or_else(|| Error::InvalidPath(path.to_path_buf()))?;
+                    let file_name = path
+                        .file_name()
+                        .ok_or_else(|| Error::InvalidPath(path.to_path_buf()))?;
                     let parent = resolve_path_for_archive(parent)?;
-                    let cd = tree.navigate(parent)
-                        .ok_or_else(|| Error::Io(io::Error::new(io::ErrorKind::NotFound, "directory not found")))?;
+                    let cd = tree.navigate(parent).ok_or_else(|| {
+                        Error::Io(io::Error::new(
+                            io::ErrorKind::NotFound,
+                            "directory not found",
+                        ))
+                    })?;
 
-                    if cd.children.binary_search_by(|a| (OsStr::new(&a.path.file_name().unwrap())).cmp(&file_name)).is_ok() {
-                        Ok(FileInfo { is_file: false, is_dir: true, is_symlink: false, read_only: true })
-                    } else if cd.files.binary_search_by(|a| (OsStr::new(&a)).cmp(&file_name)).is_ok() {
-                        Ok(FileInfo { is_file: true, is_dir: false, is_symlink: false, read_only: true })
+                    if cd
+                        .children
+                        .binary_search_by(|a| {
+                            (OsStr::new(&a.path.file_name().unwrap())).cmp(&file_name)
+                        })
+                        .is_ok()
+                    {
+                        Ok(FileInfo {
+                            is_file: false,
+                            is_dir: true,
+                            is_symlink: false,
+                            read_only: true,
+                        })
+                    } else if cd
+                        .files
+                        .binary_search_by(|a| (OsStr::new(&a)).cmp(&file_name))
+                        .is_ok()
+                    {
+                        Ok(FileInfo {
+                            is_file: true,
+                            is_dir: false,
+                            is_symlink: false,
+                            read_only: true,
+                        })
                     } else {
-                        Err(Error::Io(io::Error::new(ErrorKind::NotFound, "file or directory not found")))
+                        Err(Error::Io(io::Error::new(
+                            ErrorKind::NotFound,
+                            "file or directory not found",
+                        )))
                     }
                 }
             }
@@ -127,12 +159,17 @@ impl DataSource {
 
                 let mut components = path.components();
 
-                let file_name = components.next_back().and_then(|p| match p {
-                    Component::Normal(p) => Some(p),
-                    _ => None,
-                }).expect("malformed ZIP archive");
+                let file_name = components
+                    .next_back()
+                    .and_then(|p| match p {
+                        Component::Normal(p) => Some(p),
+                        _ => None,
+                    })
+                    .expect("malformed ZIP archive");
 
-                let dir = components.fold(&mut tree, |acc, a| acc.subdir_or_create(a.as_os_str().to_str().unwrap()));
+                let dir = components.fold(&mut tree, |acc, a| {
+                    acc.subdir_or_create(a.as_os_str().to_str().unwrap())
+                });
                 dir.append(file_name.to_str().unwrap());
             }
 
@@ -164,7 +201,11 @@ impl DirTree {
     }
 
     fn append(&mut self, file: &str) {
-        if self.children.binary_search_by(|a| (*a.path.file_name().unwrap()).cmp(OsStr::new(file))).is_ok() {
+        if self
+            .children
+            .binary_search_by(|a| (*a.path.file_name().unwrap()).cmp(OsStr::new(file)))
+            .is_ok()
+        {
             return;
         }
 
@@ -174,7 +215,10 @@ impl DirTree {
     }
 
     fn subdir(&self, dir: &str) -> Option<&DirTree> {
-        self.children.binary_search_by(|a| (*a.path.file_name().unwrap()).cmp(OsStr::new(dir))).ok().map(|idx| &self.children[idx])
+        self.children
+            .binary_search_by(|a| (*a.path.file_name().unwrap()).cmp(OsStr::new(dir)))
+            .ok()
+            .map(|idx| &self.children[idx])
     }
 
     fn subdir_or_create(&mut self, dir: &str) -> &mut DirTree {
@@ -182,10 +226,11 @@ impl DirTree {
             self.files.remove(idx);
         }
 
-        match self.children.binary_search_by(|a| (*a.path.file_name().unwrap()).cmp(OsStr::new(dir))) {
-            Ok(idx) => {
-                &mut self.children[idx]
-            }
+        match self
+            .children
+            .binary_search_by(|a| (*a.path.file_name().unwrap()).cmp(OsStr::new(dir)))
+        {
+            Ok(idx) => &mut self.children[idx],
             Err(idx) => {
                 let dt = DirTree::new(self.path.join(dir));
                 self.children.insert(idx, dt);
@@ -203,7 +248,9 @@ impl DirTree {
                 Component::RootDir => true,
                 _ => false,
             })
-            .fold(Some(self), |acc, a| acc.and_then(|acc| acc.subdir(a.as_os_str().to_str().unwrap())))
+            .fold(Some(self), |acc, a| {
+                acc.and_then(|acc| acc.subdir(a.as_os_str().to_str().unwrap()))
+            })
     }
 }
 

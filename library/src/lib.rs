@@ -5,13 +5,13 @@ use std::path::Path;
 
 use matryoshka::DataSource;
 
-use ffmtutil::{BinSerialize, BinDeserialize};
+use ffmtutil::{BinDeserialize, BinSerialize};
 
+#[cfg(feature = "cpp")]
+mod ffi;
 pub mod gamedata;
 pub mod langtable;
 pub mod workspace;
-#[cfg(feature = "cpp")]
-mod ffi;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum FileType {
@@ -23,7 +23,10 @@ pub enum FileType {
 pub fn get_file_type<P: AsRef<Path>>(ds: &DataSource, path: P) -> Option<FileType> {
     // shitty detection for now
     let path = path.as_ref();
-    if ds.is_file(path) && has_extension(path, "json") && path.parent().and_then(|p| get_file_type(ds, p)) == Some(FileType::Language) {
+    if ds.is_file(path)
+        && has_extension(path, "json")
+        && path.parent().and_then(|p| get_file_type(ds, p)) == Some(FileType::Language)
+    {
         Some(FileType::LanguagePart)
     } else if ds.is_dir(path) && has_file_name(path, "lang") {
         Some(FileType::Language)
@@ -33,42 +36,35 @@ pub fn get_file_type<P: AsRef<Path>>(ds: &DataSource, path: P) -> Option<FileTyp
 }
 
 fn has_extension<P: AsRef<Path>, S: AsRef<OsStr>>(path: P, ext: S) -> bool {
-    path.as_ref().extension().map_or(false, |s| s == ext.as_ref())
+    path.as_ref()
+        .extension()
+        .map_or(false, |s| s == ext.as_ref())
 }
 
 fn has_file_name<P: AsRef<Path>, S: AsRef<OsStr>>(path: P, name: S) -> bool {
-    path.as_ref().file_name().map_or(false, |s| s == name.as_ref())
+    path.as_ref()
+        .file_name()
+        .map_or(false, |s| s == name.as_ref())
 }
 
-#[derive(BinSerialize)]
-#[derive(BinDeserialize)]
+#[derive(BinSerialize, BinDeserialize)]
 struct S {
     inner: String,
     inner1: String,
 }
 
-#[derive(BinSerialize)]
-#[derive(BinDeserialize)]
+#[derive(BinSerialize, BinDeserialize)]
 struct S1(String);
 
-#[derive(BinSerialize)]
-#[derive(BinDeserialize)]
+#[derive(BinSerialize, BinDeserialize)]
 enum E {
     None,
     Some(String),
     Thonk,
-    Bink {
-
-    },
+    Bink {},
     Grank(),
-    Jank {
-        a: String,
-        b: String,
-    }
+    Jank { a: String, b: String },
 }
 
-#[derive(BinSerialize)]
-#[derive(BinDeserialize)]
-enum E1 {
-
-}
+#[derive(BinSerialize, BinDeserialize)]
+enum E1 {}

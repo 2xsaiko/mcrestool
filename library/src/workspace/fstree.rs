@@ -5,10 +5,10 @@ use std::io;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 
-use matryoshka::{DataSource, dir, zip};
+use matryoshka::{dir, zip, DataSource};
 
-use crate::{FileType, get_file_type};
 use crate::workspace::{TreeChangeDispatcher, WorkspaceRoot};
+use crate::{get_file_type, FileType};
 
 pub struct FsTree {
     roots: Vec<Rc<RefCell<WorkspaceRoot>>>,
@@ -24,8 +24,8 @@ impl FsTree {
     }
 
     pub fn add_dir<P>(&mut self, path: P) -> io::Result<()>
-        where
-            P: Into<PathBuf>,
+    where
+        P: Into<PathBuf>,
     {
         let path = path.into();
         let name = path.file_name().unwrap().to_string_lossy().to_string(); // TODO give these a better default name
@@ -33,14 +33,15 @@ impl FsTree {
     }
 
     pub fn add_dir_with_name<P, S>(&mut self, path: P, name: S) -> io::Result<()>
-        where
-            P: Into<PathBuf>,
-            S: Into<String>
+    where
+        P: Into<PathBuf>,
+        S: Into<String>,
     {
         let path = path.into();
         let ds = DataSource::Dir(dir::DataSource::new(path)?);
         let root = WorkspaceRoot::new(name, ds);
-        self.dispatcher().pre_insert(&vec![], self.roots.len(), self.roots.len());
+        self.dispatcher()
+            .pre_insert(&vec![], self.roots.len(), self.roots.len());
         self.roots.push(root);
         self.dispatcher().post_insert(&vec![]);
 
@@ -48,8 +49,8 @@ impl FsTree {
     }
 
     pub fn add_zip<P>(&mut self, path: P) -> zip::Result<()>
-        where
-            P: Into<PathBuf>,
+    where
+        P: Into<PathBuf>,
     {
         let path = path.into();
         let name = path.file_name().unwrap().to_string_lossy().to_string();
@@ -57,14 +58,15 @@ impl FsTree {
     }
 
     pub fn add_zip_with_name<P, S>(&mut self, path: P, name: S) -> zip::Result<()>
-        where
-            P: Into<PathBuf>,
-            S: Into<String>,
+    where
+        P: Into<PathBuf>,
+        S: Into<String>,
     {
         let path = path.into();
         let ds = DataSource::Zip(zip::DataSource::new(path)?);
         let root = WorkspaceRoot::new(name, ds);
-        self.dispatcher().pre_insert(&vec![], self.roots.len(), self.roots.len());
+        self.dispatcher()
+            .pre_insert(&vec![], self.roots.len(), self.roots.len());
         self.roots.push(root);
         self.dispatcher().post_insert(&vec![]);
 
@@ -79,7 +81,9 @@ impl FsTree {
         }
     }
 
-    pub fn roots(&self) -> &[Rc<RefCell<WorkspaceRoot>>] { &self.roots }
+    pub fn roots(&self) -> &[Rc<RefCell<WorkspaceRoot>>] {
+        &self.roots
+    }
 
     pub fn reset(&mut self) {
         self.dispatcher().pre_remove(&vec![], 0, self.roots.len());
@@ -118,7 +122,11 @@ impl FsTreeEntry {
         }
     }
 
-    fn new<P: Into<PathBuf>>(path: P, parent: Rc<RefCell<FsTreeEntry>>, root: Weak<RefCell<WorkspaceRoot>>) -> Self {
+    fn new<P: Into<PathBuf>>(
+        path: P,
+        parent: Rc<RefCell<FsTreeEntry>>,
+        root: Weak<RefCell<WorkspaceRoot>>,
+    ) -> Self {
         FsTreeEntry {
             path: path.into(),
             file_type: None,
@@ -136,27 +144,41 @@ impl FsTreeEntry {
                     println!("fstree entry's root is gone!?");
                     "???".into()
                 }
-                Some(r) => r.borrow().name().to_string().into()
+                Some(r) => r.borrow().name().to_string().into(),
             }
         } else {
             self.path.file_name().unwrap().to_string_lossy()
         }
     }
 
-    pub fn file_type(&self) -> Option<FileType> { self.file_type }
+    pub fn file_type(&self) -> Option<FileType> {
+        self.file_type
+    }
 
-    pub fn is_root(&self) -> bool { self.is_top_level }
+    pub fn is_root(&self) -> bool {
+        self.is_top_level
+    }
 
-    pub fn parent(&self) -> &Option<Weak<RefCell<FsTreeEntry>>> { &self.parent }
+    pub fn parent(&self) -> &Option<Weak<RefCell<FsTreeEntry>>> {
+        &self.parent
+    }
 
-    pub fn root(&self) -> &Weak<RefCell<WorkspaceRoot>> { &self.root }
+    pub fn root(&self) -> &Weak<RefCell<WorkspaceRoot>> {
+        &self.root
+    }
 
-    pub fn path(&self) -> &PathBuf { &self.path }
+    pub fn path(&self) -> &PathBuf {
+        &self.path
+    }
 
-    pub fn children(&self) -> &[Rc<RefCell<FsTreeEntry>>] { &self.children }
+    pub fn children(&self) -> &[Rc<RefCell<FsTreeEntry>>] {
+        &self.children
+    }
 
     pub fn index_of(&self, child: &Rc<RefCell<FsTreeEntry>>) -> Option<usize> {
-        self.children.iter().position(|a| a.as_ptr() == child.as_ptr())
+        self.children
+            .iter()
+            .position(|a| a.as_ptr() == child.as_ptr())
     }
 
     pub fn refresh(entry: &Rc<RefCell<Self>>) {
@@ -167,7 +189,7 @@ impl FsTreeEntry {
                 println!("fstree entry's root is gone!?");
                 return;
             }
-            Some(r) => r
+            Some(r) => r,
         };
 
         let mut changed = false;
@@ -211,7 +233,10 @@ impl FsTreeEntry {
                     if !found {
                         let path = dir_entry.path();
                         let root = e.root.clone();
-                        e.children.insert(i, Rc::new(RefCell::new(FsTreeEntry::new(path, entry.clone(), root))));
+                        e.children.insert(
+                            i,
+                            Rc::new(RefCell::new(FsTreeEntry::new(path, entry.clone(), root))),
+                        );
                         changed = true;
                     }
                 }

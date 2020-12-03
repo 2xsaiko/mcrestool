@@ -170,7 +170,7 @@ impl GameDataReferences {
     }
 }
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, BinDeserialize, BinSerialize)]
 enum DependencyLink {
     Language(String, String),
     Block(Identifier),

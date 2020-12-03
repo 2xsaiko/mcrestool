@@ -1,10 +1,10 @@
-use std::{fs, io};
 use std::fs::{File, Metadata, OpenOptions};
 use std::path::{Path, PathBuf};
+use std::{fs, io};
 
 use thiserror::Error;
 
-use crate::{DirEntry, FileInfo, normalize_path};
+use crate::{normalize_path, DirEntry, FileInfo};
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct DataSource {
@@ -16,7 +16,7 @@ impl DataSource {
         let dir = dir.into();
         match fs::read_dir(&dir) {
             Err(e) => Err(e),
-            Ok(_) => Ok(DataSource { dir })
+            Ok(_) => Ok(DataSource { dir }),
         }
     }
 
@@ -62,10 +62,17 @@ impl DataSource {
         Ok(fs::remove_dir_all(self.get_full_path(path)?)?)
     }
 
-    pub fn root(&self) -> &Path { &self.dir }
+    pub fn root(&self) -> &Path {
+        &self.dir
+    }
 
     fn get_full_path<P: AsRef<Path>>(&self, path: P) -> Result<PathBuf, Error> {
-        Ok(self.dir.join(normalize_path(&path).ok_or_else(|| Error::InvalidPath(path.as_ref().to_path_buf()))?.strip_prefix("/").unwrap()))
+        Ok(self.dir.join(
+            normalize_path(&path)
+                .ok_or_else(|| Error::InvalidPath(path.as_ref().to_path_buf()))?
+                .strip_prefix("/")
+                .unwrap(),
+        ))
     }
 }
 

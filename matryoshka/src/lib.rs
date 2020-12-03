@@ -9,8 +9,8 @@ use thiserror::Error;
 use resfile::ResFile;
 
 pub mod dir;
-pub mod zip;
 pub mod resfile;
+pub mod zip;
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -24,17 +24,15 @@ impl DataSource {
     /// Opens a file at `path` inside of this `DataSource`.
     pub fn open<P: AsRef<Path>>(&self, path: P, opts: OpenOptions) -> Result<ResFile> {
         match self {
-            DataSource::Dir(ds) => {
-                Ok(ResFile::File(ds.open(path, opts.into())?))
-            }
+            DataSource::Dir(ds) => Ok(ResFile::File(ds.open(path, opts.into())?)),
             DataSource::Zip(ds) => {
                 if opts.write {
                     Err(Error::PermissionDenied)
                 } else {
-                    let result: Result<Vec<u8>, Error> = ds.open(path).map_err(|e| e.into())
-                        .map_err(|e| match e {
+                    let result: Result<Vec<u8>, Error> =
+                        ds.open(path).map_err(|e| e.into()).map_err(|e| match e {
                             Error::NotFound if opts.create => Error::ReadOnly,
-                            x => x
+                            x => x,
                         });
                     Ok(ResFile::ZipEntry(Cursor::new(result?)))
                 }
@@ -134,16 +132,14 @@ impl From<dir::Error> for Error {
         match err {
             dir::Error::RootDirNotFound(_) => unreachable!(),
             dir::Error::InvalidPath(p) => Error::InvalidPath(p),
-            dir::Error::Io(e) => {
-                match e.kind() {
-                    ErrorKind::NotFound => Error::NotFound,
-                    ErrorKind::PermissionDenied => Error::PermissionDenied,
-                    e => {
-                        eprintln!("unhandled error: {:?}", e);
-                        Error::Io
-                    }
+            dir::Error::Io(e) => match e.kind() {
+                ErrorKind::NotFound => Error::NotFound,
+                ErrorKind::PermissionDenied => Error::PermissionDenied,
+                e => {
+                    eprintln!("unhandled error: {:?}", e);
+                    Error::Io
                 }
-            }
+            },
         }
     }
 }
@@ -152,16 +148,14 @@ impl From<zip::Error> for Error {
     fn from(err: zip::Error) -> Self {
         match err {
             zip::Error::Zip(ZipError::FileNotFound) => Error::NotFound,
-            zip::Error::Zip(ZipError::InvalidArchive(_)) |
-            zip::Error::Zip(ZipError::UnsupportedArchive(_)) => Error::Io,
-            zip::Error::Zip(ZipError::Io(e)) | zip::Error::Io(e) => {
-                match e.kind() {
-                    ErrorKind::NotFound => Error::NotFound,
-                    ErrorKind::PermissionDenied => Error::PermissionDenied,
-                    _ => Error::Io
-                }
-            }
-            zip::Error::InvalidPath(p) => Error::InvalidPath(p)
+            zip::Error::Zip(ZipError::InvalidArchive(_))
+            | zip::Error::Zip(ZipError::UnsupportedArchive(_)) => Error::Io,
+            zip::Error::Zip(ZipError::Io(e)) | zip::Error::Io(e) => match e.kind() {
+                ErrorKind::NotFound => Error::NotFound,
+                ErrorKind::PermissionDenied => Error::PermissionDenied,
+                _ => Error::Io,
+            },
+            zip::Error::InvalidPath(p) => Error::InvalidPath(p),
         }
     }
 }
@@ -199,15 +193,30 @@ impl Default for OpenOptions {
 
 impl OpenOptions {
     pub fn new() -> OpenOptions {
-        OpenOptions { read: false, write: false, create: false, append: false }
+        OpenOptions {
+            read: false,
+            write: false,
+            create: false,
+            append: false,
+        }
     }
 
     pub fn reading() -> OpenOptions {
-        OpenOptions { read: true, write: false, create: false, append: false }
+        OpenOptions {
+            read: true,
+            write: false,
+            create: false,
+            append: false,
+        }
     }
 
     pub fn writing(create: bool) -> OpenOptions {
-        OpenOptions { read: false, write: true, create, append: false }
+        OpenOptions {
+            read: false,
+            write: true,
+            create,
+            append: false,
+        }
     }
 
     pub fn read(&mut self, read: bool) -> &mut OpenOptions {
@@ -251,10 +260,14 @@ pub struct DirEntry {
 
 impl DirEntry {
     /// Returns full path to this directory entry inside the `DataSource`.
-    pub fn path(&self) -> &Path { &self.path }
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
 
     /// Returns the metadata of this directory entry.
-    pub fn info(&self) -> FileInfo { self.info }
+    pub fn info(&self) -> FileInfo {
+        self.info
+    }
 
     /// Gets the file name from this directory entry. Since the path comes from
     /// a directory entry, path.file_name() will never return `None`.

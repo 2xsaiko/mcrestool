@@ -35,15 +35,21 @@ impl LanguageTable {
     }
 
     pub fn insert<L, K, V>(&mut self, language: L, key: K, value: V)
-        where L: Into<RcString>,
-              K: Into<RcString>,
-              V: Into<String> {
+    where
+        L: Into<RcString>,
+        K: Into<RcString>,
+        V: Into<String>,
+    {
         let language = language.into();
         let key = key.into();
         let value = value.into();
         self.add_language(language.clone());
         self.add_key(key.clone());
-        self.repr.entry(language).or_insert_with(|| LanguageTablePart::default()).repr.insert(key, value);
+        self.repr
+            .entry(language)
+            .or_insert_with(|| LanguageTablePart::default())
+            .repr
+            .insert(key, value);
     }
 
     pub fn add_key<S: Into<RcString>>(&mut self, key: S) -> bool {
@@ -66,12 +72,17 @@ impl LanguageTable {
         }
     }
 
-    pub fn key_count(&self) -> usize { self.keys.len() }
+    pub fn key_count(&self) -> usize {
+        self.keys.len()
+    }
 
-    pub fn lang_count(&self) -> usize { self.languages.len() }
+    pub fn lang_count(&self) -> usize {
+        self.languages.len()
+    }
 
     pub fn get(&self, language: &str, key: &str) -> Option<&str> {
-        self.repr.get(language)
+        self.repr
+            .get(language)
             .and_then(|s| s.repr.get(key))
             .map(|s| &**s)
     }
@@ -125,7 +136,8 @@ impl LanguageTable {
         let mut dir = ds.list_dir(path)?;
 
         // move en_us to the beginning
-        let idx = dir.iter()
+        let idx = dir
+            .iter()
             .position(|e| e.info().is_file() && e.file_name() == OsStr::new("en_us.json"));
 
         if let Some(idx) = idx {
@@ -143,7 +155,8 @@ impl LanguageTable {
 
                 // Read entire file into string to increase speed (serde-rs/json#160)
                 let mut buf = String::new();
-                ds.open(entry.path(), OpenOptions::reading())?.read_to_string(&mut buf)?;
+                ds.open(entry.path(), OpenOptions::reading())?
+                    .read_to_string(&mut buf)?;
                 let part: HashMap<RcString, String> = serde_json::from_str(&buf)?;
 
                 println!(" - deduplicate");
@@ -163,7 +176,8 @@ impl LanguageTable {
                 }
 
                 println!(" - insert");
-                lt.repr.insert(lang.clone(), LanguageTablePart { repr: part });
+                lt.repr
+                    .insert(lang.clone(), LanguageTablePart { repr: part });
                 lt.languages.push(lang);
             }
         }
@@ -188,24 +202,33 @@ pub enum Error {
 pub struct RcString(Rc<String>);
 
 impl RcString {
-    pub fn from(rc: Rc<String>) -> RcString { RcString(rc) }
+    pub fn from(rc: Rc<String>) -> RcString {
+        RcString(rc)
+    }
 
-    pub fn into_inner(self) -> Rc<String> { self.0 }
+    pub fn into_inner(self) -> Rc<String> {
+        self.0
+    }
 }
 
 impl Borrow<str> for RcString {
-    fn borrow(&self) -> &str { &self.0 }
+    fn borrow(&self) -> &str {
+        &self.0
+    }
 }
 
 impl Deref for RcString {
     type Target = str;
 
-    fn deref(&self) -> &Self::Target { &self.0 }
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 impl<T> From<T> for RcString
-    where
-        T: Into<String> {
+where
+    T: Into<String>,
+{
     fn from(s: T) -> Self {
         RcString(Rc::new(s.into()))
     }
@@ -213,16 +236,18 @@ impl<T> From<T> for RcString
 
 impl Serialize for RcString {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer {
+    where
+        S: Serializer,
+    {
         self.0.serialize(serializer)
     }
 }
 
 impl<'de> Deserialize<'de> for RcString {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: Deserializer<'de> {
+    where
+        D: Deserializer<'de>,
+    {
         Ok(String::deserialize(deserializer)?.into())
     }
 }
