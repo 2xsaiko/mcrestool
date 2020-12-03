@@ -46,8 +46,18 @@ fn gen_deserialize_method_body(opts: &BinSerdeOpts) -> TokenStream2 {
             Style::Unit => quote! { #struct_like },
         };
 
+        let deserializers = fields.iter().map(|el| {
+            let mut expr = quote!(&mut deserializer);
+
+            if el.no_dedup {
+                expr = quote!(::ffmtutil::BinDeserializer::disable_dedup(#expr));
+            }
+
+            expr
+        });
+
         quote! {
-            #( let #idents = ::ffmtutil::BinDeserialize::deserialize(&mut deserializer)?; )*
+            #( let #idents = ::ffmtutil::BinDeserialize::deserialize( #deserializers )?; )*
             Ok( #struct_value )
         }
     }
@@ -87,8 +97,18 @@ fn gen_deserialize_method_body(opts: &BinSerdeOpts) -> TokenStream2 {
 fn gen_deserialize_in_place_method_body(fields: &Fields<BinSerdeField>) -> TokenStream2 {
     let idents = to_struct_fields(fields);
 
+    let deserializers = fields.iter().map(|el| {
+        let mut expr = quote!(&mut deserializer);
+
+        if el.no_dedup {
+            expr = quote!(::ffmtutil::BinDeserializer::disable_dedup(#expr));
+        }
+
+        expr
+    });
+
     quote! {
-        #( self.#idents = ::ffmtutil::BinDeserialize::deserialize(&mut deserializer)?; )*
+        #( self.#idents = ::ffmtutil::BinDeserialize::deserialize( #deserializers )?; )*
         Ok(())
     }
 }

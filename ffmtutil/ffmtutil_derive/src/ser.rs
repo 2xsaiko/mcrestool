@@ -32,7 +32,7 @@ fn gen_serialize_fields(fields: &Fields<BinSerdeField>) -> TokenStream2 {
         let mut expr = quote!(&mut serializer);
 
         if el.no_dedup {
-            expr = quote!(ffmtutil::BinSerializer::disable_dedup(#expr));
+            expr = quote!(::ffmtutil::BinSerializer::disable_dedup(#expr));
         }
 
         expr
