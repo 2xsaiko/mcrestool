@@ -1,146 +1,94 @@
-use proc_macro::TokenStream;
-use std::borrow::Cow;
-
-use darling::{FromDeriveInput, FromField, FromVariant};
 use darling::ast::{Data, Fields, Style};
-use quote::{quote, ToTokens};
-use syn::{Generics, Ident, Type};
-use syn::export::Span;
+use quote::quote;
 use syn::export::TokenStream2;
+use syn::Index;
 
-#[derive(FromDeriveInput, Debug)]
-#[darling(attributes(binserde), supports(struct_any, enum_any))]
-pub struct BinDeserializeOpts {
-    ident: Ident,
-    generics: Generics,
-    data: darling::ast::Data<BinSerdeVariant, BinSerdeField>,
-}
+use crate::common::{to_idents, to_struct_fields, BinSerdeField, BinSerdeOpts, BinSerdeVariant};
 
-#[derive(FromVariant, Debug)]
-#[darling(attributes(binserde))]
-struct BinSerdeVariant {
-    ident: Ident,
-    fields: Fields<BinSerdeField>,
-}
-
-#[derive(FromField, Debug)]
-#[darling(attributes(binserde))]
-struct BinSerdeField {
-    ident: Option<syn::Ident>,
-    ty: Type,
-}
-
-pub fn impl_bin_deserialize(opts: &BinDeserializeOpts) -> TokenStream {
+pub fn impl_bin_deserialize(opts: &BinSerdeOpts) -> TokenStream2 {
     let name = &opts.ident;
-    let body = match &opts.data {
-        Data::Enum(variants) => gen_variants(&variants),
-        Data::Struct(s) => {
-            gen_deserialize_fields(s)
+    let deserialize_body = gen_deserialize_method_body(opts);
+
+    let deserialize_in_place_m = match &opts.data {
+        Data::Enum(_) => quote!(),
+        Data::Struct(fields) => {
+            let body = gen_deserialize_in_place_method_body(fields);
+            quote! {
+                fn deserialize_in_place<D: ffmtutil::BinDeserializer<'de>>(&mut self, mut deserializer: D) -> ffmtutil::Result<()> {
+                    #body
+                }
+            }
         }
     };
 
     let gen = quote! {
         impl<'de> ffmtutil::BinDeserialize<'de> for #name {
-            fn serialize<D: ffmtutil::BinDeserializer<'de>>(&self, mut deserializer: D) -> ffmtutil::Result<()> {
-                #body
+            fn deserialize<D: ffmtutil::BinDeserializer<'de>>(mut deserializer: D) -> ffmtutil::Result<Self> {
+                #deserialize_body
+            }
+
+            #deserialize_in_place_m
+        }
+    };
+
+    eprintln!("{}", gen);
+    gen
+}
+
+fn gen_deserialize_method_body(opts: &BinSerdeOpts) -> TokenStream2 {
+    fn gen_struct_like(struct_like: TokenStream2, fields: &Fields<BinSerdeField>) -> TokenStream2 {
+        let idents = to_idents(fields);
+
+        let fields_list = quote! { #( #idents ),* };
+        let struct_value = match fields.style {
+            Style::Tuple => quote! { #struct_like ( #fields_list ) },
+            Style::Struct => quote! { #struct_like { #fields_list } },
+            Style::Unit => quote! { #struct_like },
+        };
+
+        quote! {
+            #( let #idents = ffmtutil::BinDeserialize::deserialize(&mut deserializer)?; )*
+            Ok( #struct_value )
+        }
+    }
+
+    fn gen_variant_impl(index: usize, variant: &BinSerdeVariant) -> TokenStream2 {
+        let name = &variant.ident;
+        let index = Index::from(index);
+        let g = gen_struct_like(quote!(Self::#name), &variant.fields);
+        quote! {
+            #index => { #g }
+        }
+    }
+
+    match &opts.data {
+        Data::Enum(variants) if variants.is_empty() => {
+            let ident = opts.ident.to_string();
+            quote! {
+                panic!("can't deserialize empty enum {}", #ident)
             }
         }
-    };
-
-    let out = gen.into();
-    eprintln!("{}", out);
-    out
-}
-
-enum StructField<'a> {
-    Tuple(syn::Index),
-    Struct(&'a syn::Ident),
-}
-
-impl ToTokens for StructField<'_> {
-    fn to_tokens(&self, tokens: &mut TokenStream2) {
-        match self {
-            StructField::Tuple(v) => v.to_tokens(tokens),
-            StructField::Struct(v) => v.to_tokens(tokens),
-        }
-    }
-}
-
-fn to_struct_fields<'a>(fields: &'a Fields<BinSerdeField>) -> Vec<StructField<'a>> {
-    match fields.style {
-        Style::Tuple => fields
-            .fields
-            .iter()
-            .enumerate()
-            .map(|(idx, _el)| StructField::Tuple(syn::Index::from(idx)))
-            .collect(),
-        Style::Struct => fields
-            .fields
-            .iter()
-            .map(|el| StructField::Struct(el.ident.as_ref().unwrap()))
-            .collect(),
-        Style::Unit => vec![],
-    }
-}
-
-fn gen_deserialize_fields(fields: &Fields<BinSerdeField>) -> TokenStream2 {
-    let idents = to_idents(fields);
-    let struct_fields = to_struct_fields(fields);
-    quote! {
-        #( let #idents = ffmtutil::BinDeserialize::deserialize(&mut deserializer)?; )*
-        Ok(Self { #( #idents )* })
-    }
-}
-
-fn gen_deserialize_in_place_fields(fields: &Fields<BinSerdeField>) -> TokenStream2 {
-    quote! {
-        unimplemented!()
-    }
-}
-
-struct EnumVariant<'a> {
-    ident: &'a Ident,
-    fields: Vec<StructField<'a>>,
-}
-
-fn gen_variants(variants: &[BinSerdeVariant]) -> TokenStream2 {
-    let variants = variants.iter().map(|el| gen_variant_impl(el));
-    quote! {
-        match self {
-            #( #variants )*
-        }
-    }
-}
-
-fn to_idents(fields: &Fields<BinSerdeField>) -> Vec<Cow<Ident>> {
-    match fields.style {
-        Style::Tuple => {
-            fields
+        Data::Enum(variants) => {
+            let variants = variants
                 .iter()
                 .enumerate()
-                .map(|(idx, _el)| Ident::new(&format!("v{}", idx), Span::call_site()).into())
-                .collect()
+                .map(|(idx, el)| gen_variant_impl(idx, el));
+            quote! {
+                match usize::deserialize(&mut deserializer)? {
+                    #( #variants )*
+                    x @ _ => Err(ffmtutil::Error::custom(&format!("invalid variant {}", x))),
+                }
+            }
         }
-        Style::Struct => {
-            fields.iter().map(|el| el.ident.as_ref().unwrap().into()).collect()
-        }
-        Style::Unit => Vec::new(),
+        Data::Struct(fields) => gen_struct_like(quote!(Self), fields),
     }
 }
 
-fn gen_variant_impl(variant: &BinSerdeVariant) -> TokenStream2 {
-    let name = &variant.ident;
-    let fs = &variant.fields.fields;
-    let fields = to_idents(&variant.fields);
-    let args = match variant.fields.style {
-        Style::Tuple => quote! { ( #( #fields ),* ) },
-        Style::Struct => quote! { { #( #fields ),* } },
-        Style::Unit => quote!(),
-    };
+fn gen_deserialize_in_place_method_body(fields: &Fields<BinSerdeField>) -> TokenStream2 {
+    let idents = to_struct_fields(fields);
+
     quote! {
-        Self::#name #args => {
-            #( #fields.serialize(&mut serializer)?; )*
-            Ok(())
-        }
+        #( self.#idents = ffmtutil::BinDeserialize::deserialize(&mut deserializer)?; )*
+        Ok(())
     }
 }

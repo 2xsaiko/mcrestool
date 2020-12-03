@@ -41,16 +41,34 @@ fn has_file_name<P: AsRef<Path>, S: AsRef<OsStr>>(path: P, name: S) -> bool {
 }
 
 #[derive(BinSerialize)]
+#[derive(BinDeserialize)]
 struct S {
     inner: String,
     inner1: String,
 }
 
 #[derive(BinSerialize)]
+#[derive(BinDeserialize)]
 struct S1(String);
 
 #[derive(BinSerialize)]
+#[derive(BinDeserialize)]
 enum E {
     None,
     Some(String),
+    Thonk,
+    Bink {
+
+    },
+    Grank(),
+    Jank {
+        a: String,
+        b: String,
+    }
+}
+
+#[derive(BinSerialize)]
+#[derive(BinDeserialize)]
+enum E1 {
+
 }

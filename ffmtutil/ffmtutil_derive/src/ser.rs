@@ -1,40 +1,17 @@
-use proc_macro::TokenStream;
-
-use darling::ast::{Data, Fields, Style};
-use darling::{FromDeriveInput, FromField, FromVariant};
-use quote::{quote, ToTokens};
+use darling::ast::{Data, Style};
+use quote::quote;
 use syn::export::Span;
 use syn::export::TokenStream2;
-use syn::{Generics, Ident, Type};
+use syn::Ident;
 
-#[derive(FromDeriveInput, Debug)]
-#[darling(attributes(binserde), supports(struct_any, enum_any))]
-pub struct BinSerializeOpts {
-    ident: Ident,
-    generics: Generics,
-    data: darling::ast::Data<BinSerdeVariant, BinSerdeField>,
-}
+use crate::common::{to_struct_fields, BinSerdeOpts, BinSerdeVariant, StructField};
 
-#[derive(FromVariant, Debug)]
-#[darling(attributes(binserde))]
-struct BinSerdeVariant {
-    ident: Ident,
-    fields: Fields<BinSerdeField>,
-}
-
-#[derive(FromField, Debug)]
-#[darling(attributes(binserde))]
-struct BinSerdeField {
-    ident: Option<syn::Ident>,
-    ty: Type,
-}
-
-pub fn impl_bin_serialize(opts: &BinSerializeOpts) -> TokenStream {
+pub fn impl_bin_serialize(opts: &BinSerdeOpts) -> TokenStream2 {
     let name = &opts.ident;
     let body = match &opts.data {
         Data::Enum(variants) => gen_variants(&variants),
         Data::Struct(s) => {
-            let fields = from_fields(s);
+            let fields = to_struct_fields(s);
 
             gen_serialize_fields(&fields)
         }
@@ -48,40 +25,8 @@ pub fn impl_bin_serialize(opts: &BinSerializeOpts) -> TokenStream {
         }
     };
 
-    let out = gen.into();
-    eprintln!("{}", out);
-    out
-}
-
-enum StructField<'a> {
-    Tuple(syn::Index),
-    Struct(&'a syn::Ident),
-}
-
-impl ToTokens for StructField<'_> {
-    fn to_tokens(&self, tokens: &mut TokenStream2) {
-        match self {
-            StructField::Tuple(v) => v.to_tokens(tokens),
-            StructField::Struct(v) => v.to_tokens(tokens),
-        }
-    }
-}
-
-fn from_fields<'a>(fields: &'a Fields<BinSerdeField>) -> Vec<StructField<'a>> {
-    match fields.style {
-        Style::Tuple => fields
-            .fields
-            .iter()
-            .enumerate()
-            .map(|(idx, _el)| StructField::Tuple(syn::Index::from(idx)))
-            .collect(),
-        Style::Struct => fields
-            .fields
-            .iter()
-            .map(|el| StructField::Struct(el.ident.as_ref().unwrap()))
-            .collect(),
-        Style::Unit => vec![],
-    }
+    eprintln!("{}", gen);
+    gen
 }
 
 fn gen_serialize_fields(fields: &[StructField]) -> TokenStream2 {
@@ -91,21 +36,25 @@ fn gen_serialize_fields(fields: &[StructField]) -> TokenStream2 {
     }
 }
 
-struct EnumVariant<'a> {
-    ident: &'a Ident,
-    fields: Vec<StructField<'a>>,
-}
-
 fn gen_variants(variants: &[BinSerdeVariant]) -> TokenStream2 {
-    let variants = variants.iter().map(|el| gen_variant_impl(el));
-    quote! {
-        match self {
-            #( #variants )*
+    if !variants.is_empty() {
+        let variants = variants
+            .iter()
+            .enumerate()
+            .map(|(idx, el)| gen_variant_impl(idx, el));
+        quote! {
+            match self {
+                #( #variants )*
+            }
+        }
+    } else {
+        quote! {
+            unreachable!()
         }
     }
 }
 
-fn gen_variant_impl(variant: &BinSerdeVariant) -> TokenStream2 {
+fn gen_variant_impl(idx: usize, variant: &BinSerdeVariant) -> TokenStream2 {
     let name = &variant.ident;
     let fs = &variant.fields.fields;
     let (args, fields) = match variant.fields.style {
@@ -115,26 +64,17 @@ fn gen_variant_impl(variant: &BinSerdeVariant) -> TokenStream2 {
                 .enumerate()
                 .map(|(idx, _el)| Ident::new(&format!("v{}", idx), Span::call_site()))
                 .collect();
-            (
-                quote! {
-                    ( #( #fields ),* )
-                },
-                fields,
-            )
+            (quote! { ( #( #fields ),* ) }, fields)
         }
         Style::Struct => {
             let fields: Vec<_> = fs.iter().map(|el| el.ident.clone().unwrap()).collect();
-            (
-                quote! {
-                    { #( #fields ),* }
-                },
-                fields,
-            )
+            (quote! { { #( #fields ),* } }, fields)
         }
         Style::Unit => (quote!(), vec![]),
     };
     quote! {
         Self::#name #args => {
+            #idx.serialize(&mut serializer)?;
             #( #fields.serialize(&mut serializer)?; )*
             Ok(())
         }

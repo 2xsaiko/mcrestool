@@ -1,5 +1,5 @@
 use std::io;
-use std::io::{Read, Write, Cursor};
+use std::io::{Read, Write};
 
 use byteorder::ReadBytesExt;
 
@@ -80,6 +80,8 @@ fn test_encode_min() {
 
 #[test]
 fn test_varint() {
+    use std::io::Cursor;
+
     let mut buf = Cursor::new(Vec::new());
 
     varint_write(0, &mut buf).unwrap();

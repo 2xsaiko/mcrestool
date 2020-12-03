@@ -2,27 +2,28 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 
-use darling::{FromDeriveInput, FromField, FromVariant};
+use darling::FromDeriveInput;
 use quote::quote;
 use syn::Member;
 
-mod ser;
+mod common;
 mod de;
+mod ser;
 
 #[proc_macro_derive(BinSerialize)]
 pub fn bin_serialize_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).expect("failed to parse token stream");
-    let opts: ser::BinSerializeOpts = FromDeriveInput::from_derive_input(&ast).unwrap();
-    eprintln!("{:#?}", opts);
-    ser::impl_bin_serialize(&opts)
+    let opts: common::BinSerdeOpts = FromDeriveInput::from_derive_input(&ast).unwrap();
+    // eprintln!("{:#?}", opts);
+    ser::impl_bin_serialize(&opts).into()
 }
 
 #[proc_macro_derive(BinDeserialize)]
 pub fn bin_deserialize_derive(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).expect("failed to parse token stream");
-    let opts: de::BinDeserializeOpts = FromDeriveInput::from_derive_input(&ast).unwrap();
+    let opts: common::BinSerdeOpts = FromDeriveInput::from_derive_input(&ast).unwrap();
     eprintln!("{:#?}", opts);
-    de::impl_bin_deserialize(&opts)
+    de::impl_bin_deserialize(&opts).into()
 }
 
 #[proc_macro]

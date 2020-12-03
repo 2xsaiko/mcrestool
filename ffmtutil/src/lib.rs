@@ -2,7 +2,6 @@
 #![feature(const_generics)]
 #![feature(trace_macros)]
 
-use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
 use std::io;
 use std::io::{Cursor, Read, Write};
@@ -14,7 +13,7 @@ use thiserror::Error;
 use de::BinDeserializeOwned;
 pub use de::{BinDeserialize, BinDeserializer};
 use dedup::DedupContext;
-pub use ffmtutil_derive::{member_to_ident, BinSerialize};
+pub use ffmtutil_derive::{member_to_ident, BinSerialize, BinDeserialize};
 pub use ser::{BinSerialize, BinSerializer};
 pub use serde::Mode;
 
@@ -144,6 +143,8 @@ impl Error {
 
 #[test]
 fn serialize_inline_test() {
+    use std::collections::{HashMap, HashSet};
+
     #[derive(Debug, PartialEq, Eq)]
     struct Test {
         vec: Vec<Test1>,
