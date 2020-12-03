@@ -1,6 +1,5 @@
 #![allow(incomplete_features)]
 #![feature(const_generics)]
-#![feature(trace_macros)]
 
 extern crate self as ffmtutil;
 
