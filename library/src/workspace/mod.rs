@@ -7,8 +7,9 @@ use std::rc::{Rc, Weak};
 
 use thiserror::Error;
 
+use ffmtutil::{BinDeserialize, BinSerialize};
 pub use fstree::FsTreeEntry;
-use matryoshka::{DataSource, zip};
+use matryoshka::{zip, DataSource};
 
 use crate::ffi;
 #[cfg(feature = "cpp")]
@@ -16,12 +17,14 @@ use crate::ffi::TreeChangeSubscriber as CppTreeChangeSubscriber;
 use crate::gamedata::GameData;
 use crate::workspace::fstree::FsTree;
 
+pub use self::serde::Result;
+
 mod fstree;
 pub mod serde;
 
-pub use self::serde::Result;
-
+#[derive(BinDeserialize, BinSerialize)]
 pub struct Workspace {
+    #[binserde(no_dedup)]
     fst: FsTree,
     gd: GameData,
 }
@@ -68,11 +71,17 @@ impl Workspace {
         self.update_refs();
     }
 
-    pub fn roots(&self) -> &[Rc<RefCell<WorkspaceRoot>>] { self.fst.roots() }
+    pub fn roots(&self) -> &[Rc<RefCell<WorkspaceRoot>>] {
+        self.fst.roots()
+    }
 
-    pub fn fs_tree(&self) -> &FsTree { &self.fst }
+    pub fn fs_tree(&self) -> &FsTree {
+        &self.fst
+    }
 
-    pub fn game_data(&self) -> &GameData { &self.gd }
+    pub fn game_data(&self) -> &GameData {
+        &self.gd
+    }
 
     pub fn fst_dispatcher(&self) -> Ref<TreeChangeDispatcher> {
         self.fst.dispatcher()
@@ -118,11 +127,17 @@ impl WorkspaceRoot {
         wsr
     }
 
-    pub fn name(&self) -> &str { &self.name }
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 
-    pub fn root(&self) -> &Rc<RefCell<FsTreeEntry>> { &self.root }
+    pub fn root(&self) -> &Rc<RefCell<FsTreeEntry>> {
+        &self.root
+    }
 
-    pub fn ds(&self) -> &Rc<DataSource> { &self.ds }
+    pub fn ds(&self) -> &Rc<DataSource> {
+        &self.ds
+    }
 }
 
 #[derive(Default)]
@@ -148,7 +163,10 @@ impl TreeChangeDispatcher {
     }
 
     pub fn unsubscribe(&mut self, ptr: &Rc<dyn TreeChangeSubscriber>) {
-        let idx = self.subscribers.iter().position(|el| el.ptr_eq(&Rc::downgrade(ptr)));
+        let idx = self
+            .subscribers
+            .iter()
+            .position(|el| el.ptr_eq(&Rc::downgrade(ptr)));
 
         if let Some(idx) = idx {
             self.subscribers.remove(idx);
@@ -157,14 +175,18 @@ impl TreeChangeDispatcher {
 
     #[cfg(feature = "cpp")]
     pub fn cpp_subscribe(&mut self, ptr: *mut CppTreeChangeSubscriber) {
-        if ptr.is_null() { return; }
+        if ptr.is_null() {
+            return;
+        }
 
         self.cpp_subscribers.push(ptr);
     }
 
     #[cfg(feature = "cpp")]
     pub fn cpp_unsubscribe(&mut self, ptr: *mut CppTreeChangeSubscriber) {
-        if ptr.is_null() { return; }
+        if ptr.is_null() {
+            return;
+        }
 
         let idx = self.cpp_subscribers.iter().position(|&el| el == ptr);
 
@@ -174,39 +196,51 @@ impl TreeChangeDispatcher {
     }
 
     fn pre_insert(&self, path: &Vec<usize>, start: usize, end: usize) {
-        self.subscribers.iter()
+        self.subscribers
+            .iter()
             .filter_map(Weak::upgrade)
             .for_each(|l| l.pre_insert(path, start, end));
 
         #[cfg(feature = "cpp")]
-            self.cpp_subscribers.iter().for_each(|&l| ffi::tcs_pre_insert(l, path, start, end));
+        self.cpp_subscribers
+            .iter()
+            .for_each(|&l| ffi::tcs_pre_insert(l, path, start, end));
     }
 
     fn post_insert(&self, path: &Vec<usize>) {
-        self.subscribers.iter()
+        self.subscribers
+            .iter()
             .filter_map(Weak::upgrade)
             .for_each(|l| l.post_insert(path));
 
         #[cfg(feature = "cpp")]
-            self.cpp_subscribers.iter().for_each(|&l| ffi::tcs_post_insert(l, path));
+        self.cpp_subscribers
+            .iter()
+            .for_each(|&l| ffi::tcs_post_insert(l, path));
     }
 
     fn pre_remove(&self, path: &Vec<usize>, start: usize, end: usize) {
-        self.subscribers.iter()
+        self.subscribers
+            .iter()
             .filter_map(Weak::upgrade)
             .for_each(|l| l.pre_remove(path, start, end));
 
         #[cfg(feature = "cpp")]
-            self.cpp_subscribers.iter().for_each(|&l| ffi::tcs_pre_remove(l, path, start, end));
+        self.cpp_subscribers
+            .iter()
+            .for_each(|&l| ffi::tcs_pre_remove(l, path, start, end));
     }
 
     fn post_remove(&self, path: &Vec<usize>) {
-        self.subscribers.iter()
+        self.subscribers
+            .iter()
             .filter_map(Weak::upgrade)
             .for_each(|l| l.post_remove(path));
 
         #[cfg(feature = "cpp")]
-            self.cpp_subscribers.iter().for_each(|&l| ffi::tcs_post_remove(l, path));
+        self.cpp_subscribers
+            .iter()
+            .for_each(|&l| ffi::tcs_post_remove(l, path));
     }
 }
 

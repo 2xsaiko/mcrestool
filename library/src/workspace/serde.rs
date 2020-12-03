@@ -52,10 +52,6 @@ impl Workspace {
     }
 }
 
-ffmtutil::impl_serde_wrap! {
-    struct Workspace { #[no_dedup] fst, gd }
-}
-
 impl<'de> BinDeserialize<'de> for FsTree {
     fn deserialize<D: BinDeserializer<'de>>(deserializer: D) -> ffmtutil::Result<Self> {
         let mut tree = FsTree::new();

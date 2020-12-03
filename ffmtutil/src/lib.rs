@@ -11,10 +11,10 @@ use std::string::FromUtf8Error;
 
 use thiserror::Error;
 
-pub use de::{BinDeserialize, BinDeserializer};
 use de::BinDeserializeOwned;
+pub use de::{BinDeserialize, BinDeserializer};
 use dedup::DedupContext;
-pub use ffmtutil_derive::{BinDeserialize, BinSerialize, member_to_ident};
+pub use ffmtutil_derive::{member_to_ident, BinDeserialize, BinSerialize};
 pub use ser::{BinSerialize, BinSerializer};
 pub use serde::Mode;
 

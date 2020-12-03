@@ -25,6 +25,8 @@ pub struct BinSerdeVariant {
 pub struct BinSerdeField {
     pub ident: Option<syn::Ident>,
     pub ty: Type,
+    #[darling(default)]
+    pub no_dedup: bool,
 }
 
 pub enum StructField<'a> {

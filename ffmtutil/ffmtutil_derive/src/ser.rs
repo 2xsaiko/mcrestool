@@ -1,20 +1,16 @@
-use darling::ast::{Data, Style};
+use darling::ast::{Data, Fields, Style};
 use quote::quote;
 use syn::export::Span;
 use syn::export::TokenStream2;
 use syn::Ident;
 
-use crate::common::{BinSerdeOpts, BinSerdeVariant, StructField, to_struct_fields};
+use crate::common::{to_struct_fields, BinSerdeField, BinSerdeOpts, BinSerdeVariant};
 
 pub fn impl_bin_serialize(opts: &BinSerdeOpts) -> TokenStream2 {
     let name = &opts.ident;
     let body = match &opts.data {
         Data::Enum(variants) => gen_variants(&variants),
-        Data::Struct(s) => {
-            let fields = to_struct_fields(s);
-
-            gen_serialize_fields(&fields)
-        }
+        Data::Struct(s) => gen_serialize_fields(s),
     };
 
     let gen = quote! {
@@ -29,9 +25,21 @@ pub fn impl_bin_serialize(opts: &BinSerdeOpts) -> TokenStream2 {
     gen
 }
 
-fn gen_serialize_fields(fields: &[StructField]) -> TokenStream2 {
+fn gen_serialize_fields(fields: &Fields<BinSerdeField>) -> TokenStream2 {
+    let idents = to_struct_fields(fields);
+
+    let serializers = fields.iter().map(|el| {
+        let mut expr = quote!(&mut serializer);
+
+        if el.no_dedup {
+            expr = quote!(ffmtutil::BinSerializer::disable_dedup(#expr));
+        }
+
+        expr
+    });
+
     quote! {
-        #( self.#fields.serialize(&mut serializer)?; )*
+        #( self.#idents.serialize( #serializers )?; )*
         Ok(())
     }
 }
