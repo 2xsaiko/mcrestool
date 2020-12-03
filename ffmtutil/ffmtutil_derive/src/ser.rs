@@ -1,10 +1,11 @@
+use std::borrow::Cow;
+
 use darling::ast::{Data, Fields, Style};
 use quote::quote;
-use syn::export::Span;
 use syn::export::TokenStream2;
 use syn::Ident;
 
-use crate::common::{to_struct_fields, BinSerdeField, BinSerdeOpts, BinSerdeVariant};
+use crate::common::{to_idents, to_struct_fields, BinSerdeField, BinSerdeOpts, BinSerdeVariant};
 
 pub fn impl_bin_serialize(opts: &BinSerdeOpts) -> TokenStream2 {
     let name = &opts.ident;
@@ -26,9 +27,9 @@ pub fn impl_bin_serialize(opts: &BinSerdeOpts) -> TokenStream2 {
 }
 
 fn gen_serialize_fields(fields: &Fields<BinSerdeField>) -> TokenStream2 {
-    let idents = to_struct_fields(fields);
+    let idents = to_struct_fields(fields, true);
 
-    let serializers = fields.iter().map(|el| {
+    let serializers = fields.iter().filter(|el| !el.skip).map(|el| {
         let mut expr = quote!(&mut serializer);
 
         if el.no_dedup {
@@ -64,19 +65,19 @@ fn gen_variants(variants: &[BinSerdeVariant]) -> TokenStream2 {
 
 fn gen_variant_impl(idx: usize, variant: &BinSerdeVariant) -> TokenStream2 {
     let name = &variant.ident;
-    let fs = &variant.fields.fields;
+    let fs = &variant.fields;
     let (args, fields) = match variant.fields.style {
         Style::Tuple => {
-            let fields: Vec<_> = fs
-                .iter()
-                .enumerate()
-                .map(|(idx, _el)| Ident::new(&format!("v{}", idx), Span::call_site()))
-                .collect();
-            (quote! { ( #( #fields ),* ) }, fields)
+            let idents = to_idents(fs, true);
+            (quote! { ( #( #idents ),* ) }, idents)
         }
         Style::Struct => {
-            let fields: Vec<_> = fs.iter().map(|el| el.ident.clone().unwrap()).collect();
-            (quote! { { #( #fields ),* } }, fields)
+            let idents: Vec<_> = fs
+                .iter()
+                .filter(|el| !el.skip)
+                .map(|el| Cow::Borrowed(el.ident.as_ref().unwrap()))
+                .collect();
+            (quote! { { #( #idents ),* } }, idents)
         }
         Style::Unit => (quote!(), vec![]),
     };

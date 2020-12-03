@@ -13,12 +13,14 @@ use crate::workspace::{TreeChangeDispatcher, WorkspaceRoot};
 
 pub mod serde;
 
+#[derive(BinDeserialize, BinSerialize)]
 pub struct GameData {
     refs: GameDataReferences,
 
     blocks: HashMap<Identifier, Block>,
     items: HashMap<Identifier, Item>,
 
+    #[binserde(skip)]
     dispatcher: Rc<RefCell<TreeChangeDispatcher>>,
 }
 
@@ -166,10 +168,6 @@ impl GameDataReferences {
     pub fn insert(&mut self, key: DependencyLink, value: DependencyLink) {
         self.map.entry(key).or_default().insert(value);
     }
-}
-
-ffmtutil::impl_serde_wrap! {
-    struct GameData { refs, blocks, items, ..GameData::new() }
 }
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
