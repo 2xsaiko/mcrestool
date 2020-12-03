@@ -14,7 +14,7 @@ use thiserror::Error;
 use de::BinDeserializeOwned;
 pub use de::{BinDeserialize, BinDeserializer};
 use dedup::DedupContext;
-pub use ffmtutil_derive::{member_to_ident, BinDeserialize, BinSerialize};
+pub use ffmtutil_derive::{BinDeserialize, BinSerialize};
 pub use ser::{BinSerialize, BinSerializer};
 pub use serde::Mode;
 
@@ -23,7 +23,6 @@ use crate::ser::{BinSerializerBase, PrescanSerializer};
 
 pub mod de;
 pub mod dedup;
-mod mac;
 pub mod ser;
 pub mod serde;
 mod serdeimpl;
