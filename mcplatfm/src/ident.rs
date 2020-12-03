@@ -5,9 +5,10 @@ use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 
-use ffmtutil::{BinSerialize, BinSerializer};
+use ffmtutil::{BinDeserialize, BinSerialize, BinSerializer};
 
 #[derive(Debug, Clone, Eq)]
+#[derive(BinDeserialize)]
 pub struct Identifier {
     inner: String,
 }
@@ -119,10 +120,6 @@ impl BinSerialize for Identifier {
     fn serialize<S: BinSerializer>(&self, serializer: S) -> ffmtutil::Result<()> {
         (**self).serialize(serializer)
     }
-}
-
-ffmtutil::impl_deserialize_wrap! {
-    struct Identifier { inner }
 }
 
 #[repr(transparent)]

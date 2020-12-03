@@ -2,6 +2,8 @@
 #![feature(const_generics)]
 #![feature(trace_macros)]
 
+extern crate self as ffmtutil;
+
 use std::fmt::Display;
 use std::io;
 use std::io::{Cursor, Read, Write};
@@ -10,10 +12,10 @@ use std::string::FromUtf8Error;
 
 use thiserror::Error;
 
-use de::BinDeserializeOwned;
 pub use de::{BinDeserialize, BinDeserializer};
+use de::BinDeserializeOwned;
 use dedup::DedupContext;
-pub use ffmtutil_derive::{member_to_ident, BinSerialize, BinDeserialize};
+pub use ffmtutil_derive::{BinDeserialize, BinSerialize, member_to_ident};
 pub use ser::{BinSerialize, BinSerializer};
 pub use serde::Mode;
 
@@ -145,18 +147,21 @@ impl Error {
 fn serialize_inline_test() {
     use std::collections::{HashMap, HashSet};
 
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Debug, PartialEq, Eq, BinSerialize, BinDeserialize)]
     struct Test {
         vec: Vec<Test1>,
         map_set: HashMap<String, HashSet<String>>,
+        test2: Vec<Test2>,
     }
 
-    #[derive(Debug, PartialEq, Eq)]
+    #[derive(Debug, PartialEq, Eq, BinSerialize, BinDeserialize)]
     struct Test1(String, i32);
 
-    impl_serde_wrap! {
-        struct Test { vec, map_set }
-        struct Test1(0, 1);
+    #[derive(Debug, PartialEq, Eq, BinSerialize, BinDeserialize)]
+    enum Test2 {
+        A,
+        B(i32, i32, i32),
+        C { thing: i64 },
     }
 
     let s = Test {
@@ -177,6 +182,13 @@ fn serialize_inline_test() {
                 )
             })
             .collect(),
+        test2: vec![
+            Test2::A,
+            Test2::B(1, 1992323, 5),
+            Test2::C {
+                thing: 23456788765432,
+            },
+        ],
     };
 
     {

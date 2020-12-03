@@ -4,7 +4,7 @@ use syn::export::Span;
 use syn::export::TokenStream2;
 use syn::Ident;
 
-use crate::common::{to_struct_fields, BinSerdeOpts, BinSerdeVariant, StructField};
+use crate::common::{BinSerdeOpts, BinSerdeVariant, StructField, to_struct_fields};
 
 pub fn impl_bin_serialize(opts: &BinSerdeOpts) -> TokenStream2 {
     let name = &opts.ident;
@@ -18,8 +18,8 @@ pub fn impl_bin_serialize(opts: &BinSerdeOpts) -> TokenStream2 {
     };
 
     let gen = quote! {
-        impl ffmtutil::BinSerialize for #name {
-            fn serialize<S: ffmtutil::BinSerializer>(&self, mut serializer: S) -> ffmtutil::Result<()> {
+        impl ::ffmtutil::BinSerialize for #name {
+            fn serialize<S: ::ffmtutil::BinSerializer>(&self, mut serializer: S) -> ::ffmtutil::Result<()> {
                 #body
             }
         }

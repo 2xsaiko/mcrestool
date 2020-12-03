@@ -5,6 +5,7 @@ use std::ffi::OsStr;
 use std::io::Read;
 use std::rc::Rc;
 
+use ffmtutil::{BinDeserialize, BinSerialize};
 use matryoshka::OpenOptions;
 use mcplatfm::Identifier;
 
@@ -156,6 +157,7 @@ impl GameData {
     }
 }
 
+#[derive(BinSerialize, BinDeserialize)]
 struct GameDataReferences {
     map: HashMap<DependencyLink, HashSet<DependencyLink>>,
 }
@@ -168,7 +170,6 @@ impl GameDataReferences {
 
 ffmtutil::impl_serde_wrap! {
     struct GameData { refs, blocks, items, ..GameData::new() }
-    struct GameDataReferences { map }
 }
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
@@ -225,6 +226,7 @@ enum AutoStatus {
     Deleted,
 }
 
+#[derive(BinSerialize, BinDeserialize)]
 pub struct Block {
     base: GameObjectBase,
 }
@@ -247,10 +249,7 @@ impl Block {
     }
 }
 
-ffmtutil::impl_serde_wrap! {
-    struct Block { base }
-}
-
+#[derive(BinSerialize, BinDeserialize)]
 pub struct Item {
     base: GameObjectBase,
 }
@@ -271,8 +270,4 @@ impl Item {
     pub fn marked_for_deletion(&self) -> bool {
         self.base.marked_for_deletion()
     }
-}
-
-ffmtutil::impl_serde_wrap! {
-    struct Item { base }
 }

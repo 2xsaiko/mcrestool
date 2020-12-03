@@ -3,7 +3,7 @@ use quote::quote;
 use syn::export::TokenStream2;
 use syn::Index;
 
-use crate::common::{to_idents, to_struct_fields, BinSerdeField, BinSerdeOpts, BinSerdeVariant};
+use crate::common::{BinSerdeField, BinSerdeOpts, BinSerdeVariant, to_idents, to_struct_fields};
 
 pub fn impl_bin_deserialize(opts: &BinSerdeOpts) -> TokenStream2 {
     let name = &opts.ident;
@@ -14,7 +14,7 @@ pub fn impl_bin_deserialize(opts: &BinSerdeOpts) -> TokenStream2 {
         Data::Struct(fields) => {
             let body = gen_deserialize_in_place_method_body(fields);
             quote! {
-                fn deserialize_in_place<D: ffmtutil::BinDeserializer<'de>>(&mut self, mut deserializer: D) -> ffmtutil::Result<()> {
+                fn deserialize_in_place<D: ::ffmtutil::BinDeserializer<'de>>(&mut self, mut deserializer: D) -> ::ffmtutil::Result<()> {
                     #body
                 }
             }
@@ -22,8 +22,8 @@ pub fn impl_bin_deserialize(opts: &BinSerdeOpts) -> TokenStream2 {
     };
 
     let gen = quote! {
-        impl<'de> ffmtutil::BinDeserialize<'de> for #name {
-            fn deserialize<D: ffmtutil::BinDeserializer<'de>>(mut deserializer: D) -> ffmtutil::Result<Self> {
+        impl<'de> ::ffmtutil::BinDeserialize<'de> for #name {
+            fn deserialize<D: ::ffmtutil::BinDeserializer<'de>>(mut deserializer: D) -> ::ffmtutil::Result<Self> {
                 #deserialize_body
             }
 
@@ -47,7 +47,7 @@ fn gen_deserialize_method_body(opts: &BinSerdeOpts) -> TokenStream2 {
         };
 
         quote! {
-            #( let #idents = ffmtutil::BinDeserialize::deserialize(&mut deserializer)?; )*
+            #( let #idents = ::ffmtutil::BinDeserialize::deserialize(&mut deserializer)?; )*
             Ok( #struct_value )
         }
     }
@@ -76,7 +76,7 @@ fn gen_deserialize_method_body(opts: &BinSerdeOpts) -> TokenStream2 {
             quote! {
                 match usize::deserialize(&mut deserializer)? {
                     #( #variants )*
-                    x @ _ => Err(ffmtutil::Error::custom(&format!("invalid variant {}", x))),
+                    x @ _ => Err(::ffmtutil::Error::custom(&format!("invalid variant {}", x))),
                 }
             }
         }
@@ -88,7 +88,7 @@ fn gen_deserialize_in_place_method_body(fields: &Fields<BinSerdeField>) -> Token
     let idents = to_struct_fields(fields);
 
     quote! {
-        #( self.#idents = ffmtutil::BinDeserialize::deserialize(&mut deserializer)?; )*
+        #( self.#idents = ::ffmtutil::BinDeserialize::deserialize(&mut deserializer)?; )*
         Ok(())
     }
 }
