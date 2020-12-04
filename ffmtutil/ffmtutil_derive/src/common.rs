@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 
-use darling::ast::{Fields, Style};
 use darling::{FromDeriveInput, FromField, FromVariant};
-use syn::export::{Span, ToTokens, TokenStream2};
+use darling::ast::{Fields, Style};
 use syn::{Generics, Ident, Type};
+use syn::export::{Span, TokenStream2, ToTokens};
 
 #[derive(FromDeriveInput, Debug)]
 #[darling(attributes(binserde), supports(struct_any, enum_any))]
@@ -81,4 +81,58 @@ pub fn to_idents(fields: &Fields<BinSerdeField>, skip: bool) -> Vec<Cow<Ident>> 
             .collect(),
         Style::Unit => Vec::new(),
     }
+}
+
+fn move_sort<T, F>(slice: &mut [T], op: F)
+    where
+        F: Fn(&T) -> Option<usize>,
+{
+    let more = slice.len();
+    let mut idx = 0;
+
+    while more > 0 {
+        let d = &slice[idx];
+        let new_idx = op(d);
+
+        if let Some(new_idx) = new_idx {
+            if new_idx < idx {}
+            idx = new_idx;
+        }
+
+        idx += 1;
+    }
+}
+
+fn swap_at<T>(slice: &mut [T], idx: usize) {
+    if idx == 0 || idx == slice.len() {
+        return;
+    }
+
+    let (left, right) = slice.split_at_mut(idx);
+
+    if left.len() == right.len() {
+        left.swap_with_slice(right);
+    } else if left.len() < right.len() {
+        swap_outer(slice, idx);
+        let len = slice.len() - idx;
+        swap_at(&mut slice[..len], idx);
+    } else if right.len() < left.len() {
+        let count = slice.len() - idx;
+        swap_outer(slice, count);
+        swap_at(&mut slice[idx..], count);
+    }
+}
+
+fn swap_outer<T>(slice: &mut [T], count: usize) {
+    let (left, right) = slice.split_at_mut(count);
+    let i = right.len() - count;
+    let right = &mut right[i..];
+    left.swap_with_slice(right);
+}
+
+#[test]
+fn test_swap_at() {
+    let mut arr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+    swap_at(&mut arr, 3);
+    assert_eq!([4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 1, 2, 3], arr);
 }
