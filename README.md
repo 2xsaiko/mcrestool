@@ -9,7 +9,7 @@ You need the following set up:
  - an up to date version of **Qt 5**
  - **extra-cmake-modules** from your distro's repositories
  - [**corrosion**][1] (for Gentoo: *dev-util/corrosion::2xsaiko*)
- - the **cxxbridge** command from [my cxx fork][2]
+ - **cxxbridge** (`cargo install cxxbridge-cmd`)
 
 Then, run:
 
