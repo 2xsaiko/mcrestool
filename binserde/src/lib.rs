@@ -78,7 +78,9 @@
 //!     z: u8,
 //! }
 //!
-//! assert_eq!(&[2, 3, 0, 1], &S { w: 0, x: 1, y: 2, z: 3 });
+//! let vec = binserde::serialize(&S { w: 0, x: 1, y: 2, z: 3 });
+//!
+//! assert_eq!(&[2, 3, 0, 1], &vec);
 //! ```
 //!
 //! The attribute moved `y` and `z` into position 0, pushing `w` and `x` back to
