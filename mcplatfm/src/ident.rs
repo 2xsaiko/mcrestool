@@ -5,7 +5,7 @@ use std::fmt::{Display, Formatter};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 
-use ffmtutil::{BinDeserialize, BinSerialize, BinSerializer};
+use binserde::{BinDeserialize, BinSerialize, BinSerializer};
 
 #[derive(Debug, Clone, Eq, BinDeserialize)]
 pub struct Identifier {
@@ -116,7 +116,7 @@ impl PartialOrd for Identifier {
 }
 
 impl BinSerialize for Identifier {
-    fn serialize<S: BinSerializer>(&self, serializer: S) -> ffmtutil::Result<()> {
+    fn serialize<S: BinSerializer>(&self, serializer: S) -> binserde::Result<()> {
         (**self).serialize(serializer)
     }
 }
@@ -210,7 +210,7 @@ impl Display for Ident {
 }
 
 impl BinSerialize for Ident {
-    fn serialize<S: BinSerializer>(&self, serializer: S) -> ffmtutil::Result<()> {
+    fn serialize<S: BinSerializer>(&self, serializer: S) -> binserde::Result<()> {
         self.trim().as_str().serialize(serializer)
     }
 }

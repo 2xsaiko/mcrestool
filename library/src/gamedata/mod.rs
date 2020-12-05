@@ -5,7 +5,7 @@ use std::ffi::OsStr;
 use std::io::Read;
 use std::rc::Rc;
 
-use ffmtutil::{BinDeserialize, BinSerialize};
+use binserde::{BinDeserialize, BinSerialize};
 use matryoshka::OpenOptions;
 use mcplatfm::Identifier;
 

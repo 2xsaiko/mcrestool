@@ -1,5 +1,5 @@
 [package]
-name = "ffmtutil"
+name = "binserde"
 version = "0.1.0"
 authors = ["2xsaiko <git@dblsaiko.net>"]
 edition = "2018"
@@ -7,6 +7,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-thiserror = "1.0.22"
-byteorder = "*"
-ffmtutil_derive = { path = "ffmtutil_derive" }
+thiserror = "1.0"
+byteorder = "1.0"
+binserde_derive = { path = "binserde_derive" }

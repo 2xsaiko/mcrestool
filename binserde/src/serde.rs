@@ -31,6 +31,11 @@ impl Mode {
         self.usize_len = usize_len;
         self
     }
+
+    pub fn with_fixed_size_use_varint(mut self, enabled: bool) -> Self {
+        self.fixed_size_use_varint = enabled;
+        self
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy)]

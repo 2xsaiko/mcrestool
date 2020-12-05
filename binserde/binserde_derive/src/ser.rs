@@ -3,7 +3,6 @@ use std::borrow::Cow;
 use darling::ast::{Data, Fields, Style};
 use quote::quote;
 use syn::export::TokenStream2;
-use syn::Ident;
 
 use crate::common::{to_idents, to_struct_fields, BinSerdeField, BinSerdeOpts, BinSerdeVariant};
 
@@ -15,14 +14,13 @@ pub fn impl_bin_serialize(opts: &BinSerdeOpts) -> TokenStream2 {
     };
 
     let gen = quote! {
-        impl ::ffmtutil::BinSerialize for #name {
-            fn serialize<S: ::ffmtutil::BinSerializer>(&self, mut serializer: S) -> ::ffmtutil::Result<()> {
+        impl ::binserde::BinSerialize for #name {
+            fn serialize<S: ::binserde::BinSerializer>(&self, mut serializer: S) -> ::binserde::Result<()> {
                 #body
             }
         }
     };
 
-    eprintln!("{}", gen);
     gen
 }
 
@@ -33,7 +31,7 @@ fn gen_serialize_fields(fields: &Fields<BinSerdeField>) -> TokenStream2 {
         let mut expr = quote!(&mut serializer);
 
         if el.no_dedup {
-            expr = quote!(::ffmtutil::BinSerializer::disable_dedup(#expr));
+            expr = quote!(::binserde::BinSerializer::disable_dedup(#expr));
         }
 
         expr

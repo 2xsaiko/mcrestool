@@ -14,7 +14,7 @@ pub fn impl_bin_deserialize(opts: &BinSerdeOpts) -> TokenStream2 {
         Data::Struct(fields) => {
             let body = gen_deserialize_in_place_method_body(fields);
             quote! {
-                fn deserialize_in_place<D: ::ffmtutil::BinDeserializer<'de>>(&mut self, mut deserializer: D) -> ::ffmtutil::Result<()> {
+                fn deserialize_in_place<D: ::binserde::BinDeserializer<'de>>(&mut self, mut deserializer: D) -> ::binserde::Result<()> {
                     #body
                 }
             }
@@ -22,8 +22,8 @@ pub fn impl_bin_deserialize(opts: &BinSerdeOpts) -> TokenStream2 {
     };
 
     let gen = quote! {
-        impl<'de> ::ffmtutil::BinDeserialize<'de> for #name {
-            fn deserialize<D: ::ffmtutil::BinDeserializer<'de>>(mut deserializer: D) -> ::ffmtutil::Result<Self> {
+        impl<'de> ::binserde::BinDeserialize<'de> for #name {
+            fn deserialize<D: ::binserde::BinDeserializer<'de>>(mut deserializer: D) -> ::binserde::Result<Self> {
                 #deserialize_body
             }
 
@@ -31,7 +31,6 @@ pub fn impl_bin_deserialize(opts: &BinSerdeOpts) -> TokenStream2 {
         }
     };
 
-    eprintln!("{}", gen);
     gen
 }
 
@@ -53,10 +52,10 @@ fn gen_deserialize_method_body(opts: &BinSerdeOpts) -> TokenStream2 {
                 let mut expr = quote!(&mut deserializer);
 
                 if el.no_dedup {
-                    expr = quote!(::ffmtutil::BinDeserializer::disable_dedup(#expr));
+                    expr = quote!(::binserde::BinDeserializer::disable_dedup(#expr));
                 }
 
-                quote!( ::ffmtutil::BinDeserialize::deserialize( #expr )? )
+                quote!( ::binserde::BinDeserialize::deserialize( #expr )? )
             }
         });
 
@@ -90,7 +89,7 @@ fn gen_deserialize_method_body(opts: &BinSerdeOpts) -> TokenStream2 {
             quote! {
                 match usize::deserialize(&mut deserializer)? {
                     #( #variants )*
-                    x @ _ => Err(::ffmtutil::Error::custom(&format!("invalid variant {}", x))),
+                    x @ _ => Err(::binserde::Error::custom(&format!("invalid variant {}", x))),
                 }
             }
         }
@@ -108,10 +107,10 @@ fn gen_deserialize_in_place_method_body(fields: &Fields<BinSerdeField>) -> Token
             let mut expr = quote!(&mut deserializer);
 
             if el.no_dedup {
-                expr = quote!(::ffmtutil::BinDeserializer::disable_dedup(#expr));
+                expr = quote!(::binserde::BinDeserializer::disable_dedup(#expr));
             }
 
-            quote!( ::ffmtutil::BinDeserialize::deserialize_in_place( &mut self.#field, #expr )?; )
+            quote!( ::binserde::BinDeserialize::deserialize_in_place( &mut self.#field, #expr )?; )
         }
     });
 

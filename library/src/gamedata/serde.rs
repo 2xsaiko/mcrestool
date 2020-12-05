@@ -1,8 +1,8 @@
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use ffmtutil::de::BinDeserializer;
-use ffmtutil::{BinDeserialize, BinSerialize, BinSerializer};
-use ffmtutil::{Error, Result};
+use binserde::de::BinDeserializer;
+use binserde::{BinDeserialize, BinSerialize, BinSerializer};
+use binserde::{Error, Result};
 
 use crate::gamedata::*;
 

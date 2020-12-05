@@ -5,8 +5,8 @@ use std::num::TryFromIntError;
 
 use byteorder::{ReadBytesExt, WriteBytesExt, BE, LE};
 
-use ffmtutil::de::BinDeserializer;
-use ffmtutil::{BinDeserialize, BinSerialize, BinSerializer, Mode};
+use binserde::de::BinDeserializer;
+use binserde::{BinDeserialize, BinSerialize, BinSerializer, Mode};
 use matryoshka::DataSource;
 
 use crate::workspace::fstree::FsTree;
@@ -37,7 +37,7 @@ impl Workspace {
         self.gd.reset();
         self.fst.reset();
 
-        ffmtutil::deserialize_in_place(self, pipe, Mode::dedup())?;
+        binserde::deserialize_in_place(self, pipe, Mode::dedup())?;
 
         Ok(())
     }
@@ -46,14 +46,14 @@ impl Workspace {
         pipe.write_u16::<BE>(MAGIC)?;
         pipe.write_u16::<LE>(VERSION)?;
 
-        ffmtutil::serialize_with_into(pipe, self, Mode::dedup())?;
+        binserde::serialize_with_into(pipe, self, Mode::dedup())?;
 
         Ok(())
     }
 }
 
 impl<'de> BinDeserialize<'de> for FsTree {
-    fn deserialize<D: BinDeserializer<'de>>(deserializer: D) -> ffmtutil::Result<Self> {
+    fn deserialize<D: BinDeserializer<'de>>(deserializer: D) -> binserde::Result<Self> {
         let mut tree = FsTree::new();
         tree.deserialize_in_place(deserializer)?;
         Ok(tree)
@@ -62,7 +62,7 @@ impl<'de> BinDeserialize<'de> for FsTree {
     fn deserialize_in_place<D: BinDeserializer<'de>>(
         &mut self,
         mut deserializer: D,
-    ) -> ffmtutil::Result<()> {
+    ) -> binserde::Result<()> {
         self.reset();
 
         for _ in 0..u16::deserialize(&mut deserializer)? {
@@ -86,7 +86,7 @@ impl<'de> BinDeserialize<'de> for FsTree {
 }
 
 impl BinSerialize for FsTree {
-    fn serialize<S: BinSerializer>(&self, mut serializer: S) -> ffmtutil::Result<()> {
+    fn serialize<S: BinSerializer>(&self, mut serializer: S) -> binserde::Result<()> {
         serializer
             .pipe()
             .write_u16::<LE>(self.roots().len().try_into()?)?;
@@ -122,5 +122,5 @@ pub enum Error {
     #[error("invalid string")]
     InvalidString,
     #[error("{0}")]
-    Ffmtutil(#[from] ffmtutil::Error),
+    BinSerde(#[from] binserde::Error),
 }

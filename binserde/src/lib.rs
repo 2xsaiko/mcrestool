@@ -1,7 +1,36 @@
 #![allow(incomplete_features)]
 #![feature(const_generics)]
 
-extern crate self as ffmtutil;
+//! # binserde
+//!
+//! A crate similar to serde, but specialized for serializing into a compact
+//! binary format.
+//!
+//! ## Usage
+//!
+//! ```rust
+//! use std::fs::File;
+//! use std::io::BufReader;
+//!
+//! #[derive(BinSerialize, BinDeserialize, Eq, PartialEq)]
+//! struct MyData {
+//!     v1: String,
+//!     v2: Option<usize>,
+//! }
+//!
+//! let my_data = MyData {
+//!     v1: "Some Text".to_string(),
+//!     v2: Some(12415165),
+//! };
+//!
+//! let vec = binserde::serialize(&my_data).unwrap();
+//!
+//! let copy_of_my_data: MyData = binserde::deserialize(&vec).unwrap();
+//!
+//! assert_eq!(my_data, copy_of_my_data);
+//! ```
+
+extern crate self as binserde;
 
 use std::fmt::Display;
 use std::io;
@@ -11,10 +40,10 @@ use std::string::FromUtf8Error;
 
 use thiserror::Error;
 
+pub use binserde_derive::{BinDeserialize, BinSerialize};
 use de::BinDeserializeOwned;
 pub use de::{BinDeserialize, BinDeserializer};
 use dedup::DedupContext;
-pub use ffmtutil_derive::{BinDeserialize, BinSerialize};
 pub use ser::{BinSerialize, BinSerializer};
 pub use serde::Mode;
 
@@ -216,4 +245,13 @@ fn serialize_constant_output() {
 
     assert_eq!(&[0xFF], &*serialize(&true).unwrap());
     assert_eq!(&[0x00], &*serialize(&false).unwrap());
+
+    assert_eq!(
+        &[0x03, 0x02, 0x05, 0x45],
+        &*serialize_with(
+            &[1i16, -3i16, -35i16] as &[i16],
+            Mode::default().with_fixed_size_use_varint(true)
+        )
+        .unwrap()
+    );
 }

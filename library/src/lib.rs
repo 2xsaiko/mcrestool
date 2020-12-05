@@ -5,7 +5,7 @@ use std::path::Path;
 
 use matryoshka::DataSource;
 
-use ffmtutil::{BinDeserialize, BinSerialize};
+use binserde::{BinDeserialize, BinSerialize};
 
 #[cfg(feature = "cpp")]
 mod ffi;

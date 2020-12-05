@@ -1,13 +1,11 @@
 use std::cell::{Ref, RefCell, RefMut};
 use std::io;
-#[cfg(not(feature = "cpp"))]
-use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 
 use thiserror::Error;
 
-use ffmtutil::{BinDeserialize, BinSerialize};
+use binserde::{BinDeserialize, BinSerialize};
 pub use fstree::FsTreeEntry;
 use matryoshka::{zip, DataSource};
 
