@@ -18,8 +18,6 @@ pub struct BinSerdeOpts {
 pub struct BinSerdeVariant {
     pub ident: Ident,
     pub fields: Fields<BinSerdeField>,
-    #[darling(default)]
-    pub index: Option<usize>,
 }
 
 #[derive(FromField, Debug)]
