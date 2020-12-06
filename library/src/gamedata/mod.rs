@@ -9,7 +9,7 @@ use binserde::{BinDeserialize, BinSerialize};
 use matryoshka::OpenOptions;
 use mcplatfm::Identifier;
 
-use crate::workspace::{TreeChangeDispatcher, WorkspaceRoot};
+use crate::workspace::{FsTreeRoot, TreeChangeDispatcher};
 
 pub mod serde;
 
@@ -42,12 +42,15 @@ impl GameData {
         self.blocks.clear();
     }
 
-    pub fn collect_usages(&mut self, roots: &[Rc<RefCell<WorkspaceRoot>>]) {
+    pub fn collect_usages(&mut self, roots: &[Rc<RefCell<FsTreeRoot>>]) {
         self.refs.map.clear();
 
         for x in roots.iter() {
             let x = x.borrow();
-            let ds = x.ds();
+            let ds = match x.data() {
+                None => continue,
+                Some(data) => data.ds(),
+            };
 
             for entry in ds.list_dir("assets").unwrap_or_default() {
                 if entry.info().is_dir() {

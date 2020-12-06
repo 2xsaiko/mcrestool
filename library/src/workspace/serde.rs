@@ -1,15 +1,12 @@
-use std::convert::TryInto;
+
 use std::io;
 use std::io::{Read, Write};
 use std::num::TryFromIntError;
 
 use byteorder::{ReadBytesExt, WriteBytesExt, BE, LE};
 
-use binserde::de::BinDeserializer;
-use binserde::{BinDeserialize, BinSerialize, BinSerializer, Mode};
-use matryoshka::DataSource;
+use binserde::Mode;
 
-use crate::workspace::fstree::FsTree;
 use crate::workspace::{Error, Workspace};
 
 pub const MAGIC: u16 = 0x3B1C;
@@ -47,61 +44,6 @@ impl Workspace {
         pipe.write_u16::<LE>(VERSION)?;
 
         binserde::serialize_with_into(pipe, self, Mode::dedup())?;
-
-        Ok(())
-    }
-}
-
-impl<'de> BinDeserialize<'de> for FsTree {
-    fn deserialize<D: BinDeserializer<'de>>(deserializer: D) -> binserde::Result<Self> {
-        let mut tree = FsTree::new();
-        tree.deserialize_in_place(deserializer)?;
-        Ok(tree)
-    }
-
-    fn deserialize_in_place<D: BinDeserializer<'de>>(
-        &mut self,
-        mut deserializer: D,
-    ) -> binserde::Result<()> {
-        self.reset();
-
-        for _ in 0..u16::deserialize(&mut deserializer)? {
-            let is_dir = bool::deserialize(&mut deserializer)?;
-
-            let path = String::deserialize(&mut deserializer)?;
-            let name = String::deserialize(&mut deserializer)?;
-
-            if is_dir {
-                if let Err(e) = self.add_dir_with_name(path, name) {
-                    eprintln!("Failed to add workspace root, skipping: {}", e);
-                }
-            } else {
-                if let Err(e) = self.add_zip_with_name(path, name) {
-                    eprintln!("Failed to add workspace root, skipping: {:?}", e);
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-impl BinSerialize for FsTree {
-    fn serialize<S: BinSerializer>(&self, mut serializer: S) -> binserde::Result<()> {
-        serializer
-            .pipe()
-            .write_u16::<LE>(self.roots().len().try_into()?)?;
-
-        for r in self.roots() {
-            let r = r.borrow();
-            let (is_dir, path) = match &*r.ds {
-                DataSource::Dir(ds) => (true, ds.root()),
-                DataSource::Zip(ds) => (false, ds.zip_path()),
-            };
-
-            is_dir.serialize(&mut serializer)?;
-            path.serialize(&mut serializer)?;
-            r.name().serialize(&mut serializer)?;
-        }
 
         Ok(())
     }

@@ -214,6 +214,28 @@ void MainWindow::detach_selected() {
     }
 }
 
+void MainWindow::close_selected() {
+    QModelIndexList indices = ui->res_tree_view->selectionModel()->selectedIndexes();
+
+    for (const auto& index: indices) {
+        FsTreeEntry entry = fstreeentry_from_ptr(index.internalId());
+        if (entry.is_root()) {
+            this->m_ws.close(entry.root());
+        }
+    }
+}
+
+void MainWindow::open_selected() {
+    QModelIndexList indices = ui->res_tree_view->selectionModel()->selectedIndexes();
+
+    for (const auto& index: indices) {
+        FsTreeEntry entry = fstreeentry_from_ptr(index.internalId());
+        if (entry.is_root()) {
+            this->m_ws.open1(entry.root());
+        }
+    }
+}
+
 void MainWindow::sub_window_focus_change(QMdiSubWindow* window) {
     disconnect(ui->action_insert_language, &QAction::triggered, nullptr, nullptr);
     disconnect(ui->action_insert_translation_key, &QAction::triggered, nullptr, nullptr);
@@ -231,14 +253,19 @@ void MainWindow::sub_window_focus_change(QMdiSubWindow* window) {
 void MainWindow::show_restree_context_menu(const QPoint& pt) {
     QModelIndexList indices = ui->res_tree_view->selectionModel()->selectedIndexes();
 
-    bool allTopLevel = false;
+    bool all_top_level = false;
+    bool all_open = true;
 
     if (!indices.isEmpty()) {
-        allTopLevel = true;
+        all_top_level = true;
         for (const auto& index: indices) {
             if (ui->res_tree_view->model()->parent(index) != QModelIndex()) {
-                allTopLevel = false;
+                all_top_level = false;
                 break;
+            }
+
+            if (!fstreeentry_from_ptr(index.internalId()).root().is_open()) {
+                all_open = false;
             }
         }
     }
@@ -248,8 +275,13 @@ void MainWindow::show_restree_context_menu(const QPoint& pt) {
     QMenu menu;
     menu.addAction(tr("&Add Directory"), this, SLOT(add_res_dir()))->setIcon(QIcon::fromTheme("document-import"));
     menu.addAction(tr("Add &ZIP File"), this, SLOT(add_res_file()))->setIcon(QIcon::fromTheme("document-import"));
-    if (allTopLevel) {
+    if (all_top_level) {
         menu.addSeparator();
+        if (all_open) {
+            menu.addAction(tr("&Close"), this, SLOT(close_selected()));
+        } else {
+            menu.addAction(tr("&Open"), this, SLOT(open_selected()));
+        }
         menu.addAction(tr("&Detach"), this, SLOT(detach_selected()))->setIcon(QIcon::fromTheme("document-close"));
     }
 

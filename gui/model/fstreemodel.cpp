@@ -22,7 +22,8 @@ QModelIndex FsTreeModel::index(int row, int column, const QModelIndex& parent) c
     quintptr data;
 
     if (!parent.isValid()) {
-        FsTreeEntry entry = this->ws.by_index(row).tree();
+        const WorkspaceRoot& root = this->ws.by_index(row);
+        FsTreeEntry entry = root.tree();
         assert(!entry.is_null1());
         data = entry.to_ptr();
     } else {
@@ -65,7 +66,7 @@ QVariant FsTreeModel::data(const QModelIndex& index, int role) const {
         return to_qstring(entry.name());
     } else if (role == Qt::DecorationRole) {
         if (entry.is_root()) {
-            if (entry.root().ds().is_container_zip()) {
+            if (entry.root().is_container_zip()) {
                 return QIcon::fromTheme("application-zip");
             } else {
                 return QIcon::fromTheme("folder-root");

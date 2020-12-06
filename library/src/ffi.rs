@@ -7,10 +7,10 @@ use std::rc::Rc;
 use std::{io, mem};
 
 use matryoshka::resfile::ResFile;
-use matryoshka::{self, dir, zip, DataSource};
+use matryoshka::DataSource;
 
 use crate::langtable::LanguageTable;
-use crate::workspace::{FsTreeEntry, Workspace, WorkspaceRoot};
+use crate::workspace::{DataSourceProto, FsTreeEntry, FsTreeRoot, Workspace};
 use crate::{langtable, workspace, FileType};
 
 macro_rules! define_wrapper {
@@ -43,7 +43,7 @@ macro_rules! define_wrapper {
 
 define_wrapper! {
     ResFilePrivate(ResFile);
-    WorkspaceRootPrivate(Option<Rc<RefCell<WorkspaceRoot>>>);
+    FsTreeRootPrivate(Option<Rc<RefCell<FsTreeRoot>>>);
     FsTreeEntryPrivate(Option<Rc<RefCell<FsTreeEntry>>>);
     DataSourcePrivate(Rc<DataSource>);
     LanguageTablePrivate(LanguageTable);
@@ -67,7 +67,7 @@ mod types {
     }
 
     pub struct WorkspaceRoot {
-        pub inner: Box<WorkspaceRootPrivate>,
+        pub inner: Box<FsTreeRootPrivate>,
     }
 
     pub struct FsTreeEntry {
@@ -125,7 +125,7 @@ mod types {
         type WorkspacePrivate;
         type DataSourcePrivate;
         type ResFilePrivate;
-        type WorkspaceRootPrivate;
+        type FsTreeRootPrivate;
         type FsTreeEntryPrivate;
         type LanguageTablePrivate;
 
@@ -146,6 +146,10 @@ mod types {
 
         fn detach(self: &mut Workspace, root: &WorkspaceRoot);
 
+        fn close(self: &mut Workspace, root: &WorkspaceRoot);
+
+        fn open1(self: &mut Workspace, root: &WorkspaceRoot) -> Result<()>;
+
         fn root_count(self: &Workspace) -> usize;
 
         fn by_index(self: &Workspace, idx: usize) -> WorkspaceRoot;
@@ -157,9 +161,13 @@ mod types {
         fn fst_unsubscribe(self: &mut Workspace, subscriber: Pin<&mut TreeChangeSubscriber>);
 
         // WorkspaceRoot
+        fn is_open(self: &WorkspaceRoot) -> bool;
+
         fn tree(self: &WorkspaceRoot) -> FsTreeEntry;
 
         fn ds(self: &WorkspaceRoot) -> DataSource;
+
+        fn is_container_zip(self: &WorkspaceRoot) -> bool;
 
         fn is_null(self: &WorkspaceRoot) -> bool;
 
@@ -215,8 +223,6 @@ mod types {
         fn is_file(self: &DataSource, path: &str) -> bool;
 
         fn is_dir(self: &DataSource, path: &str) -> bool;
-
-        fn is_container_zip(self: &DataSource) -> bool;
 
         // ResFile
         fn read(self: &mut ResFile, buf: &mut [u8]) -> Result<usize>;
@@ -299,11 +305,11 @@ impl types::Workspace {
         self.inner.reset();
     }
 
-    fn add_dir(&mut self, path: &str) -> io::Result<()> {
+    fn add_dir(&mut self, path: &str) -> matryoshka::Result<()> {
         self.inner.add_dir(path)
     }
 
-    fn add_zip(&mut self, path: &str) -> zip::Result<()> {
+    fn add_zip(&mut self, path: &str) -> matryoshka::Result<()> {
         self.inner.add_zip(path)
     }
 
@@ -311,6 +317,20 @@ impl types::Workspace {
         if let Some(root) = &**root.inner {
             self.inner.detach(root)
         }
+    }
+
+    fn close(&mut self, root: &types::WorkspaceRoot) {
+        if let Some(root) = &**root.inner {
+            self.inner.fs_tree().close(root);
+        }
+    }
+
+    fn open1(&mut self, root: &types::WorkspaceRoot) -> matryoshka::Result<()> {
+        if let Some(root) = &**root.inner {
+            self.inner.fs_tree().open(root)?;
+        }
+
+        Ok(())
     }
 
     fn root_count(&self) -> usize {
@@ -351,22 +371,20 @@ impl types::WorkspaceRoot {
         }
     }
 
-    fn ds(&self) -> types::DataSource {
-        let inner: &Box<WorkspaceRootPrivate> = &self.inner;
-        let inner = (**inner)
-            .as_ref()
-            .expect("can't get DataSource from null WorkspaceRoot");
-        types::DataSource {
-            inner: Box::new((**inner).borrow().ds().clone().into()),
+    fn is_open(&self) -> bool {
+        let inner: &Box<FsTreeRootPrivate> = &self.inner;
+        let inner = (**inner).as_ref();
+        match inner {
+            None => false,
+            Some(el) => match el.borrow().data() {
+                None => false,
+                Some(_) => true,
+            },
         }
     }
 
-    fn is_null(&self) -> bool {
-        self.inner.is_none()
-    }
-
     fn tree(&self) -> types::FsTreeEntry {
-        let inner: &Box<WorkspaceRootPrivate> = &self.inner;
+        let inner: &Box<FsTreeRootPrivate> = &self.inner;
         types::FsTreeEntry {
             inner: Box::new(
                 (**inner)
@@ -375,6 +393,38 @@ impl types::WorkspaceRoot {
                     .into(),
             ),
         }
+    }
+
+    fn is_container_zip(&self) -> bool {
+        let inner: &Box<FsTreeRootPrivate> = &self.inner;
+        (**inner)
+            .as_ref()
+            .map_or(false, |el| match el.borrow().proto() {
+                DataSourceProto::Zip(_) => true,
+                _ => false,
+            })
+    }
+
+    fn ds(&self) -> types::DataSource {
+        let inner: &Box<FsTreeRootPrivate> = &self.inner;
+        let inner = (**inner)
+            .as_ref()
+            .expect("can't get DataSource from null FsTreeRoot");
+        types::DataSource {
+            inner: Box::new(
+                (**inner)
+                    .borrow()
+                    .data()
+                    .expect("root isn't open")
+                    .ds()
+                    .clone()
+                    .into(),
+            ),
+        }
+    }
+
+    fn is_null(&self) -> bool {
+        self.inner.is_none()
     }
 }
 
@@ -511,15 +561,15 @@ impl types::DirEntry {
     }
 }
 
-fn datasource_open(path: &str) -> Result<types::DataSource, io::Error> {
+fn datasource_open(path: &str) -> Result<types::DataSource, matryoshka::Error> {
     Ok(types::DataSource {
-        inner: Box::new(Rc::new(DataSource::Dir(dir::DataSource::new(path)?)).into()),
+        inner: Box::new(Rc::new(DataSource::new_dir(path)?).into()),
     })
 }
 
-fn datasource_open_zip(path: &str) -> Result<types::DataSource, zip::Error> {
+fn datasource_open_zip(path: &str) -> Result<types::DataSource, matryoshka::Error> {
     Ok(types::DataSource {
-        inner: Box::new(Rc::new(DataSource::Zip(zip::DataSource::new(path)?)).into()),
+        inner: Box::new(Rc::new(DataSource::new_zip(path)?).into()),
     })
 }
 
@@ -586,13 +636,6 @@ impl types::DataSource {
 
     fn is_dir(&self, path: &str) -> bool {
         self.inner.is_dir(path)
-    }
-
-    fn is_container_zip(&self) -> bool {
-        match &***self.inner {
-            DataSource::Zip(_) => true,
-            _ => false,
-        }
     }
 }
 

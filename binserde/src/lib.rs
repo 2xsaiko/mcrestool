@@ -167,6 +167,7 @@ mod serdeimpl;
 pub mod try_iter;
 mod varint;
 mod write_ext;
+pub mod util;
 
 pub fn serialize<T>(value: &T) -> Result<Vec<u8>>
 where

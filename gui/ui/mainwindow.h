@@ -51,6 +51,10 @@ private slots:
 
     void detach_selected();
 
+    void close_selected();
+
+    void open_selected();
+
     void test_open_model_win();
 
     void show_resource_tree(bool shown);

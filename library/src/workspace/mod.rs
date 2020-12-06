@@ -1,19 +1,19 @@
 use std::cell::{Ref, RefCell, RefMut};
-use std::io;
+
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 
 use thiserror::Error;
 
 use binserde::{BinDeserialize, BinSerialize};
-pub use fstree::FsTreeEntry;
-use matryoshka::{zip, DataSource};
+use fstree::FsTree;
+pub use fstree::{DataSourceProto, FsTreeEntry, FsTreeRoot};
+
 
 use crate::ffi;
 #[cfg(feature = "cpp")]
 use crate::ffi::TreeChangeSubscriber as CppTreeChangeSubscriber;
 use crate::gamedata::GameData;
-use crate::workspace::fstree::FsTree;
 
 pub use self::serde::Result;
 
@@ -35,13 +35,13 @@ impl Workspace {
         }
     }
 
-    pub fn add_dir<P: Into<PathBuf>>(&mut self, path: P) -> io::Result<()> {
+    pub fn add_dir<P: Into<PathBuf>>(&mut self, path: P) -> matryoshka::Result<()> {
         self.fst.add_dir(path)?;
         self.update_refs();
         Ok(())
     }
 
-    pub fn add_zip<P: Into<PathBuf>>(&mut self, path: P) -> zip::Result<()> {
+    pub fn add_zip<P: Into<PathBuf>>(&mut self, path: P) -> matryoshka::Result<()> {
         self.fst.add_zip(path)?;
         self.update_refs();
         Ok(())
@@ -64,12 +64,12 @@ impl Workspace {
         println!();
     }
 
-    pub fn detach(&mut self, root: &Rc<RefCell<WorkspaceRoot>>) {
+    pub fn detach(&mut self, root: &Rc<RefCell<FsTreeRoot>>) {
         self.fst.detach(root);
         self.update_refs();
     }
 
-    pub fn roots(&self) -> &[Rc<RefCell<WorkspaceRoot>>] {
+    pub fn roots(&self) -> &[Rc<RefCell<FsTreeRoot>>] {
         self.fst.roots()
     }
 
@@ -100,41 +100,6 @@ impl Workspace {
     pub fn reset(&mut self) {
         self.fst.reset();
         self.update_refs();
-    }
-}
-
-#[derive(Debug)]
-pub struct WorkspaceRoot {
-    name: String,
-    ds: Rc<DataSource>,
-    root: Rc<RefCell<FsTreeEntry>>,
-}
-
-impl WorkspaceRoot {
-    pub fn new<S: Into<String>>(name: S, ds: DataSource) -> Rc<RefCell<Self>> {
-        let wsr = Rc::new(RefCell::new(WorkspaceRoot {
-            name: name.into(),
-            ds: Rc::new(ds),
-            root: Rc::new(RefCell::new(FsTreeEntry::new_top_level())),
-        }));
-
-        let copy = wsr.clone();
-        wsr.borrow_mut().root.borrow_mut().root = Rc::downgrade(&copy);
-        let fstree = wsr.borrow().root.clone();
-        FsTreeEntry::refresh(&fstree);
-        wsr
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn root(&self) -> &Rc<RefCell<FsTreeEntry>> {
-        &self.root
-    }
-
-    pub fn ds(&self) -> &Rc<DataSource> {
-        &self.ds
     }
 }
 
@@ -193,61 +158,73 @@ impl TreeChangeDispatcher {
         }
     }
 
-    fn pre_insert(&self, path: &Vec<usize>, start: usize, end: usize) {
+    fn pre_insert(&self, path: &[usize], start: usize, end: usize) {
         self.subscribers
             .iter()
             .filter_map(Weak::upgrade)
             .for_each(|l| l.pre_insert(path, start, end));
 
         #[cfg(feature = "cpp")]
-        self.cpp_subscribers
-            .iter()
-            .for_each(|&l| ffi::tcs_pre_insert(l, path, start, end));
+        {
+            let path = path.to_vec();
+            self.cpp_subscribers
+                .iter()
+                .for_each(|&l| ffi::tcs_pre_insert(l, &path, start, end));
+        }
     }
 
-    fn post_insert(&self, path: &Vec<usize>) {
+    fn post_insert(&self, path: &[usize]) {
         self.subscribers
             .iter()
             .filter_map(Weak::upgrade)
             .for_each(|l| l.post_insert(path));
 
         #[cfg(feature = "cpp")]
-        self.cpp_subscribers
-            .iter()
-            .for_each(|&l| ffi::tcs_post_insert(l, path));
+        {
+            let path = path.to_vec();
+            self.cpp_subscribers
+                .iter()
+                .for_each(|&l| ffi::tcs_post_insert(l, &path));
+        }
     }
 
-    fn pre_remove(&self, path: &Vec<usize>, start: usize, end: usize) {
+    fn pre_remove(&self, path: &[usize], start: usize, end: usize) {
         self.subscribers
             .iter()
             .filter_map(Weak::upgrade)
             .for_each(|l| l.pre_remove(path, start, end));
 
         #[cfg(feature = "cpp")]
-        self.cpp_subscribers
-            .iter()
-            .for_each(|&l| ffi::tcs_pre_remove(l, path, start, end));
+        {
+            let path = path.to_vec();
+            self.cpp_subscribers
+                .iter()
+                .for_each(|&l| ffi::tcs_pre_remove(l, &path, start, end));
+        }
     }
 
-    fn post_remove(&self, path: &Vec<usize>) {
+    fn post_remove(&self, path: &[usize]) {
         self.subscribers
             .iter()
             .filter_map(Weak::upgrade)
             .for_each(|l| l.post_remove(path));
 
         #[cfg(feature = "cpp")]
-        self.cpp_subscribers
-            .iter()
-            .for_each(|&l| ffi::tcs_post_remove(l, path));
+        {
+            let path = path.to_vec();
+            self.cpp_subscribers
+                .iter()
+                .for_each(|&l| ffi::tcs_post_remove(l, &path));
+        }
     }
 }
 
 pub trait TreeChangeSubscriber {
-    fn pre_insert(&self, path: &Vec<usize>, start: usize, end: usize);
+    fn pre_insert(&self, path: &[usize], start: usize, end: usize);
 
-    fn post_insert(&self, path: &Vec<usize>);
+    fn post_insert(&self, path: &[usize]);
 
-    fn pre_remove(&self, path: &Vec<usize>, start: usize, end: usize);
+    fn pre_remove(&self, path: &[usize], start: usize, end: usize);
 
-    fn post_remove(&self, path: &Vec<usize>);
+    fn post_remove(&self, path: &[usize]);
 }

@@ -5,12 +5,9 @@ use std::io;
 use std::io::{ErrorKind, Read};
 use std::path::{Component, Path, PathBuf};
 
-use thiserror::Error;
 use zip::ZipArchive;
 
-use crate::{normalize_path, DirEntry, FileInfo};
-
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+use crate::{normalize_path, DirEntry, FileInfo, Result, Error};
 
 #[derive(Debug)]
 pub struct DataSource {
@@ -251,27 +248,5 @@ impl DirTree {
             .fold(Some(self), |acc, a| {
                 acc.and_then(|acc| acc.subdir(a.as_os_str().to_str().unwrap()))
             })
-    }
-}
-
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("invalid path")]
-    InvalidPath(PathBuf),
-    #[error("I/O error")]
-    Io(io::Error),
-    #[error("archive error")]
-    Zip(zip::result::ZipError),
-}
-
-impl From<io::Error> for Error {
-    fn from(err: io::Error) -> Self {
-        Error::Io(err)
-    }
-}
-
-impl From<zip::result::ZipError> for Error {
-    fn from(err: zip::result::ZipError) -> Self {
-        Error::Zip(err)
     }
 }

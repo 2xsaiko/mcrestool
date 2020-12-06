@@ -1,7 +1,7 @@
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::convert::{Infallible, TryInto};
 use std::hash::Hash;
-use std::marker::PhantomData;
 use std::mem::MaybeUninit;
 use std::path::{Path, PathBuf};
 
@@ -9,6 +9,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt, LE};
 
 use crate::serde::UsizeLen;
 use crate::try_iter::try_iter;
+use crate::util::{serialize_iter, VecLikeIter};
 use crate::write_ext::{ReadExt, WriteExt};
 use crate::{BinDeserialize, BinDeserializer, BinSerialize, BinSerializer};
 use crate::{Error, Result};
@@ -146,88 +147,6 @@ impl BinSerialize for str {
             pos.serialize(serializer.change_mode(|mode| mode.usize_len = mode.dedup_idx))
         } else {
             self.as_bytes().serialize(serializer)
-        }
-    }
-}
-
-pub struct VecLikeIter<D, T> {
-    deserializer: D,
-    remaining: usize,
-    marker: PhantomData<T>,
-}
-
-impl<'de, D, T> VecLikeIter<D, T>
-where
-    D: BinDeserializer<'de>,
-    T: BinDeserialize<'de>,
-{
-    pub fn new(mut deserializer: D) -> Result<Self> {
-        let len = usize::deserialize(&mut deserializer)?;
-        Ok(VecLikeIter {
-            deserializer,
-            remaining: len,
-            marker: Default::default(),
-        })
-    }
-}
-
-impl<'de, D, T> Iterator for VecLikeIter<D, T>
-where
-    D: BinDeserializer<'de>,
-    T: BinDeserialize<'de>,
-{
-    type Item = Result<T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.remaining > 0 {
-            self.remaining -= 1;
-            Some(T::deserialize(&mut self.deserializer))
-        } else {
-            None
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.remaining, Some(self.remaining))
-    }
-}
-
-impl<'de, D, T> ExactSizeIterator for VecLikeIter<D, T>
-where
-    D: BinDeserializer<'de>,
-    T: BinDeserialize<'de>,
-{
-}
-
-pub fn serialize_iter<I, S>(mut iter: I, mut serializer: S) -> Result<()>
-where
-    I: Iterator,
-    I::Item: BinSerialize,
-    S: BinSerializer,
-{
-    match iter.size_hint() {
-        (min, Some(max)) if min == max => {
-            // we know the exact length of the iterator so we don't need to
-            // collect it first before writing to the stream
-            min.serialize(&mut serializer)?;
-
-            for _ in 0..min {
-                iter.next()
-                    .expect("iterator returned less elements than it said it would!")
-                    .serialize(&mut serializer)?;
-            }
-
-            Ok(())
-        }
-        _ => {
-            let items: Vec<_> = iter.collect();
-            items.len().serialize(&mut serializer)?;
-
-            for item in items {
-                item.serialize(&mut serializer)?;
-            }
-
-            Ok(())
         }
     }
 }
@@ -502,5 +421,43 @@ where
             1 => Err(R::deserialize(deserializer)?),
             x @ _ => Err(Error::custom(format!("invalid enum variant index {}", x)))?,
         })
+    }
+}
+
+impl<T> BinSerialize for RefCell<T>
+where
+    T: BinSerialize,
+{
+    fn serialize<S: BinSerializer>(&self, serializer: S) -> Result<(), Error> {
+        self.try_borrow()
+            .map_err(|e| Error::custom(e))?
+            .serialize(serializer)
+    }
+}
+
+impl<'de, T> BinDeserialize<'de> for RefCell<T>
+where
+    T: BinDeserialize<'de>,
+{
+    fn deserialize<D: BinDeserializer<'de>>(deserializer: D) -> Result<Self, Error> {
+        Ok(RefCell::new(T::deserialize(deserializer)?))
+    }
+}
+
+impl<T> BinSerialize for Cell<T>
+where
+    T: BinSerialize + Copy,
+{
+    fn serialize<S: BinSerializer>(&self, serializer: S) -> Result<(), Error> {
+        self.get().serialize(serializer)
+    }
+}
+
+impl<'de, T> BinDeserialize<'de> for Cell<T>
+where
+    T: BinDeserialize<'de>,
+{
+    fn deserialize<D: BinDeserializer<'de>>(deserializer: D) -> Result<Self, Error> {
+        Ok(Cell::new(T::deserialize(deserializer)?))
     }
 }

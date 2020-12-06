@@ -1,9 +1,8 @@
 use std::ffi::OsStr;
-use std::fs;
-use std::io::{Cursor, ErrorKind};
+use std::io::Cursor;
 use std::path::{Component, Path, PathBuf};
+use std::{fs, io};
 
-use ::zip::result::ZipError;
 use thiserror::Error;
 
 use resfile::ResFile;
@@ -21,6 +20,14 @@ pub enum DataSource {
 }
 
 impl DataSource {
+    pub fn new_dir<P: Into<PathBuf>>(path: P) -> Result<Self> {
+        Ok(DataSource::Dir(dir::DataSource::new(path)?))
+    }
+
+    pub fn new_zip<P: AsRef<Path>>(path: P) -> Result<Self> {
+        Ok(DataSource::Zip(zip::DataSource::new(path)?))
+    }
+
     /// Opens a file at `path` inside of this `DataSource`.
     pub fn open<P: AsRef<Path>>(&self, path: P, opts: OpenOptions) -> Result<ResFile> {
         match self {
@@ -29,9 +36,10 @@ impl DataSource {
                 if opts.write {
                     Err(Error::PermissionDenied)
                 } else {
+                    let path = path.as_ref();
                     let result: Result<Vec<u8>, Error> =
                         ds.open(path).map_err(|e| e.into()).map_err(|e| match e {
-                            Error::NotFound if opts.create => Error::ReadOnly,
+                            Error::NotFound if opts.create => Error::ReadOnly(path.to_path_buf()),
                             x => x,
                         });
                     Ok(ResFile::ZipEntry(Cursor::new(result?)))
@@ -44,7 +52,7 @@ impl DataSource {
     pub fn create_dir<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         match self {
             DataSource::Dir(ds) => Ok(ds.create_dir(path)?),
-            DataSource::Zip(_) => Err(Error::ReadOnly),
+            DataSource::Zip(_) => Err(Error::ReadOnly(path.as_ref().to_path_buf())),
         }
     }
 
@@ -53,7 +61,7 @@ impl DataSource {
     pub fn create_dir_all<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         match self {
             DataSource::Dir(ds) => Ok(ds.create_dir_all(path)?),
-            DataSource::Zip(_) => Err(Error::ReadOnly),
+            DataSource::Zip(_) => Err(Error::ReadOnly(path.as_ref().to_path_buf())),
         }
     }
 
@@ -61,7 +69,7 @@ impl DataSource {
     pub fn delete_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         match self {
             DataSource::Dir(ds) => Ok(ds.delete_file(path)?),
-            DataSource::Zip(_) => Err(Error::ReadOnly),
+            DataSource::Zip(_) => Err(Error::ReadOnly(path.as_ref().to_path_buf())),
         }
     }
 
@@ -70,7 +78,7 @@ impl DataSource {
     pub fn delete_dir<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         match self {
             DataSource::Dir(ds) => Ok(ds.delete_dir(path)?),
-            DataSource::Zip(_) => Err(Error::ReadOnly),
+            DataSource::Zip(_) => Err(Error::ReadOnly(path.as_ref().to_path_buf())),
         }
     }
 
@@ -79,7 +87,7 @@ impl DataSource {
     pub fn delete_dir_all<P: AsRef<Path>>(&self, path: P) -> Result<()> {
         match self {
             DataSource::Dir(ds) => Ok(ds.delete_dir_all(path)?),
-            DataSource::Zip(_) => Err(Error::ReadOnly),
+            DataSource::Zip(_) => Err(Error::ReadOnly(path.as_ref().to_path_buf())),
         }
     }
 
@@ -115,49 +123,20 @@ impl DataSource {
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("invalid path")]
+    #[error("invalid path: {0}")]
     InvalidPath(PathBuf),
+    #[error("root directory not found: {0}")]
+    RootDirNotFound(io::Error),
     #[error("file or directory not found")]
     NotFound,
     #[error("permission denied")]
     PermissionDenied,
-    #[error("the specified file is read only")]
-    ReadOnly,
-    #[error("I/O error")]
-    Io,
-}
-
-impl From<dir::Error> for Error {
-    fn from(err: dir::Error) -> Self {
-        match err {
-            dir::Error::RootDirNotFound(_) => unreachable!(),
-            dir::Error::InvalidPath(p) => Error::InvalidPath(p),
-            dir::Error::Io(e) => match e.kind() {
-                ErrorKind::NotFound => Error::NotFound,
-                ErrorKind::PermissionDenied => Error::PermissionDenied,
-                e => {
-                    eprintln!("unhandled error: {:?}", e);
-                    Error::Io
-                }
-            },
-        }
-    }
-}
-
-impl From<zip::Error> for Error {
-    fn from(err: zip::Error) -> Self {
-        match err {
-            zip::Error::Zip(ZipError::FileNotFound) => Error::NotFound,
-            zip::Error::Zip(ZipError::InvalidArchive(_))
-            | zip::Error::Zip(ZipError::UnsupportedArchive(_)) => Error::Io,
-            zip::Error::Zip(ZipError::Io(e)) | zip::Error::Io(e) => match e.kind() {
-                ErrorKind::NotFound => Error::NotFound,
-                ErrorKind::PermissionDenied => Error::PermissionDenied,
-                _ => Error::Io,
-            },
-            zip::Error::InvalidPath(p) => Error::InvalidPath(p),
-        }
-    }
+    #[error("the specified file is read only: {0}")]
+    ReadOnly(PathBuf),
+    #[error("I/O error: {0}")]
+    Io(#[from] io::Error),
+    #[error("archive error: {0}")]
+    Zip(#[from] ::zip::result::ZipError),
 }
 
 pub fn normalize_path(path: impl AsRef<Path>) -> Option<PathBuf> {

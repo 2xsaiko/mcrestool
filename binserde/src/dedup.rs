@@ -2,9 +2,9 @@ use std::io::{Read, Write};
 
 use crate::de::{BinDeserializer, BinDeserializerBase};
 use crate::serde::UsizeLen;
-use crate::serdeimpl::serialize_iter;
 use crate::Result;
 use crate::{BinDeserialize, BinSerializer, BinSerializerBase, Mode};
+use crate::util::serialize_iter;
 
 const DEDUP_MODE: Mode = Mode {
     usize_len: UsizeLen::Variable,
