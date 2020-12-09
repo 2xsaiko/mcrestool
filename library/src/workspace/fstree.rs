@@ -4,13 +4,13 @@ use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 use std::rc::{Rc, Weak};
 
+use binserde::{BinDeserialize, BinDeserializer, BinSerialize, BinSerializer};
 use binserde::try_iter::try_iter;
 use binserde::util::{serialize_iter, VecLikeIter};
-use binserde::{BinDeserialize, BinDeserializer, BinSerialize, BinSerializer};
 use matryoshka::DataSource;
 
+use crate::{FileType, get_file_type};
 use crate::workspace::TreeChangeDispatcher;
-use crate::{get_file_type, FileType};
 
 pub struct FsTree {
     roots: Vec<Rc<RefCell<FsTreeRoot>>>,
@@ -427,6 +427,12 @@ pub struct FsTreeEntry {
     parent: Option<Weak<RefCell<FsTreeEntry>>>,
     root: Weak<RefCell<FsTreeRoot>>,
     is_top_level: bool,
+}
+
+impl Drop for FsTreeEntry {
+    fn drop(&mut self) {
+        println!("drop {:p} ({})", self, self.path.to_str().unwrap());
+    }
 }
 
 impl FsTreeEntry {

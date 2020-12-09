@@ -1,5 +1,6 @@
 #include "fstreemodel.h"
 #include <QIcon>
+#include <QDebug>
 #include <mcrtlib.h>
 #include <mcrtutil.h>
 
@@ -38,6 +39,8 @@ QModelIndex FsTreeModel::index(int row, int column, const QModelIndex& parent) c
         return QModelIndex();
     }
 
+    qDebug() << "index -> createIndex" << row << column << (void*) data;
+
     return createIndex(row, column, data);
 }
 
@@ -46,11 +49,14 @@ QModelIndex FsTreeModel::parent(const QModelIndex& child) const {
 
     FsTreeEntry entry = fstreeentry_from_ptr(child.internalId());
     assert(!entry.is_null1());
+    // qDebug() << "called parent() on" << QString::fromStdString(std::string(entry.name()));
     if (entry.is_root()) {
         return QModelIndex();
     } else {
         FsTreeEntry parent = entry.parent();
         assert(!parent.is_null1());
+
+        qDebug() << "parent -> createIndex" << (int) parent.index_of(entry) << 0 << (void*) parent.to_ptr();
 
         return createIndex((int) parent.index_of(entry), 0, parent.to_ptr());
     }

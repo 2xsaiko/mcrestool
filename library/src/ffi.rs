@@ -1,17 +1,17 @@
+use std::{io, mem};
 use std::cell::RefCell;
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Read, Write};
+use std::io::{BufReader, BufWriter, Read, stdout, Write};
 use std::path::Path;
 use std::pin::Pin;
 use std::rc::Rc;
-use std::{io, mem};
 
-use matryoshka::resfile::ResFile;
 use matryoshka::DataSource;
+use matryoshka::resfile::ResFile;
 
+use crate::{FileType, langtable, workspace};
 use crate::langtable::LanguageTable;
 use crate::workspace::{DataSourceProto, FsTreeEntry, FsTreeRoot, Workspace};
-use crate::{langtable, workspace, FileType};
 
 macro_rules! define_wrapper {
     ($($name:ident($inner:ty);)*) => {
@@ -436,6 +436,10 @@ fn fstreeentry_from_ptr(ptr: usize) -> types::FsTreeEntry {
         types::FsTreeEntry::null()
     } else {
         let rc = unsafe { Rc::from_raw(ptr) };
+        print!("fstreeentry_from_ptr({:p})", ptr);
+        stdout().flush().unwrap();
+        println!(" = {}", rc.borrow().path().to_str().unwrap());
+
         mem::forget(rc.clone()); // bump ref counter by 1 since the pointer can be used multiple times
         types::FsTreeEntry {
             inner: Box::new(Some(rc).into()),
