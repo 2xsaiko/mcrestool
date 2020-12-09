@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::fs::File;
-use std::io::{stdout, BufReader, BufWriter, Read, Write};
+use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::Path;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -66,7 +66,7 @@ mod types {
         pub inner: Box<ResFilePrivate>,
     }
 
-    pub struct WorkspaceRoot {
+    pub struct FsTreeRoot {
         pub inner: Box<FsTreeRootPrivate>,
     }
 
@@ -144,17 +144,17 @@ mod types {
 
         fn add_zip(self: &mut Workspace, path: &str) -> Result<()>;
 
-        fn detach(self: &mut Workspace, root: &WorkspaceRoot);
+        fn detach(self: &mut Workspace, root: &FsTreeRoot);
 
-        fn close(self: &mut Workspace, root: &WorkspaceRoot);
+        fn close(self: &mut Workspace, root: &FsTreeRoot);
 
-        fn open1(self: &mut Workspace, root: &WorkspaceRoot) -> Result<()>;
+        fn open1(self: &mut Workspace, root: &FsTreeRoot) -> Result<()>;
 
         fn root_count(self: &Workspace) -> usize;
 
-        fn by_index(self: &Workspace, idx: usize) -> WorkspaceRoot;
+        fn by_index(self: &Workspace, idx: usize) -> FsTreeRoot;
 
-        fn index_of1(self: &Workspace, child: &WorkspaceRoot) -> isize;
+        fn index_of1(self: &Workspace, child: &FsTreeRoot) -> isize;
 
         fn save(self: &Workspace, path: &str) -> Result<()>;
 
@@ -162,16 +162,16 @@ mod types {
 
         fn fst_unsubscribe(self: &mut Workspace, subscriber: Pin<&mut TreeChangeSubscriber>);
 
-        // WorkspaceRoot
-        fn is_open(self: &WorkspaceRoot) -> bool;
+        // FsTreeRoot
+        fn is_open(self: &FsTreeRoot) -> bool;
 
-        fn tree(self: &WorkspaceRoot) -> FsTreeEntry;
+        fn tree(self: &FsTreeRoot) -> FsTreeEntry;
 
-        fn ds(self: &WorkspaceRoot) -> DataSource;
+        fn ds(self: &FsTreeRoot) -> DataSource;
 
-        fn is_container_zip(self: &WorkspaceRoot) -> bool;
+        fn is_container_zip(self: &FsTreeRoot) -> bool;
 
-        fn is_null(self: &WorkspaceRoot) -> bool;
+        fn is_null(self: &FsTreeRoot) -> bool;
 
         // FsTreeEntry
         fn fstreeentry_from_ptr(ptr: usize) -> FsTreeEntry;
@@ -188,7 +188,7 @@ mod types {
 
         fn parent(self: &FsTreeEntry) -> FsTreeEntry;
 
-        fn root(self: &FsTreeEntry) -> WorkspaceRoot;
+        fn root(self: &FsTreeEntry) -> FsTreeRoot;
 
         fn path(self: &FsTreeEntry) -> String;
 
@@ -315,19 +315,19 @@ impl types::Workspace {
         self.inner.add_zip(path)
     }
 
-    fn detach(&mut self, root: &types::WorkspaceRoot) {
+    fn detach(&mut self, root: &types::FsTreeRoot) {
         if let Some(root) = &**root.inner {
             self.inner.detach(root)
         }
     }
 
-    fn close(&mut self, root: &types::WorkspaceRoot) {
+    fn close(&mut self, root: &types::FsTreeRoot) {
         if let Some(root) = &**root.inner {
             self.inner.fs_tree().close(root);
         }
     }
 
-    fn open1(&mut self, root: &types::WorkspaceRoot) -> matryoshka::Result<()> {
+    fn open1(&mut self, root: &types::FsTreeRoot) -> matryoshka::Result<()> {
         if let Some(root) = &**root.inner {
             self.inner.fs_tree().open(root)?;
         }
@@ -340,14 +340,14 @@ impl types::Workspace {
         inner.roots().len()
     }
 
-    fn by_index(&self, idx: usize) -> types::WorkspaceRoot {
+    fn by_index(&self, idx: usize) -> types::FsTreeRoot {
         let inner: &WorkspacePrivate = &self.inner;
-        types::WorkspaceRoot {
+        types::FsTreeRoot {
             inner: Box::new(inner.roots().get(idx).cloned().into()),
         }
     }
 
-    fn index_of1(&self, child: &types::WorkspaceRoot) -> isize {
+    fn index_of1(&self, child: &types::FsTreeRoot) -> isize {
         let inner: &Workspace = &self.inner.0;
         let child: &Rc<RefCell<FsTreeRoot>> = match child.inner.0 {
             Some(ref ch) => ch,
@@ -375,9 +375,9 @@ impl types::Workspace {
     }
 }
 
-impl types::WorkspaceRoot {
+impl types::FsTreeRoot {
     fn null() -> Self {
-        types::WorkspaceRoot {
+        types::FsTreeRoot {
             inner: Box::new(None.into()),
         }
     }
@@ -523,15 +523,15 @@ impl types::FsTreeEntry {
             )
     }
 
-    fn root(&self) -> types::WorkspaceRoot {
+    fn root(&self) -> types::FsTreeRoot {
         let inner: &Box<FsTreeEntryPrivate> = &self.inner;
         (**inner)
             .as_ref()
             .map(|e| (**e).borrow().root().clone())
             .and_then(|s| s.upgrade())
             .map_or_else(
-                || types::WorkspaceRoot::null(),
-                |s| types::WorkspaceRoot {
+                || types::FsTreeRoot::null(),
+                |s| types::FsTreeRoot {
                     inner: Box::new(Some(s).into()),
                 },
             )

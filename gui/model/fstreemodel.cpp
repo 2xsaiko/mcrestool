@@ -5,7 +5,7 @@
 #include <mcrtutil.h>
 
 using mcrtlib::ffi::Workspace;
-using mcrtlib::ffi::WorkspaceRoot;
+using mcrtlib::ffi::FsTreeRoot;
 using mcrtlib::ffi::FsTreeEntry;
 using mcrtlib::ffi::fstreeentry_from_ptr;
 using mcrtlib::to_qstring;
@@ -23,7 +23,7 @@ QModelIndex FsTreeModel::index(int row, int column, const QModelIndex& parent) c
     quintptr data;
 
     if (!parent.isValid()) {
-        const WorkspaceRoot& root = this->ws.by_index(row);
+        const FsTreeRoot& root = this->ws.by_index(row);
         FsTreeEntry entry = root.tree();
         assert(!entry.is_null1());
         data = entry.to_ptr();
