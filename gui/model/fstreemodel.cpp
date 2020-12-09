@@ -39,8 +39,6 @@ QModelIndex FsTreeModel::index(int row, int column, const QModelIndex& parent) c
         return QModelIndex();
     }
 
-    qDebug() << "index -> createIndex" << row << column << (void*) data;
-
     return createIndex(row, column, data);
 }
 
@@ -49,16 +47,21 @@ QModelIndex FsTreeModel::parent(const QModelIndex& child) const {
 
     FsTreeEntry entry = fstreeentry_from_ptr(child.internalId());
     assert(!entry.is_null1());
-    // qDebug() << "called parent() on" << QString::fromStdString(std::string(entry.name()));
     if (entry.is_root()) {
         return QModelIndex();
     } else {
         FsTreeEntry parent = entry.parent();
         assert(!parent.is_null1());
+        int parent_index;
 
-        qDebug() << "parent -> createIndex" << (int) parent.index_of(entry) << 0 << (void*) parent.to_ptr();
+        if (parent.is_root()) {
+            parent_index = ws.index_of1(parent.root());
+        } else {
+            FsTreeEntry parent2 = parent.parent();
+            parent_index = parent2.index_of(parent);
+        }
 
-        return createIndex((int) parent.index_of(entry), 0, parent.to_ptr());
+        return createIndex(parent_index, 0, parent.to_ptr());
     }
 }
 

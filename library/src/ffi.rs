@@ -1,17 +1,17 @@
-use std::{io, mem};
 use std::cell::RefCell;
 use std::fs::File;
-use std::io::{BufReader, BufWriter, Read, stdout, Write};
+use std::io::{stdout, BufReader, BufWriter, Read, Write};
 use std::path::Path;
 use std::pin::Pin;
 use std::rc::Rc;
+use std::{io, mem};
 
-use matryoshka::DataSource;
 use matryoshka::resfile::ResFile;
+use matryoshka::DataSource;
 
-use crate::{FileType, langtable, workspace};
 use crate::langtable::LanguageTable;
 use crate::workspace::{DataSourceProto, FsTreeEntry, FsTreeRoot, Workspace};
+use crate::{langtable, workspace, FileType};
 
 macro_rules! define_wrapper {
     ($($name:ident($inner:ty);)*) => {
@@ -153,6 +153,8 @@ mod types {
         fn root_count(self: &Workspace) -> usize;
 
         fn by_index(self: &Workspace, idx: usize) -> WorkspaceRoot;
+
+        fn index_of1(self: &Workspace, child: &WorkspaceRoot) -> isize;
 
         fn save(self: &Workspace, path: &str) -> Result<()>;
 
@@ -345,6 +347,15 @@ impl types::Workspace {
         }
     }
 
+    fn index_of1(&self, child: &types::WorkspaceRoot) -> isize {
+        let inner: &Workspace = &self.inner.0;
+        let child: &Rc<RefCell<FsTreeRoot>> = match child.inner.0 {
+            Some(ref ch) => ch,
+            None => return -1,
+        };
+        inner.fs_tree().index_of(child).map_or(-1, |a| a as isize)
+    }
+
     fn save(&self, path: &str) -> workspace::Result<()> {
         self.inner.write_into(BufWriter::new(File::create(path)?))?;
 
@@ -436,9 +447,6 @@ fn fstreeentry_from_ptr(ptr: usize) -> types::FsTreeEntry {
         types::FsTreeEntry::null()
     } else {
         let rc = unsafe { Rc::from_raw(ptr) };
-        print!("fstreeentry_from_ptr({:p})", ptr);
-        stdout().flush().unwrap();
-        println!(" = {}", rc.borrow().path().to_str().unwrap());
 
         mem::forget(rc.clone()); // bump ref counter by 1 since the pointer can be used multiple times
         types::FsTreeEntry {

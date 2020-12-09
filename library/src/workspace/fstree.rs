@@ -4,13 +4,13 @@ use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 use std::rc::{Rc, Weak};
 
-use binserde::{BinDeserialize, BinDeserializer, BinSerialize, BinSerializer};
 use binserde::try_iter::try_iter;
 use binserde::util::{serialize_iter, VecLikeIter};
+use binserde::{BinDeserialize, BinDeserializer, BinSerialize, BinSerializer};
 use matryoshka::DataSource;
 
-use crate::{FileType, get_file_type};
 use crate::workspace::TreeChangeDispatcher;
+use crate::{get_file_type, FileType};
 
 pub struct FsTree {
     roots: Vec<Rc<RefCell<FsTreeRoot>>>,
@@ -113,20 +113,30 @@ impl FsTree {
                 let mut r = root.borrow_mut();
                 let len = r.root().borrow().children().len();
 
-                drop(r);
-                d.pre_remove(&[s], 0, len - 1);
-                r = root.borrow_mut();
+                if len > 0 {
+                    drop(r);
+                    d.pre_remove(&[s], 0, len - 1);
+                    r = root.borrow_mut();
 
-                r.close();
+                    r.close();
 
-                drop(r);
-                d.post_remove(&[s]);
+                    drop(r);
+                    d.post_remove(&[s]);
+                } else {
+                    r.close();
+                }
             }
         }
     }
 
     pub fn roots(&self) -> &[Rc<RefCell<FsTreeRoot>>] {
         &self.roots
+    }
+
+    pub fn index_of(&self, root: &Rc<RefCell<FsTreeRoot>>) -> Option<usize> {
+        self.roots
+            .iter()
+            .position(|el| el.as_ptr() == root.as_ptr())
     }
 
     pub fn reset(&mut self) {
@@ -427,12 +437,6 @@ pub struct FsTreeEntry {
     parent: Option<Weak<RefCell<FsTreeEntry>>>,
     root: Weak<RefCell<FsTreeRoot>>,
     is_top_level: bool,
-}
-
-impl Drop for FsTreeEntry {
-    fn drop(&mut self) {
-        println!("drop {:p} ({})", self, self.path.to_str().unwrap());
-    }
 }
 
 impl FsTreeEntry {
