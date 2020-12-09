@@ -7,7 +7,7 @@ use std::rc::{Rc, Weak};
 use binserde::try_iter::try_iter;
 use binserde::util::{serialize_iter, VecLikeIter};
 use binserde::{BinDeserialize, BinDeserializer, BinSerialize, BinSerializer};
-use matryoshka::DataSource;
+use matryoshka::{DataSource, DirEntry};
 
 use crate::workspace::TreeChangeDispatcher;
 use crate::{get_file_type, FileType};
@@ -213,10 +213,14 @@ impl FsTree {
         let mut e = entry.borrow_mut();
 
         {
-            e.file_type = get_file_type(ds, &e.path);
+            e.file_type = get_file_type(ds, e.path());
 
-            if ds.is_dir(&e.path) {
-                let list = match ds.list_dir(&e.path) {
+            if e.path() != Path::new("/") {
+                e.is_dir = ds.is_dir(e.path());
+            }
+
+            if ds.is_dir(e.path()) {
+                let mut list = match ds.list_dir(e.path()) {
                     Ok(vec) => vec,
                     Err(e) => {
                         eprintln!("failed to list directory contents: {:?}", e);
@@ -224,12 +228,29 @@ impl FsTree {
                     }
                 };
 
+                fn cmp_paths(a: (&Path, bool), b: (&Path, bool)) -> Ordering {
+                    if a.1 != b.1 {
+                        a.1.cmp(&b.1).reverse()
+                    } else {
+                        a.0.cmp(b.0)
+                    }
+                }
+
+                fn cmp_dir(a: &DirEntry, b: &DirEntry) -> Ordering {
+                    cmp_paths((a.path(), a.info().is_dir()), (b.path(), b.info().is_dir()))
+                }
+
+                list.sort_by(cmp_dir);
+
                 for (i, dir_entry) in list.into_iter().enumerate() {
                     let mut found = false;
 
                     while e.children.len() > i {
                         let ch = e.children[i].borrow();
-                        match (*ch.path).cmp(dir_entry.path()) {
+                        match cmp_paths(
+                            (&ch.path, ch.is_top_level),
+                            (dir_entry.path(), dir_entry.info().is_dir()),
+                        ) {
                             Ordering::Less => {
                                 drop(ch);
 
@@ -437,6 +458,7 @@ pub struct FsTreeEntry {
     parent: Option<Weak<RefCell<FsTreeEntry>>>,
     root: Weak<RefCell<FsTreeRoot>>,
     is_top_level: bool,
+    is_dir: bool,
 }
 
 impl FsTreeEntry {
@@ -448,6 +470,7 @@ impl FsTreeEntry {
             parent: None,
             root: Weak::new(),
             is_top_level: true,
+            is_dir: true,
         }
     }
 
@@ -463,6 +486,7 @@ impl FsTreeEntry {
             parent: Some(Rc::downgrade(&parent)),
             root,
             is_top_level: false,
+            is_dir: false,
         }
     }
 

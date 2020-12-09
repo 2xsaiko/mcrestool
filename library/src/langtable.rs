@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::io;
@@ -135,15 +136,11 @@ impl LanguageTable {
 
         let mut dir = ds.list_dir(path)?;
 
-        // move en_us to the beginning
-        let idx = dir
-            .iter()
-            .position(|e| e.info().is_file() && e.file_name() == OsStr::new("en_us.json"));
-
-        if let Some(idx) = idx {
-            let en_us = dir.remove(idx);
-            dir.insert(0, en_us);
-        }
+        dir.sort_by(|a, b| match (a, b) {
+            (a, _) if a.file_name().to_str() == Some("en_us") => Ordering::Less,
+            (_, b) if b.file_name().to_str() == Some("en_us") => Ordering::Greater,
+            (a, b) => a.path().cmp(b.path()),
+        });
 
         let mut keys = HashMap::new();
 
