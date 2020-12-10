@@ -2,29 +2,27 @@
 #define MCRESTOOL_FSTREEMODEL_H
 
 #include "rustitemmodel.h"
-#include <mcrtlib.h>
 
-class FsTreeModel : public RustItemModelBase {
-    Q_OBJECT
+class FsTreeModel : public RustItemModel<mcrtlib::ffi::FsTreeEntry> {
+Q_OBJECT
 
 public:
     explicit FsTreeModel(mcrtlib::ffi::Workspace& ws, QObject* parent = nullptr);
 
     ~FsTreeModel() override;
 
-    [[nodiscard]] QModelIndex index(int row, int column, const QModelIndex& parent) const override;
+protected:
+    [[nodiscard]] mcrtlib::ffi::FsTreeEntry get_data(quintptr ptr) const override;
 
-    [[nodiscard]] QModelIndex parent(const QModelIndex& child) const override;
+    [[nodiscard]] QVariant get_display(const mcrtlib::ffi::FsTreeEntry& data, int role) const override;
 
-    [[nodiscard]] QVariant data(const QModelIndex& index, int role) const override;
+    [[nodiscard]] size_t index_of(const mcrtlib::ffi::FsTreeEntry& data) const override;
 
-    [[nodiscard]] Qt::ItemFlags flags(const QModelIndex& index) const override;
+    [[nodiscard]] std::optional<mcrtlib::ffi::FsTreeEntry> get_parent(const mcrtlib::ffi::FsTreeEntry& data) const override;
 
-    [[nodiscard]] QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
+    [[nodiscard]] size_t children_count(optional_ref<const mcrtlib::ffi::FsTreeEntry> data) const override;
 
-    [[nodiscard]] int rowCount(const QModelIndex& parent) const override;
-
-    [[nodiscard]] int columnCount(const QModelIndex& parent) const override;
+    [[nodiscard]] mcrtlib::ffi::FsTreeEntry index(optional_ref<const mcrtlib::ffi::FsTreeEntry> data, size_t row) const override;
 
 private:
     mcrtlib::ffi::Workspace& ws;

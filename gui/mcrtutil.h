@@ -7,4 +7,7 @@
 
 #define unreachable() Q_UNREACHABLE()
 
+template<typename T>
+using optional_ref = std::optional<std::reference_wrapper<T>>;
+
 #endif //MCRESTOOL_MCRTUTIL_H
