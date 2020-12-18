@@ -140,9 +140,11 @@ impl FsTree {
     }
 
     pub fn reset(&mut self) {
-        self.dispatcher().pre_remove(&[], 0, self.roots.len() - 1);
-        self.roots.clear();
-        self.dispatcher().post_remove(&[]);
+        if !self.roots.is_empty() {
+            self.dispatcher().pre_remove(&[], 0, self.roots.len() - 1);
+            self.roots.clear();
+            self.dispatcher().post_remove(&[]);
+        }
     }
 
     pub fn dispatcher(&self) -> Ref<TreeChangeDispatcher> {

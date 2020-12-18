@@ -31,8 +31,7 @@ impl Workspace {
             return Err(Error::FileVersionError(version));
         }
 
-        self.gd.reset();
-        self.fst.reset();
+        self.reset();
 
         binserde::deserialize_in_place(self, pipe, Mode::dedup())?;
 

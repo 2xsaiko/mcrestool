@@ -5,8 +5,6 @@ use std::path::Path;
 
 use matryoshka::DataSource;
 
-use binserde::{BinDeserialize, BinSerialize};
-
 #[cfg(feature = "cpp")]
 mod ffi;
 pub mod gamedata;
@@ -46,25 +44,3 @@ fn has_file_name<P: AsRef<Path>, S: AsRef<OsStr>>(path: P, name: S) -> bool {
         .file_name()
         .map_or(false, |s| s == name.as_ref())
 }
-
-#[derive(BinSerialize, BinDeserialize)]
-struct S {
-    inner: String,
-    inner1: String,
-}
-
-#[derive(BinSerialize, BinDeserialize)]
-struct S1(String);
-
-#[derive(BinSerialize, BinDeserialize)]
-enum E {
-    None,
-    Some(String),
-    Thonk,
-    Bink {},
-    Grank(),
-    Jank { a: String, b: String },
-}
-
-#[derive(BinSerialize, BinDeserialize)]
-enum E1 {}

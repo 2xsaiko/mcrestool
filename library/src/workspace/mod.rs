@@ -51,13 +51,13 @@ impl Workspace {
         self.gd.collect_usages(self.fst.roots());
         self.gd.create_dummies();
 
-        let mut blocks: Vec<_> = self.gd.blocks().keys().collect();
+        let mut blocks: Vec<_> = self.gd.blocks().ids().collect();
         blocks.sort();
         print!("Blocks: ");
         blocks.iter().for_each(|id| print!("{} ", id));
         println!();
 
-        let mut items: Vec<_> = self.gd.items().keys().collect();
+        let mut items: Vec<_> = self.gd.items().ids().collect();
         items.sort();
         print!("Items: ");
         items.iter().for_each(|id| print!("{} ", id));
@@ -98,6 +98,7 @@ impl Workspace {
     }
 
     pub fn reset(&mut self) {
+        self.gd.reset();
         self.fst.reset();
         self.update_refs();
     }

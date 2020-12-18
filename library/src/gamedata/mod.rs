@@ -3,11 +3,12 @@ use std::cell::{Ref, RefCell, RefMut};
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::io::Read;
+use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
 use binserde::{BinDeserialize, BinSerialize};
 use matryoshka::OpenOptions;
-use mcplatfm::Identifier;
+use mcplatfm::{Ident, Identifier};
 
 use crate::workspace::{FsTreeRoot, TreeChangeDispatcher};
 
@@ -17,8 +18,8 @@ pub mod serde;
 pub struct GameData {
     refs: GameDataReferences,
 
-    blocks: HashMap<Identifier, Block>,
-    items: HashMap<Identifier, Item>,
+    blocks: Registry<Block>,
+    items: Registry<Item>,
 
     #[binserde(skip)]
     dispatcher: Rc<RefCell<TreeChangeDispatcher>>,
@@ -121,24 +122,32 @@ impl GameData {
     pub fn create_dummies(&mut self) {
         let vs: HashSet<_> = self.refs.map.values().flat_map(|v| v.iter()).collect();
 
-        self.blocks.values_mut().for_each(|b| b.mark_auto(false));
-        self.items.values_mut().for_each(|i| i.mark_auto(false));
+        self.blocks.iter_mut().for_each(|b| b.mark_auto(false));
+        self.items.iter_mut().for_each(|i| i.mark_auto(false));
 
         for entry in vs {
             match entry {
                 DependencyLink::Block(id) => {
-                    let b = self
+                    match self
                         .blocks
-                        .entry(id.clone())
-                        .or_insert_with(|| Block::new(GameObjectBase::auto(id.clone())));
-                    b.mark_auto(true);
+                        .register(Block::new(GameObjectBase::auto(id.clone())))
+                    {
+                        Ok(_) => {}
+                        Err(b) => {
+                            b.mark_auto(true);
+                        }
+                    }
                 }
                 DependencyLink::Item(id) => {
-                    let i = self
+                    match self
                         .items
-                        .entry(id.clone())
-                        .or_insert_with(|| Item::new(GameObjectBase::auto(id.clone())));
-                    i.mark_auto(true);
+                        .register(Item::new(GameObjectBase::auto(id.clone())))
+                    {
+                        Ok(_) => {}
+                        Err(i) => {
+                            i.mark_auto(true);
+                        }
+                    }
                 }
                 _ => {}
             }
@@ -153,12 +162,100 @@ impl GameData {
         self.dispatcher.borrow_mut()
     }
 
-    pub fn blocks(&self) -> &HashMap<Identifier, Block> {
+    pub fn blocks(&self) -> &Registry<Block> {
         &self.blocks
     }
 
-    pub fn items(&self) -> &HashMap<Identifier, Item> {
+    pub fn items(&self) -> &Registry<Item> {
         &self.items
+    }
+
+    pub fn get_block(&self, id: &Ident) -> Option<&Block> {
+        self.blocks.by_id(id)
+    }
+}
+
+#[derive(BinSerialize, BinDeserialize)]
+pub struct Registry<T> {
+    inner: Vec<T>,
+}
+
+impl<T> Registry<T> {
+    pub fn new() -> Self {
+        Registry { inner: Vec::new() }
+    }
+}
+
+impl<T> Default for Registry<T> {
+    fn default() -> Self {
+        Registry::new()
+    }
+}
+
+impl<T> Registry<T>
+where
+    T: GameObject,
+{
+    pub fn register(&mut self, object: T) -> Result<&mut T, &mut T> {
+        let id = object.base().id();
+
+        match self.find(id) {
+            Ok(idx) => {
+                // this id already exists
+                Err(&mut self.inner[idx])
+            }
+            Err(idx) => {
+                self.inner.insert(idx, object);
+                Ok(&mut self.inner[idx])
+            }
+        }
+    }
+
+    pub fn deregister(&mut self, id: &Ident) -> Result<T, ()> {
+        match self.find(id) {
+            Ok(idx) => Ok(self.inner.remove(idx)),
+            Err(_) => Err(()),
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.inner.clear();
+    }
+
+    pub fn ids(&self) -> impl Iterator<Item = &Ident> {
+        self.inner.iter().map(|el| el.base().id())
+    }
+
+    pub fn by_id(&self, id: &Ident) -> Option<&T> {
+        let idx = self.find(id).ok()?;
+        Some(&self.inner[idx])
+    }
+
+    pub fn by_id_mut(&mut self, id: &Ident) -> Option<&mut T> {
+        let idx = self.find(id).ok()?;
+        Some(&mut self.inner[idx])
+    }
+
+    pub fn contains(&self, id: &Ident) -> bool {
+        self.find(id).is_ok()
+    }
+
+    fn find(&self, id: &Ident) -> Result<usize, usize> {
+        self.inner.binary_search_by_key(&id, |el| el.base().id())
+    }
+}
+
+impl<T> Deref for Registry<T> {
+    type Target = [T];
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<T> DerefMut for Registry<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
 }
 
@@ -178,6 +275,26 @@ enum DependencyLink {
     Language(String, String),
     Block(Identifier),
     Item(Identifier),
+}
+
+pub trait GameObject {
+    fn base(&self) -> &GameObjectBase;
+
+    fn base_mut(&mut self) -> &mut GameObjectBase;
+}
+
+macro_rules! impl_game_object {
+    ($t:ty, $field:ident) => {
+        impl GameObject for $t {
+            fn base(&self) -> &GameObjectBase {
+                &self.$field
+            }
+
+            fn base_mut(&mut self) -> &mut GameObjectBase {
+                &mut self.$field
+            }
+        }
+    };
 }
 
 pub struct GameObjectBase {
@@ -201,6 +318,10 @@ impl GameObjectBase {
             auto: AutoStatus::Yes,
             id,
         }
+    }
+
+    pub fn id(&self) -> &Ident {
+        &self.id
     }
 
     pub fn mark_manual(&mut self, flag: bool) {
@@ -250,6 +371,8 @@ impl Block {
     }
 }
 
+impl_game_object!(Block, base);
+
 #[derive(BinSerialize, BinDeserialize)]
 pub struct Item {
     base: GameObjectBase,
@@ -272,3 +395,5 @@ impl Item {
         self.base.marked_for_deletion()
     }
 }
+
+impl_game_object!(Item, base);
