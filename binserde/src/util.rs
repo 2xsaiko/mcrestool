@@ -57,29 +57,14 @@ where
     I::Item: BinSerialize,
     S: BinSerializer,
 {
-    match iter.size_hint() {
-        (min, Some(max)) if min == max => {
-            // we know the exact length of the iterator so we don't need to
-            // collect it first before writing to the stream
-            min.serialize(&mut serializer)?;
+    // TODO restore immediate serialization when we can specialize for
+    //      std::iter::TrustedLen
+    let items: Vec<_> = iter.collect();
+    items.len().serialize(&mut serializer)?;
 
-            for _ in 0..min {
-                iter.next()
-                    .expect("iterator returned less elements than it said it would!")
-                    .serialize(&mut serializer)?;
-            }
-
-            Ok(())
-        }
-        _ => {
-            let items: Vec<_> = iter.collect();
-            items.len().serialize(&mut serializer)?;
-
-            for item in items {
-                item.serialize(&mut serializer)?;
-            }
-
-            Ok(())
-        }
+    for item in items {
+        item.serialize(&mut serializer)?;
     }
+
+    Ok(())
 }
