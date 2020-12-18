@@ -3,7 +3,7 @@ use quote::quote;
 use syn::export::TokenStream2;
 use syn::Index;
 
-use crate::common::{to_idents, to_struct_fields, BinSerdeField, BinSerdeOpts, BinSerdeVariant};
+use crate::common::*;
 
 pub fn impl_bin_deserialize(opts: &BinSerdeOpts) -> TokenStream2 {
     let name = &opts.ident;
@@ -21,8 +21,12 @@ pub fn impl_bin_deserialize(opts: &BinSerdeOpts) -> TokenStream2 {
         }
     };
 
+    let generic_defs = generic_defs(opts).map_or_else(||quote!(<'de>), |el| quote!(<'de, #el>));
+    let generic_params = generic_params_on_target(opts).map(|el| quote!(<#el>));
+    let where_clause = add_trait_bounds(opts, &quote!(::binserde::BinDeserialize<'de>));
+
     let gen = quote! {
-        impl<'de> ::binserde::BinDeserialize<'de> for #name {
+        impl #generic_defs ::binserde::BinDeserialize<'de> for #name #generic_params #where_clause {
             fn deserialize<D: ::binserde::BinDeserializer<'de>>(mut deserializer: D) -> ::binserde::Result<Self> {
                 #deserialize_body
             }

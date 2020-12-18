@@ -4,7 +4,7 @@ use darling::ast::{Data, Fields, Style};
 use quote::quote;
 use syn::export::TokenStream2;
 
-use crate::common::{to_idents, to_struct_fields, BinSerdeField, BinSerdeOpts, BinSerdeVariant};
+use crate::common::*;
 
 pub fn impl_bin_serialize(opts: &BinSerdeOpts) -> TokenStream2 {
     let name = &opts.ident;
@@ -13,8 +13,12 @@ pub fn impl_bin_serialize(opts: &BinSerdeOpts) -> TokenStream2 {
         Data::Struct(s) => gen_serialize_fields(s),
     };
 
+    let generic_defs = generic_defs(opts).map(|el| quote!(<#el>));
+    let generic_params = generic_params_on_target(opts).map(|el| quote!(<#el>));
+    let where_clause = add_trait_bounds(opts, &quote!(::binserde::BinSerialize));
+
     let gen = quote! {
-        impl ::binserde::BinSerialize for #name {
+        impl #generic_defs ::binserde::BinSerialize for #name #generic_params #where_clause {
             fn serialize<S: ::binserde::BinSerializer>(&self, mut serializer: S) -> ::binserde::Result<()> {
                 #body
             }

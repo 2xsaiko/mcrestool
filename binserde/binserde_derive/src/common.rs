@@ -1,9 +1,10 @@
 use std::borrow::Cow;
 
-use darling::{FromDeriveInput, FromField, FromVariant};
 use darling::ast::{Fields, Style};
-use syn::{Generics, Ident, Type};
-use syn::export::{Span, TokenStream2, ToTokens};
+use darling::{FromDeriveInput, FromField, FromVariant};
+use quote::quote;
+use syn::export::{Span, ToTokens, TokenStream2};
+use syn::{ConstParam, GenericParam, Generics, Ident, LifetimeDef, Type, TypeParam};
 
 #[derive(FromDeriveInput, Debug)]
 #[darling(attributes(binserde), supports(struct_any, enum_any))]
@@ -81,9 +82,46 @@ pub fn to_idents(fields: &Fields<BinSerdeField>, skip: bool) -> Vec<Cow<Ident>> 
     }
 }
 
+pub fn generic_defs(opts: &BinSerdeOpts) -> Option<TokenStream2> {
+    if !opts.generics.params.is_empty() {
+        let params = &opts.generics.params;
+        Some(quote!(#params))
+    } else {
+        None
+    }
+}
+
+pub fn generic_params_on_target(opts: &BinSerdeOpts) -> Option<TokenStream2> {
+    if !opts.generics.params.is_empty() {
+        let params = &opts.generics.params;
+        let p = params.iter().map(|el| match el {
+            GenericParam::Type(TypeParam { ident, .. }) => quote!(#ident),
+            GenericParam::Lifetime(LifetimeDef { lifetime, .. }) => quote!(#lifetime),
+            GenericParam::Const(ConstParam { ident, .. }) => quote!(#ident),
+        });
+        Some(quote!(#(#p),*))
+    } else {
+        None
+    }
+}
+
+pub fn add_trait_bounds(opts: &BinSerdeOpts, bound: &TokenStream2) -> TokenStream2 {
+    let prefix = match &opts.generics.where_clause {
+        None => quote!(where),
+        Some(p) => quote!(#p ,),
+    };
+
+    let v = opts.generics.params.iter().filter_map(|el| match el {
+        GenericParam::Type(TypeParam { ident, .. }) => Some(quote!(#ident : #bound)),
+        _ => None,
+    });
+
+    quote!(#prefix #( #v ),*)
+}
+
 fn move_sort<T, F>(slice: &mut [T], op: F)
-    where
-        F: Fn(&T) -> Option<usize>,
+where
+    F: Fn(&T) -> Option<usize>,
 {
     let more = slice.len();
     let mut idx = 0;
