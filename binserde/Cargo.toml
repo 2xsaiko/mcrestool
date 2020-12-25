@@ -1,6 +1,6 @@
 [package]
 name = "binserde"
-version = "0.1.4"
+version = "0.1.5"
 description = "A crate for serializing data structures into a binary format"
 authors = ["2xsaiko <git@dblsaiko.net>"]
 license = "MIT"
@@ -15,4 +15,4 @@ edition = "2018"
 [dependencies]
 thiserror = "1.0"
 byteorder = "1.0"
-binserde_derive = { version = "=0.1.2", path = "binserde_derive" }
+binserde_derive = { version = "=0.1.3", path = "binserde_derive" }

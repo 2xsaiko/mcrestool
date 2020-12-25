@@ -42,7 +42,7 @@ fn gen_serialize_fields(fields: &Fields<BinSerdeField>) -> TokenStream2 {
     });
 
     quote! {
-        #( self.#idents.serialize( #serializers )?; )*
+        #( ::binserde::BinSerialize::serialize(&self.#idents, #serializers )?; )*
         Ok(())
     }
 }
