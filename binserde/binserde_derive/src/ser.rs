@@ -85,8 +85,8 @@ fn gen_variant_impl(idx: usize, variant: &BinSerdeVariant) -> TokenStream2 {
     };
     quote! {
         Self::#name #args => {
-            #idx.serialize(&mut serializer)?;
-            #( #fields.serialize(&mut serializer)?; )*
+            ::binserde::BinSerialize::serialize(&#idx, &mut serializer)?;
+            #( ::binserde::BinSerialize::serialize(&#fields, &mut serializer)?; )*
             Ok(())
         }
     }

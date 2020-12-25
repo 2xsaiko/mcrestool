@@ -91,7 +91,7 @@ fn gen_deserialize_method_body(opts: &BinSerdeOpts) -> TokenStream2 {
                 .enumerate()
                 .map(|(idx, el)| gen_variant_impl(idx, el));
             quote! {
-                match usize::deserialize(&mut deserializer)? {
+                match <usize as ::binserde::BinDeserialize>::deserialize(&mut deserializer)? {
                     #( #variants )*
                     x @ _ => Err(::binserde::Error::custom(&format!("invalid variant {}", x))),
                 }
