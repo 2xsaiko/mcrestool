@@ -148,13 +148,13 @@ mod types {
 
         fn close(self: &mut Workspace, root: &FsTreeRoot);
 
-        fn open1(self: &mut Workspace, root: &FsTreeRoot) -> Result<()>;
+        fn open(self: &mut Workspace, root: &FsTreeRoot) -> Result<()>;
 
         fn root_count(self: &Workspace) -> usize;
 
         fn by_index(self: &Workspace, idx: usize) -> FsTreeRoot;
 
-        fn index_of1(self: &Workspace, child: &FsTreeRoot) -> isize;
+        fn index_of(self: &Workspace, child: &FsTreeRoot) -> isize;
 
         fn save(self: &Workspace, path: &str) -> Result<()>;
 
@@ -182,7 +182,7 @@ mod types {
 
         fn children_count(self: &FsTreeEntry) -> usize;
 
-        fn by_index1(self: &FsTreeEntry, idx: usize) -> FsTreeEntry;
+        fn by_index(self: &FsTreeEntry, idx: usize) -> FsTreeEntry;
 
         fn index_of(self: &FsTreeEntry, child: &FsTreeEntry) -> isize;
 
@@ -194,7 +194,7 @@ mod types {
 
         fn is_root(self: &FsTreeEntry) -> bool;
 
-        fn is_null1(self: &FsTreeEntry) -> bool;
+        fn is_null(self: &FsTreeEntry) -> bool;
 
         fn to_ptr(self: &FsTreeEntry) -> usize;
 
@@ -252,7 +252,7 @@ mod types {
 
         fn get_key_at(self: &LanguageTable, idx: usize) -> Result<String>;
 
-        fn save1(self: &LanguageTable, ds: &DataSource, path: &str) -> Result<()>;
+        fn save(self: &LanguageTable, ds: &DataSource, path: &str) -> Result<()>;
     }
 }
 
@@ -327,7 +327,7 @@ impl types::Workspace {
         }
     }
 
-    fn open1(&mut self, root: &types::FsTreeRoot) -> matryoshka::Result<()> {
+    fn open(&mut self, root: &types::FsTreeRoot) -> matryoshka::Result<()> {
         if let Some(root) = &**root.inner {
             self.inner.fs_tree().open(root)?;
         }
@@ -347,7 +347,7 @@ impl types::Workspace {
         }
     }
 
-    fn index_of1(&self, child: &types::FsTreeRoot) -> isize {
+    fn index_of(&self, child: &types::FsTreeRoot) -> isize {
         let inner: &Workspace = &self.inner.0;
         let child: &Rc<RefCell<FsTreeRoot>> = match child.inner.0 {
             Some(ref ch) => ch,
@@ -486,7 +486,7 @@ impl types::FsTreeEntry {
             .unwrap_or_default()
     }
 
-    fn by_index1(&self, idx: usize) -> types::FsTreeEntry {
+    fn by_index(&self, idx: usize) -> types::FsTreeEntry {
         let inner: &Box<FsTreeEntryPrivate> = &self.inner;
         let content = (**inner)
             .as_ref()
@@ -552,7 +552,7 @@ impl types::FsTreeEntry {
             .unwrap_or(false)
     }
 
-    fn is_null1(&self) -> bool {
+    fn is_null(&self) -> bool {
         self.inner.is_none()
     }
 
@@ -718,7 +718,7 @@ impl types::LanguageTable {
             .ok_or("key not found in table")
     }
 
-    fn save1(&self, ds: &types::DataSource, path: &str) -> langtable::Result<()> {
+    fn save(&self, ds: &types::DataSource, path: &str) -> langtable::Result<()> {
         self.inner.save(&ds.inner, path)
     }
 }

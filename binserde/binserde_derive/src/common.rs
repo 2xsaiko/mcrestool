@@ -2,8 +2,8 @@ use std::borrow::Cow;
 
 use darling::ast::{Fields, Style};
 use darling::{FromDeriveInput, FromField, FromVariant};
-use quote::quote;
-use syn::export::{Span, ToTokens, TokenStream2};
+use proc_macro2::{Span, TokenStream};
+use quote::{quote, ToTokens};
 use syn::{ConstParam, GenericParam, Generics, Ident, LifetimeDef, Type, TypeParam};
 
 #[derive(FromDeriveInput, Debug)]
@@ -40,7 +40,7 @@ pub enum StructField<'a> {
 }
 
 impl ToTokens for StructField<'_> {
-    fn to_tokens(&self, tokens: &mut TokenStream2) {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
             StructField::Tuple(v) => v.to_tokens(tokens),
             StructField::Struct(v) => v.to_tokens(tokens),
@@ -82,7 +82,7 @@ pub fn to_idents(fields: &Fields<BinSerdeField>, skip: bool) -> Vec<Cow<Ident>> 
     }
 }
 
-pub fn generic_defs(opts: &BinSerdeOpts) -> Option<TokenStream2> {
+pub fn generic_defs(opts: &BinSerdeOpts) -> Option<TokenStream> {
     if !opts.generics.params.is_empty() {
         let params = &opts.generics.params;
         Some(quote!(#params))
@@ -91,7 +91,7 @@ pub fn generic_defs(opts: &BinSerdeOpts) -> Option<TokenStream2> {
     }
 }
 
-pub fn generic_params_on_target(opts: &BinSerdeOpts) -> Option<TokenStream2> {
+pub fn generic_params_on_target(opts: &BinSerdeOpts) -> Option<TokenStream> {
     if !opts.generics.params.is_empty() {
         let params = &opts.generics.params;
         let p = params.iter().map(|el| match el {
@@ -105,7 +105,7 @@ pub fn generic_params_on_target(opts: &BinSerdeOpts) -> Option<TokenStream2> {
     }
 }
 
-pub fn add_trait_bounds(opts: &BinSerdeOpts, bound: &TokenStream2) -> TokenStream2 {
+pub fn add_trait_bounds(opts: &BinSerdeOpts, bound: &TokenStream) -> TokenStream {
     let prefix = match &opts.generics.where_clause {
         None => quote!(where),
         Some(p) => quote!(#p ,),

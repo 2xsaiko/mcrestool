@@ -2,11 +2,11 @@ use std::borrow::Cow;
 
 use darling::ast::{Data, Fields, Style};
 use quote::quote;
-use syn::export::TokenStream2;
 
 use crate::common::*;
+use proc_macro2::TokenStream;
 
-pub fn impl_bin_serialize(opts: &BinSerdeOpts) -> TokenStream2 {
+pub fn impl_bin_serialize(opts: &BinSerdeOpts) -> TokenStream {
     let name = &opts.ident;
     let body = match &opts.data {
         Data::Enum(variants) => gen_variants(&variants),
@@ -28,7 +28,7 @@ pub fn impl_bin_serialize(opts: &BinSerdeOpts) -> TokenStream2 {
     gen
 }
 
-fn gen_serialize_fields(fields: &Fields<BinSerdeField>) -> TokenStream2 {
+fn gen_serialize_fields(fields: &Fields<BinSerdeField>) -> TokenStream {
     let idents = to_struct_fields(fields, true);
 
     let serializers = fields.iter().filter(|el| !el.skip).map(|el| {
@@ -47,7 +47,7 @@ fn gen_serialize_fields(fields: &Fields<BinSerdeField>) -> TokenStream2 {
     }
 }
 
-fn gen_variants(variants: &[BinSerdeVariant]) -> TokenStream2 {
+fn gen_variants(variants: &[BinSerdeVariant]) -> TokenStream {
     if !variants.is_empty() {
         let variants = variants
             .iter()
@@ -65,7 +65,7 @@ fn gen_variants(variants: &[BinSerdeVariant]) -> TokenStream2 {
     }
 }
 
-fn gen_variant_impl(idx: usize, variant: &BinSerdeVariant) -> TokenStream2 {
+fn gen_variant_impl(idx: usize, variant: &BinSerdeVariant) -> TokenStream {
     let name = &variant.ident;
     let fs = &variant.fields;
     let (args, fields) = match variant.fields.style {

@@ -1,11 +1,11 @@
 use darling::ast::{Data, Fields, Style};
 use quote::quote;
-use syn::export::TokenStream2;
+use proc_macro2::TokenStream;
 use syn::Index;
 
 use crate::common::*;
 
-pub fn impl_bin_deserialize(opts: &BinSerdeOpts) -> TokenStream2 {
+pub fn impl_bin_deserialize(opts: &BinSerdeOpts) -> TokenStream {
     let name = &opts.ident;
     let deserialize_body = gen_deserialize_method_body(opts);
 
@@ -38,8 +38,8 @@ pub fn impl_bin_deserialize(opts: &BinSerdeOpts) -> TokenStream2 {
     gen
 }
 
-fn gen_deserialize_method_body(opts: &BinSerdeOpts) -> TokenStream2 {
-    fn gen_struct_like(struct_like: TokenStream2, fields: &Fields<BinSerdeField>) -> TokenStream2 {
+fn gen_deserialize_method_body(opts: &BinSerdeOpts) -> TokenStream {
+    fn gen_struct_like(struct_like: TokenStream, fields: &Fields<BinSerdeField>) -> TokenStream {
         let idents = to_idents(fields, false);
 
         let fields_list = quote! { #( #idents ),* };
@@ -69,7 +69,7 @@ fn gen_deserialize_method_body(opts: &BinSerdeOpts) -> TokenStream2 {
         }
     }
 
-    fn gen_variant_impl(index: usize, variant: &BinSerdeVariant) -> TokenStream2 {
+    fn gen_variant_impl(index: usize, variant: &BinSerdeVariant) -> TokenStream {
         let name = &variant.ident;
         let index = Index::from(index);
         let g = gen_struct_like(quote!(Self::#name), &variant.fields);
@@ -101,7 +101,7 @@ fn gen_deserialize_method_body(opts: &BinSerdeOpts) -> TokenStream2 {
     }
 }
 
-fn gen_deserialize_in_place_method_body(fields: &Fields<BinSerdeField>) -> TokenStream2 {
+fn gen_deserialize_in_place_method_body(fields: &Fields<BinSerdeField>) -> TokenStream {
     let idents = to_struct_fields(fields, false);
 
     let exprs = fields.iter().zip(idents.iter()).map(|(el, field)| {

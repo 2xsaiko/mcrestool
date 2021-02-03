@@ -54,7 +54,7 @@ void LanguageTableContainer::save() {
     if (is_read_only()) return;
 
     std::string path = this->m_path.toStdString();
-    this->m_lt->data().save1(this->m_ds, path);
+    this->m_lt->data().save(this->m_ds, path);
 
     m_persistent = true;
     m_changed = false;

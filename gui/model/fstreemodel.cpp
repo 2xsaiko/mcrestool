@@ -74,7 +74,7 @@ size_t FsTreeModel::children_count(optional_ref<const FsTreeEntry> data) const {
 
 FsTreeEntry FsTreeModel::index(optional_ref<const FsTreeEntry> data, size_t row) const {
     if (data) {
-        return data->get().by_index1(row);
+        return data->get().by_index(row);
     } else {
         return this->ws.by_index(row).tree();
     }
@@ -85,6 +85,6 @@ size_t FsTreeModel::index_of(const FsTreeEntry& data) const {
     if (parent) {
         return parent->index_of(data);
     } else {
-        return this->ws.index_of1(data.root());
+        return this->ws.index_of(data.root());
     }
 }

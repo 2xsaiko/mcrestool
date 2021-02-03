@@ -231,7 +231,7 @@ void MainWindow::open_selected() {
     for (const auto& index: indices) {
         FsTreeEntry entry = fstreeentry_from_ptr(index.internalId());
         if (entry.is_root()) {
-            this->m_ws.open1(entry.root());
+            this->m_ws.open(entry.root());
         }
     }
 }
@@ -290,7 +290,7 @@ void MainWindow::show_restree_context_menu(const QPoint& pt) {
 
 void MainWindow::restree_open(const QModelIndex& index) {
     FsTreeEntry item = fstreeentry_from_ptr((size_t) index.internalPointer());
-    if (!item.is_null1()) {
+    if (!item.is_null()) {
         switch (item.file_type()) {
             case FileType::FILETYPE_LANGUAGE_PART:
             case FileType::FILETYPE_LANGUAGE: {
